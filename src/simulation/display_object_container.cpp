@@ -1,0 +1,128 @@
+#include <volasim/simulation/display_object_container.h>
+#include <glm/gtc/type_ptr.hpp>
+
+DisplayObjectContainer::DisplayObjectContainer() : DisplayObject() {}
+
+DisplayObjectContainer::DisplayObjectContainer(std::string id)
+    : DisplayObject(id) {}
+
+DisplayObjectContainer::~DisplayObjectContainer() {
+  removeAllChildren();
+}
+
+void DisplayObjectContainer::addChild(DisplayObject* child) {
+  children.push_back(child);
+  child->parent = this;
+}
+
+void DisplayObjectContainer::removeChild(DisplayObject* child,
+                                         bool should_delete) {
+
+  for (std::vector<DisplayObject*>::iterator it = children.begin();
+       it != children.end(); it++) {
+    if (*it == child) {
+      if (should_delete) {
+        delete *it;
+        *it = nullptr;
+      }
+      children.erase(it);
+      return;
+    }
+  }
+}
+
+void DisplayObjectContainer::removeChild(std::string id, bool should_delete) {
+
+  for (std::vector<DisplayObject*>::iterator it = children.begin();
+       it != children.end(); it++) {
+    if ((*it)->getID() == id) {
+      if (should_delete) {
+        delete *it;
+        *it = nullptr;
+      }
+      children.erase(it);
+      return;
+    }
+  }
+}
+
+void DisplayObjectContainer::removeChild(int index, bool should_delete) {
+  if (index >= children.size())
+    return;
+
+  std::vector<DisplayObject*>::iterator it = children.begin() + index;
+  if (should_delete) {
+    delete *it;
+    *it = nullptr;
+  }
+  children.erase(it);
+}
+
+void DisplayObjectContainer::removeAllChildren() {
+  for (std::vector<DisplayObject*>::iterator it = children.begin();
+       it != children.end(); it++) {
+    delete *it;
+    *it = NULL;
+  }
+  children.clear();
+}
+
+int DisplayObjectContainer::numChildren() {
+  return children.size();
+}
+
+DisplayObject* DisplayObjectContainer::getChild(int index) {
+  if (index > children.size())
+    return nullptr;
+
+  return children[index];
+}
+
+DisplayObject* DisplayObjectContainer::getChild(std::string id) {
+  for (std::vector<DisplayObject*>::iterator it = children.begin();
+       it != children.end(); it++) {
+    if (id == (*it)->getID()) {
+      return *it;
+    }
+  }
+  return nullptr;
+}
+
+void DisplayObjectContainer::update() {}
+
+void DisplayObjectContainer::draw() {
+  for (std::vector<DisplayObject*>::iterator it = children.begin();
+       it != children.end();) {
+    if (*it == nullptr)
+      it = children.erase(it);
+    else
+      ++it;
+  }
+
+  DisplayObject::draw();
+  glm::mat4 local_transform = DisplayObject::getLocalTransform();
+
+  glPushMatrix();
+  glMultMatrixf(glm::value_ptr(local_transform));
+
+  for (DisplayObject* child : children) {
+    // shouldn't be possilbe but just in case
+    if (child == nullptr)
+      continue;
+    child->draw();
+  }
+
+  glPopMatrix();
+}
+
+void DisplayObjectContainer::cleanUpDisplayTree() {
+  for (DisplayObject* child : children) {
+    if (child) {
+      child->cleanUpDisplayTree();
+      child->parent = NULL;
+      delete child;
+      child = nullptr;
+    }
+  }
+  children.clear();
+}
