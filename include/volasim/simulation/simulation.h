@@ -4,6 +4,9 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_opengl.h>
+
+#include <volasim/event/event_dispatcher.h>
+#include <volasim/simulation/physics_interface.h>
 #include <volasim/simulation/display_object_container.h>
 
 class Simulation {
@@ -23,6 +26,9 @@ class Simulation {
   SDL_AppResult initSDL(void** appstate, int argc, char* argv[]);
   void quitSDL(void* appstate, SDL_AppResult result);
 
+  EventDispatcher& event_handler_;
+  PhysicsInterface& physics_interface_;
+
  private:
   int window_width_;
   int window_height_;
@@ -32,6 +38,7 @@ class Simulation {
 
   Uint64 ms_per_frame_;
   Uint64 frame_start_;
+  Uint64 last_step_;
 
   SDL_Window* window_;
   SDL_GLContext gl_ctx_;

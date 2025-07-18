@@ -26,30 +26,27 @@ class DisplayObject {
   virtual void update();
   virtual void draw();
   virtual void cleanUpDisplayTree();
+  virtual void setRenderable(ShapeType type, const ShapeMetadata& meta);
 
   void toggleVisibility();
   void makeVisible();
   void makeInvisible();
 
+  void setRotation(const glm::quat& q);
   void setRotation(const glm::vec3& rpy);
   void setTranslation(const glm::vec3& p);
-  void setRenderable(ShapeType type, const ShapeMetadata& meta);
 
   std::string getID();
   glm::quat getRotation();
-  SDL_Point getPivot();
-  SDL_Point getPosition();
-  SDL_Point getGlobalHitbox();
+  glm::vec3 getPosition();
   glm::mat4 getLocalTransform();
   glm::mat4 getGlobalTransform();
+  const Renderable& getRenderable();
 
-  void setHitbox(const std::vector<SDL_Point>& points);
-  void setHitbox(double boundLow, double boundHigh);
-  void setHitbox(double boundLowX, double boundHighX, double boundLowY,
-                 double boundHighY);
+  bool isRenderable();
 
-  DisplayObject* parent = NULL;
-  bool isCollided = false;
+  DisplayObject* parent_ = NULL;
+  bool isCollided_ = false;
 
   SDL_FlipMode flip_ = SDL_FLIP_NONE;
 
@@ -71,6 +68,7 @@ class DisplayObject {
   int alpha_ = 255;
   bool show_hitbox_ = false;
   bool is_visible_ = true;
+  bool is_renderable_ = false;
 
   std::string id_;
   std::string type_ = "DisplayObject";

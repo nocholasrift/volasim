@@ -1,5 +1,8 @@
-#include <volasim/simulation/display_object_container.h>
 #include <glm/gtc/type_ptr.hpp>
+
+#include <volasim/event/event.h>
+#include <volasim/event/event_dispatcher.h>
+#include <volasim/simulation/display_object_container.h>
 
 DisplayObjectContainer::DisplayObjectContainer() : DisplayObject() {}
 
@@ -11,8 +14,12 @@ DisplayObjectContainer::~DisplayObjectContainer() {
 }
 
 void DisplayObjectContainer::addChild(DisplayObject* child) {
+  // Simulation::event_handler_.addEventLis
   children.push_back(child);
-  child->parent = this;
+  child->parent_ = this;
+
+  DisplayEvent e("OBJ_ADD", &EventDispatcher::getInstance(), child);
+  EventDispatcher::getInstance().dispatchEvent(&e);
 }
 
 void DisplayObjectContainer::removeChild(DisplayObject* child,
@@ -26,6 +33,9 @@ void DisplayObjectContainer::removeChild(DisplayObject* child,
         *it = nullptr;
       }
       children.erase(it);
+
+      DisplayEvent e("OBJ_RM", &EventDispatcher::getInstance(), child);
+      EventDispatcher::getInstance().dispatchEvent(&e);
       return;
     }
   }
@@ -36,11 +46,15 @@ void DisplayObjectContainer::removeChild(std::string id, bool should_delete) {
   for (std::vector<DisplayObject*>::iterator it = children.begin();
        it != children.end(); it++) {
     if ((*it)->getID() == id) {
+      DisplayEvent e("OBJ_RM", &EventDispatcher::getInstance(), *it);
+      EventDispatcher::getInstance().dispatchEvent(&e);
+
       if (should_delete) {
         delete *it;
         *it = nullptr;
       }
       children.erase(it);
+
       return;
     }
   }
@@ -51,18 +65,28 @@ void DisplayObjectContainer::removeChild(int index, bool should_delete) {
     return;
 
   std::vector<DisplayObject*>::iterator it = children.begin() + index;
+
+  DisplayEvent e("OBJ_RM", &EventDispatcher::getInstance(), *it);
+  EventDispatcher::getInstance().dispatchEvent(&e);
+
   if (should_delete) {
     delete *it;
     *it = nullptr;
   }
   children.erase(it);
+
 }
 
 void DisplayObjectContainer::removeAllChildren() {
   for (std::vector<DisplayObject*>::iterator it = children.begin();
        it != children.end(); it++) {
+
+    DisplayEvent e("OBJ_RM", &EventDispatcher::getInstance(), *it);
+    EventDispatcher::getInstance().dispatchEvent(&e);
+
     delete *it;
     *it = NULL;
+
   }
   children.clear();
 }
@@ -88,7 +112,9 @@ DisplayObject* DisplayObjectContainer::getChild(std::string id) {
   return nullptr;
 }
 
-void DisplayObjectContainer::update() {}
+void DisplayObjectContainer::update() {
+  DisplayObject::update();
+}
 
 void DisplayObjectContainer::draw() {
   for (std::vector<DisplayObject*>::iterator it = children.begin();
@@ -115,11 +141,15 @@ void DisplayObjectContainer::draw() {
   glPopMatrix();
 }
 
+void DisplayObjectContainer::setRenderable(ShapeType type, const ShapeMetadata& meta){
+  DisplayObject::setRenderable(type, meta);
+}
+
 void DisplayObjectContainer::cleanUpDisplayTree() {
   for (DisplayObject* child : children) {
     if (child) {
       child->cleanUpDisplayTree();
-      child->parent = NULL;
+      child->parent_ = NULL;
       delete child;
       child = nullptr;
     }

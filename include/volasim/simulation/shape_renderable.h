@@ -20,10 +20,16 @@ class ShapeRenderable : public Renderable {
 
   void draw() override;
 
-  void drawCylinder();
+  ShapeType getType() const { return type_; }
+  ShapeMetadata getShapeMeta() const { return meta_; }
 
  private:
   ShapeType type_;
+
+  void setup(ShapeType type);
+
+  void drawCylinder();
+  void drawGroundPlane(float size = 50.0f);
 
   ShapeMetadata meta_;
 };

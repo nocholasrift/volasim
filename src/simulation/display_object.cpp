@@ -21,6 +21,7 @@ DisplayObject::DisplayObject(std::string id) {
 
 void DisplayObject::setRenderable(ShapeType type, const ShapeMetadata& meta) {
   renderable_ = std::make_unique<ShapeRenderable>(type, meta);
+  is_renderable_ = true;
 }
 
 DisplayObject::~DisplayObject() {}
@@ -59,6 +60,10 @@ void DisplayObject::setRotation(const glm::vec3& rpy) {
   quaternion_ = glm::quat(rpy);
 }
 
+void DisplayObject::setRotation(const glm::quat& q) {
+  quaternion_ = q;
+}
+
 void DisplayObject::setTranslation(const glm::vec3& p) {
   position_ = p;
 }
@@ -73,12 +78,28 @@ glm::mat4 DisplayObject::getLocalTransform() {
 }
 
 glm::mat4 DisplayObject::getGlobalTransform() {
-  if (parent)
-    return parent->getGlobalTransform() * getLocalTransform();
+  if (parent_)
+    return parent_->getGlobalTransform() * getLocalTransform();
   else
     return getLocalTransform();
 }
 
+glm::vec3 DisplayObject::getPosition() {
+  return position_;
+}
+
+glm::quat DisplayObject::getRotation() {
+  return quaternion_;
+}
+
+const Renderable& DisplayObject::getRenderable(){
+  return *renderable_;
+}
+
 std::string DisplayObject::getID() {
   return id_;
+}
+
+bool DisplayObject::isRenderable(){
+  return is_renderable_;
 }
