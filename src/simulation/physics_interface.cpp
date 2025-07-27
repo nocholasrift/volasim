@@ -1,7 +1,11 @@
-#include <volasim/vehicles/drone.h>
 #include <volasim/simulation/dynamic_object.h>
 #include <volasim/simulation/physics_interface.h>
 #include <volasim/simulation/shape_renderable.h>
+#include <volasim/vehicles/drone.h>
+
+#include <Jolt/Physics/Collision/Shape/BoxShape.h>
+#include <Jolt/Physics/Collision/Shape/CylinderShape.h>
+#include <Jolt/Physics/Collision/Shape/SphereShape.h>
 
 PhysicsInterface::PhysicsInterface() {
   JPH::RegisterDefaultAllocator();
@@ -81,28 +85,37 @@ void PhysicsInterface::update(double dt) {
   JPH::BodyInterface& body_interface = physics_system_->GetBodyInterface();
 
   // 1. Apply movement to non-static objects
-  for (auto it = str_to_body_id_.begin(); it != str_to_body_id_.end(); ++it) {
+  for (const auto& [disp_obj, binding] : disp_to_dyna_) {
 
-    if (body_interface.GetMotionType(it->second) !=
-        JPH::EMotionType::Static) {
-      // DynamicDisplayWrapper<13, 4>* obj =
-      //     dynamic_cast<DynamicDisplayWrapper<13, 4>*>(display_obj_lookup_[it->first]);
-      DisplayObject* obj = display_obj_lookup_[it->first];
-      glm::vec3 pos = obj->getPosition();
-      glm::quat rot = obj->getRotation();
+    if (binding.getMotionType() != JPH::EMotionType::Static) {
 
-      JPH::RVec3 jolt_p(pos[0], pos[1], pos[2]);
-      JPH::Quat jolt_r(rot[1], rot[2], rot[3], rot[0]);
-      body_interface.MoveKinematic(it->second, jolt_p, jolt_r, dt);
+      // Eigen::Vector4d u = Eigen::Vector4d(1, 1, 1, 1) * 4.34 * 9.81 / 4;
+      Eigen::Vector4d u =
+          Eigen::Vector4d(1.0, 1.0, 1.01, 1.01) * 4.34 * 9.81 / 4.;
+      binding.dynamic_obj->setInput(u);
+      binding.dynamic_obj->update(dt);
+      // glm::vec3 pos = binding.dynamic_obj->getTranslation();
+      // glm::quat rot = binding.dynamic_obj->getRotation();
 
-      // std::cout << "? " << display_obj_lookup_[it->first] << std::endl;
-      // std::cout << "? " << obj << std::endl;
-      // glm::vec3 tv = obj->getDynaObj().getVelocity();
-      // glm::quat wv = obj->getDynaObj().getBodyRates();
-      // std::cout << "??" << std::endl;
-      // body_interface.SetLinearAndAngularVelocity(it->second, 
-      //     JPH::Vec3(tv[0], tv[1], tv[2]), 
-      //     JPH::Vec3(wv[0], wv[1], wv[2]));
+      // std::cout << "dt: " << dt << std::endl;
+      // std::cout << "updating: " << rot[0] << " " << rot[1] << " " << rot[2]
+      //           << " " << rot[3] << std::endl;
+
+      // JPH::RVec3 jolt_p(pos[0], pos[1], pos[2]);
+      // JPH::Quat jolt_r(rot[1], rot[2], rot[3], rot[0]);
+      // body_interface.MoveKinematic(binding.body_id, jolt_p, jolt_r, dt);
+
+      glm::vec3 vel = binding.dynamic_obj->getVelocity();
+      glm::vec3 rot = binding.dynamic_obj->getBodyRates();
+      JPH::RVec3 jolt_v(vel[0], vel[1], vel[2]);
+      JPH::RVec3 jolt_r(rot[0], rot[1], rot[2]);
+      body_interface.SetLinearAndAngularVelocity(binding.body_id, jolt_v,
+                                                 jolt_r);
+      // std::cout << "jolt p: " << jolt_p[0] << " " << jolt_p[1] << " "
+      //           << jolt_p[2] << std::endl;
+
+      // JPH::PhysicsSystem::BodyStats stats = physics_system_->GetBodyStats();
+      // std::cout << "num active bodies: " << stats.mNumBodies << std::endl;
     }
   }
 
@@ -110,21 +123,47 @@ void PhysicsInterface::update(double dt) {
   physics_system_->Update(dt, 1, temp_allocator_.get(), job_system_.get());
 
   // 3. Update DOs with the true physical system positions (in case of collision)
-  for (const auto& [str_id, body_id] : str_to_body_id_) {
+  for (const auto& [disp_obj, binding] : disp_to_dyna_) {
 
-    if (body_interface.GetMotionType(body_id) != JPH::EMotionType::Static) {
-      DisplayObject* obj = display_obj_lookup_[str_id];
+    if (binding.getMotionType() != JPH::EMotionType::Static) {
+
+      // if (!contact_listener_.is_colliding_) {
+      //   glm::vec3 pos = binding.dynamic_obj->getTranslation();
+      //   glm::quat rot = binding.dynamic_obj->getRotation();
+      //   JPH::RVec3 jolt_p(pos[0], pos[1], pos[2]);
+      //   JPH::Quat jolt_r(rot[1], rot[2], rot[3], rot[0]);
+      //   body_interface.SetPositionAndRotation(binding.body_id, jolt_p, jolt_r,
+      //                                         JPH::EActivation::Activate);
+      // }
 
       JPH::RVec3 jolt_p;
       JPH::Quat jolt_r;
-      body_interface.GetPositionAndRotation(body_id, jolt_p, jolt_r);
+      body_interface.GetPositionAndRotation(binding.body_id, jolt_p, jolt_r);
+
+      // std::cout << "jolt pos: " << jolt_p[0] << " " << jolt_p[1] << " "
+      //           << jolt_p[2] << std::endl;
+      // glm::vec3 p = binding.dynamic_obj->getTranslation();
+      // std::cout << "do pos: " << p[0] << " " << p[1] << " " << p[2]
+      //           << std::endl;
 
       glm::vec3 pos(jolt_p[0], jolt_p[1], jolt_p[2]);
       glm::quat rot(jolt_r.GetW(), jolt_r.GetX(), jolt_r.GetY(), jolt_r.GetZ());
 
-      obj->setTranslation(pos);
-      obj->setRotation(rot);
+      binding.dynamic_obj->setTranslation(pos);
+      binding.dynamic_obj->setRotation(rot);
+
+      disp_obj->setTranslation(pos);
+      disp_obj->setRotation(rot);
     }
+  }
+}
+
+void PhysicsInterface::preRegister(DisplayObject* display_obj,
+                                   DynamicObject* dynamic_obj) {
+  if (disp_to_dyna_.find(display_obj) == disp_to_dyna_.end()) {
+    PhysicsBinding binding;
+    binding.dynamic_obj = dynamic_obj;
+    disp_to_dyna_.insert({display_obj, binding});
   }
 }
 
@@ -134,8 +173,16 @@ void PhysicsInterface::handleEvent(Event* e) {
 
   DisplayObject* object = static_cast<DisplayEvent*>(e)->getAddedObject();
   if (e->getType() == "OBJ_ADD") {
-    if (str_to_body_id_.find(object->getID()) == str_to_body_id_.end() &&
-        object->isRenderable()) {
+
+    bool is_set = false;
+    if (disp_to_dyna_.find(object) != disp_to_dyna_.end())
+      is_set = disp_to_dyna_[object].isValid();
+    else
+      disp_to_dyna_.insert({object, PhysicsBinding()});
+
+    if (!is_set && object->isRenderable()) {
+
+      PhysicsBinding& binding = disp_to_dyna_[object];
 
       JPH::BodyID body_id;
       JPH::BodyCreationSettings shape_settings;
@@ -144,9 +191,12 @@ void PhysicsInterface::handleEvent(Event* e) {
       const ShapeRenderable& renderable =
           static_cast<const ShapeRenderable&>(object->getRenderable());
 
-      glm::vec3 pos = object->getPosition();
+      glm::vec3 pos = object->getTranslation();
       glm::quat ori = object->getRotation();
       ShapeMetadata shape_meta = renderable.getShapeMeta();
+
+      JPH::ObjectLayer obj_layer =
+          binding.isDynamic() ? Layers::MOVING : Layers::NON_MOVING;
 
       switch (renderable.getType()) {
 
@@ -160,42 +210,63 @@ void PhysicsInterface::handleEvent(Event* e) {
                     << std::endl;
 
           shape_settings = JPH::BodyCreationSettings(
-              new JPH::BoxShape(JPH::Vec3(shape_meta.scale, shape_meta.scale,
-                                          shape_meta.scale)),
+              new JPH::BoxShape(JPH::Vec3(shape_meta.size / 2,
+                                          shape_meta.size / 2,
+                                          shape_meta.size / 2)),
               JPH::RVec3(pos[0], pos[1], pos[2]),
               JPH::Quat(ori[1], ori[2], ori[3], ori[0]),
-              JPH::EMotionType::Dynamic, Layers::MOVING);
+              binding.getMotionType(), binding.getLayer());
           body_id = body_interface.CreateAndAddBody(shape_settings,
                                                     JPH::EActivation::Activate);
           body_interface.SetGravityFactor(body_id, 0.);
           break;
 
-        case ShapeType::kCylinder:
+        case ShapeType::kCylinder: {
+          std::cout << "[physics interface] handling add cylinder event"
+                    << std::endl;
+          // align with how renderable expects cylinders to be
+          JPH::Quat align_rot = JPH::Quat::sRotation(JPH::Vec3::sAxisX(), 90.f);
+          JPH::Quat renderable_ori(ori[1], ori[2], ori[3], ori[0]);
+          shape_settings = JPH::BodyCreationSettings(
+              new JPH::CylinderShape(shape_meta.height / 2., shape_meta.radius),
+              JPH::RVec3(pos[0], pos[1], pos[2] + shape_meta.height / 2),
+              // JPH::Quat(ori[1], ori[2], ori[3], ori[0]),
+              align_rot * renderable_ori, binding.getMotionType(),
+              binding.getLayer());
+          body_id = body_interface.CreateAndAddBody(shape_settings,
+                                                    JPH::EActivation::Activate);
+
           break;
+        }
 
         case ShapeType::kPlane:
           std::cout << "[physics interface] handling add plane event"
                     << std::endl;
 
+          // in case max is somehow smaller than min
+          double half_width = fabs(shape_meta.x_max - shape_meta.x_min) / 2.;
+          double half_height = fabs(shape_meta.y_max - shape_meta.y_min) / 2.;
+
           shape_settings = JPH::BodyCreationSettings(
-              new JPH::BoxShape(JPH::Vec3(50, 50, 1.0)),
-              JPH::RVec3(pos[0], pos[1], pos[2]-0.5),
+              new JPH::BoxShape(JPH::Vec3(half_width, half_height, 1.0)),
+              JPH::RVec3(pos[0], pos[1], pos[2] - 0.5),
               JPH::Quat(ori[1], ori[2], ori[3], ori[0]),
-              JPH::EMotionType::Static, Layers::NON_MOVING);
+              binding.getMotionType(), binding.getLayer());
           body_id = body_interface.CreateAndAddBody(shape_settings,
                                                     JPH::EActivation::Activate);
           break;
       }
 
-      std::pair<std::string, JPH::BodyID> obj_map(object->getID(), body_id);
-      str_to_body_id_.insert(obj_map);
+      binding.body_id = body_id;
 
-      std::pair<std::string, DisplayObject*> id_obj_pair(object->getID(),
-                                                         object);
-      display_obj_lookup_.insert(id_obj_pair);
+      // std::pair<std::string, JPH::BodyID> obj_map(object->getID(), body_id);
+      // str_to_body_id_.insert(obj_map);
+
+      // std::pair<std::string, DisplayObject*> id_obj_pair(object->getID(),
+      //                                                    object);
+      // display_obj_lookup_.insert(id_obj_pair);
     }
 
   } else if (e->getType() == "OBJ_RM") {
-    std::cout << "[physics interface] handling rm event" << std::endl;
   }
 }

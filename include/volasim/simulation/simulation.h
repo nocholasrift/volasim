@@ -6,8 +6,10 @@
 #include <SDL3/SDL_opengl.h>
 
 #include <volasim/event/event_dispatcher.h>
-#include <volasim/simulation/physics_interface.h>
+#include <volasim/simulation/camera.h>
 #include <volasim/simulation/display_object_container.h>
+#include <volasim/simulation/input_manager.h>
+#include <volasim/simulation/physics_interface.h>
 
 class Simulation {
 
@@ -26,8 +28,8 @@ class Simulation {
   SDL_AppResult initSDL(void** appstate, int argc, char* argv[]);
   void quitSDL(void* appstate, SDL_AppResult result);
 
-  EventDispatcher& event_handler_;
-  PhysicsInterface& physics_interface_;
+  EventDispatcher& getHandler() { return event_handler_; }
+  PhysicsInterface& getPhysicsInterface() { return physics_interface_; }
 
  private:
   int window_width_;
@@ -44,6 +46,13 @@ class Simulation {
   SDL_GLContext gl_ctx_;
 
   std::unique_ptr<DisplayObjectContainer> world_;
+
+  EventDispatcher& event_handler_;
+  PhysicsInterface& physics_interface_;
+
+  Camera camera_;
+
+  InputManager input_manager_;
 };
 
 #endif

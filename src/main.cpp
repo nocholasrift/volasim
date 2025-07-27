@@ -18,7 +18,7 @@
 
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 960
-#define FPS 60
+#define FPS 120
 
 Simulation& sim = Simulation::getInstance(WINDOW_WIDTH, WINDOW_HEIGHT, FPS);
 

@@ -4,3 +4,6 @@
 [submodule "third_party/JoltPhysics"]
 	path = third_party/JoltPhysics
 	url = git@github.com:jrouwe/JoltPhysics.git
+[submodule "third_party/pugixml"]
+	path = third_party/pugixml
+	url = git@github.com:zeux/pugixml.git

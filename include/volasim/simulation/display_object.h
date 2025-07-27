@@ -38,9 +38,10 @@ class DisplayObject {
 
   std::string getID();
   glm::quat getRotation();
-  glm::vec3 getPosition();
+  glm::vec3 getTranslation();
   glm::mat4 getLocalTransform();
   glm::mat4 getGlobalTransform();
+
   const Renderable& getRenderable();
 
   bool isRenderable();
@@ -51,22 +52,11 @@ class DisplayObject {
   SDL_FlipMode flip_ = SDL_FLIP_NONE;
 
  protected:
-  /* Texture currently being drawn. Equal to texture for normal DO */
-  SDL_Texture* curr_texture_;
-
-  SDL_Texture* texture_ = NULL;
-  SDL_Surface* image_ = NULL;
-
-  std::vector<SDL_Point> global_hitbox_;
-  std::vector<SDL_Point> hitbox_;
-
   glm::vec3 position_;
   glm::vec3 scale_;
   glm::quat quaternion_;
   glm::mat4 local_transform_;
 
-  int alpha_ = 255;
-  bool show_hitbox_ = false;
   bool is_visible_ = true;
   bool is_renderable_ = false;
 

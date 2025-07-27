@@ -4,23 +4,25 @@
 #include <string>
 #include <volasim/simulation/dynamic_object.h>
 
-#define N_state 13
-#define M_input 4
-
-class Drone : public DynamicObject<N_state, M_input>{
+class Drone : public DynamicObject{
  public:
 
-  using X_t = Eigen::Vector<double, N_state>;
-  using U_t = Eigen::Vector<double, M_input>;
+  static constexpr unsigned int N = 13;
+  static constexpr unsigned int M = 4;
+
+  using X_t = Eigen::Vector<double, N>;
+  using U_t = Eigen::Vector<double, M>;
 
   Drone(const Eigen::Matrix3d& J_mat, double torque_const, double boom_length, double mass, double dt);
 
-  virtual ~Drone();
+  virtual ~Drone() override;
 
-  virtual void update(const U_t& u, double dt) override;
+  virtual void update(double dt) override;
 
   virtual void setTranslation(const glm::vec3& tran) override;
   virtual void setRotation(const glm::quat& rot) override;
+
+  virtual void setInput(const Eigen::VectorXd& u) override;
 
   virtual glm::vec3 getTranslation() override;
   virtual glm::quat getRotation() override;
@@ -29,7 +31,9 @@ class Drone : public DynamicObject<N_state, M_input>{
 
  private:
 
-  Eigen::Vector<double, N_state> dynamics(const X_t& x, const U_t& u) override;
+  std::unique_ptr<amrl::RungeKutta<N, M>> solver_;
+
+  virtual Eigen::VectorXd dynamics(const Eigen::VectorXd& x, const Eigen::VectorXd& u) override;
 
   double mass_;
   double boom_length_;

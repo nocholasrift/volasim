@@ -84,7 +84,7 @@ glm::mat4 DisplayObject::getGlobalTransform() {
     return getLocalTransform();
 }
 
-glm::vec3 DisplayObject::getPosition() {
+glm::vec3 DisplayObject::getTranslation() {
   return position_;
 }
 

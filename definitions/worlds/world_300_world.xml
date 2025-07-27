@@ -1,0 +1,505 @@
+<volasim_world version="1.0">
+  <simul_timestep>0</simul_timestep>
+  <joystick_enabled>true</joystick_enabled>
+  <collision_threshold>0.1</collision_threshold>
+  <gui>
+    <ortho>false</ortho>
+    <show_forces>false</show_forces>
+    <cam_distance>25</cam_distance>
+    <fov_deg>60</fov_deg>
+    <refresh_fps>40</refresh_fps>
+  </gui>
+  <lights>
+    <enable_shadows>true</enable_shadows>
+    <light_azimuth_deg>60.0</light_azimuth_deg>
+    <light_elevation_deg>75.0</light_elevation_deg>
+  </lights>
+	<element class="ground_plane">
+		<color>#FFFFFF</color>
+		<cull_face>BACK</cull_face>
+		<x_min>-20</x_min>
+		<y_min>-20</y_min>
+		<x_max> 20</x_max>
+		<y_max> 20</y_max>
+		<z>0.0</z>
+  </element>
+
+   <block:class name="cylinder_blue">
+    <color>#2761b8</color>
+    <geometry type="cylinder" radius="0.075" length="1"/>
+  </block:class>
+
+  <block:class name="cylinder_red">
+    <color>#a63130</color>
+    <geometry type="cylinder" radius="0.075" length="1"/>
+  </block:class>
+
+  <block class="cylinder_blue">
+    <init_pose>-0.075 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.225 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.375 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.525 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.675 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.825 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.975 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-1.125 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-1.275 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-1.425 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-1.575 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-1.725 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-1.875 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-2.025 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-2.175 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-2.325 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-2.475 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-2.625 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-2.775 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-2.925 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-3.075 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-3.225 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-3.375 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-3.525 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-3.675 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-3.825 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-3.975 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.125 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.275 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 0.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 0.225 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 0.225 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 0.375 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 0.375 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 0.525 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 0.525 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 0.675 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 0.675 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 0.825 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 0.825 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 0.975 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 0.975 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 1.125 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 1.125 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 1.275 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 1.275 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 1.425 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 1.425 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 1.575 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 1.575 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 1.725 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 1.725 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 1.875 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 1.875 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 2.025 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 2.025 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 2.175 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 2.175 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 2.325 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 2.325 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 2.475 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 2.475 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 2.625 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 2.625 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 2.775 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 2.775 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 2.925 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 2.925 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 3.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 3.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 3.225 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 3.225 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 3.375 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 3.375 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 3.525 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 3.525 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 3.675 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 3.675 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 3.825 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 3.825 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 3.975 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 3.975 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 4.125 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 4.125 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 4.275 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 4.275 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 4.425 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 4.425 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 4.575 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 4.575 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 4.725 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 4.725 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 4.875 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 4.875 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 5.025 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 5.025 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 5.175 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 5.325 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 5.475 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 5.625 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 5.775 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 5.925 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 6.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 6.225 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 6.375 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 6.525 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 6.675 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 6.825 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 6.975 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 7.125 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 7.275 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 7.425 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 7.575 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 7.725 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 7.875 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 8.025 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 8.175 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 8.325 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 8.475 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 8.625 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 8.775 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 8.925 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 9.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 9.225 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 9.375 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-4.425 9.525 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 5.175 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 5.325 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 5.475 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 5.625 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 5.775 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 5.925 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 6.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 6.225 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 6.375 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 6.525 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 6.675 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 6.825 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 6.975 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 7.125 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 7.275 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 7.425 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 7.575 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 7.725 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 7.875 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 8.025 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 8.175 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 8.325 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 8.475 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 8.625 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 8.775 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 8.925 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 9.075 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 9.225 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 9.375 0.0</init_pose>
+  </block>
+  <block class="cylinder_blue">
+    <init_pose>-0.075 9.525 0.0</init_pose>
+  </block>
+</volasim_world>
