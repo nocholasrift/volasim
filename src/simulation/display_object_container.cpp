@@ -114,7 +114,8 @@ void DisplayObjectContainer::update() {
   DisplayObject::update();
 }
 
-void DisplayObjectContainer::draw() {
+void DisplayObjectContainer::draw(const glm::mat4& view_mat, const glm::mat4& proj_mat, 
+                                  Shader& shader){
   for (std::vector<DisplayObject*>::iterator it = children.begin();
        it != children.end();) {
     if (*it == nullptr)
@@ -123,20 +124,16 @@ void DisplayObjectContainer::draw() {
       ++it;
   }
 
-  DisplayObject::draw();
-  glm::mat4 local_transform = DisplayObject::getLocalTransform();
-
-  glPushMatrix();
-  glMultMatrixf(glm::value_ptr(local_transform));
+  DisplayObject::draw(view_mat, proj_mat, shader);
 
   for (DisplayObject* child : children) {
     // shouldn't be possilbe but just in case
     if (child == nullptr)
       continue;
-    child->draw();
+
+    child->draw(view_mat, proj_mat, shader);
   }
 
-  glPopMatrix();
 }
 
 void DisplayObjectContainer::setRenderable(ShapeType type,

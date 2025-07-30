@@ -23,8 +23,9 @@ class DisplayObjectContainer : public DisplayObject {
   DisplayObject* getChild(int index);
   DisplayObject* getChild(std::string id);
 
-  virtual void draw() override;
   virtual void update() override;
+  virtual void draw(const glm::mat4& view_mat, const glm::mat4& proj_mat, Shader& shader) override;
+
   virtual void cleanUpDisplayTree() override;
   virtual void setRenderable(ShapeType type,
                              const ShapeMetadata& meta) override;

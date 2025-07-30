@@ -72,7 +72,7 @@ class Simulation {
 
   InputManager input_manager_;
 
-  std::unique_ptr<Shader> shapeShader_;
+  Shader shape_shader_;
 };
 
 #endif

@@ -1,6 +1,8 @@
 #ifndef DISPLAYOBJECT_H
 #define DISPLAYOBJECT_H
 
+#include <volasim/simulation/shader.h>
+
 #include <volasim/simulation/shape_renderable.h>
 
 // #include <GL/glu.h>
@@ -25,7 +27,7 @@ class DisplayObject {
   virtual ~DisplayObject();
 
   virtual void update();
-  virtual void draw();
+  virtual void draw(const glm::mat4& view_mat, const glm::mat4& proj_mat, Shader& shader);
   virtual void cleanUpDisplayTree();
   virtual void setRenderable(ShapeType type, const ShapeMetadata& meta);
 

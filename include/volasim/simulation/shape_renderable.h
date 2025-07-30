@@ -3,7 +3,7 @@
 
 #include <volasim/simulation/renderable.h>
 
-#include <GL/glu.h>
+/*#include <GL/glu.h>*/
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
@@ -22,20 +22,20 @@ struct ShapeMetadata {
 
   std::string name = "";
 
-  double size = 0.5;
+  float size = 0.5;
 
-  double radius = 0.5;
-  double height = 0.5;
+  float radius = 0.5;
+  float height = 0.5;
 
   int slices = 32;
   int stacks = 2;
 
   // for plane
-  double x_min = -1.;
-  double y_min = -1.;
-  double x_max = 1.;
-  double y_max = 1.;
-  double z = 0.;
+  float  x_min = -1.;
+  float  y_min = -1.;
+  float  x_max = 1.;
+  float  y_max = 1.;
+  float z = 0.;
 
   GLuint vao = 0;
   GLuint vbo = 0;
@@ -48,7 +48,7 @@ class ShapeRenderable : public Renderable {
   ShapeRenderable(ShapeType type, const ShapeMetadata& meta);
   virtual ~ShapeRenderable();
 
-  void draw() override;
+  void draw(Shader& shader) override;
 
   ShapeType getType() const { return type_; }
   ShapeMetadata getShapeMeta() const { return meta_; }
@@ -65,7 +65,7 @@ class ShapeRenderable : public Renderable {
 
   ShapeMetadata meta_;
 
-  GLUquadric* quad = nullptr;
+  /*GLUquadric* quad = nullptr;*/
 
   GLuint vao_ = 0;
   GLuint vbo_ = 0;

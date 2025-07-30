@@ -1,5 +1,5 @@
 #include <volasim/simulation/display_object.h>
-#include <glm/ext/matrix_transform.hpp>
+
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -29,21 +29,22 @@ DisplayObject::~DisplayObject() {}
 
 void DisplayObject::update() {}
 
-void DisplayObject::draw() {
+void DisplayObject::draw(const glm::mat4& view_mat, const glm::mat4& proj_mat, Shader& shader){
   if (!is_visible_)
     return;
-
-  glm::mat4 model_mat;
-  if (parent)
-    model_mat = parent->getLocalTransform() * getLocalTransform();
-  else
-    model_mat = getLocalTransform();
-
+  
+  // shader will already have been set to used by this point
   if (renderable_) {
-    glPushMatrix();
-    glMultMatrixf(glm::value_ptr(transform));
-    renderable_->draw();
-    glPopMatrix();
+    glm::mat4 model_mat;
+    if (parent_)
+      model_mat = parent_->getGlobalTransform() * getLocalTransform();
+    else
+      model_mat = getLocalTransform();
+
+    glm::mat4 mvp = proj_mat * view_mat * model_mat;
+    shader.setUniformMat4("mvp", mvp);
+
+    renderable_->draw(shader);
   }
 }
 

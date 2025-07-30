@@ -1,7 +1,9 @@
+#include <glad/glad.h>
+
 #include <volasim/simulation/shape_renderable.h>
 
-#include <GL/gl.h>
-#include <GL/glut.h>
+/*#include <GL/gl.h>*/
+/*#include <GL/glut.h>*/
 
 #include <array>
 #include <iostream>
@@ -9,35 +11,26 @@
 
 ShapeRenderable::ShapeRenderable(ShapeType type, const ShapeMetadata& meta)
     : type_(type), meta_(meta) {
-  quad = gluNewQuadric();
+  /*quad = gluNewQuadric();*/
 }
 
 ShapeRenderable::~ShapeRenderable() {}
 
-void ShapeRenderable::draw() {
-  glm::vec3 color = hexToRGB(meta_.color);
-  glColor3f(color[0], color[1], color[2]);
-  switch (type_) {
-    case ShapeType::kSphere:
-      glutSolidSphere(meta_.radius, meta_.slices, meta_.stacks);
-      break;
-    case ShapeType::kCube:
-      glutSolidCube(meta_.size);
-      break;
-    case ShapeType::kCylinder:
-      drawCylinder();
-      break;
-    case ShapeType::kPlane:
-      drawGroundPlane();
-      break;
-  }
-  glColor3f(1.0, 1.0, 1.0);
+void ShapeRenderable::draw(Shader& shader) {
+
+  if (meta_.type == ShapeType::kPlane)
+    std::cout << "rendering plane!" << std::endl;
+
+  shader.setUniformVec3("color", hexToRGB(meta_.color));
+  glBindVertexArray(meta_.vao);
+  glDrawElements(GL_TRIANGLES, meta_.index_count, GL_UNSIGNED_INT, (void*) 0);
+  /*glDrawArrays(GL_TRIANGLE_FAN, 0, 4);*/
 }
 
 void ShapeRenderable::drawCylinder() {
   // static GLUquadric* quad = gluNewQuadric();
-  gluCylinder(quad, meta_.radius, meta_.radius, meta_.height, meta_.slices,
-              meta_.stacks);
+  /*gluCylinder(quad, meta_.radius, meta_.radius, meta_.height, meta_.slices,*/
+  /*            meta_.stacks);*/
 }
 
 glm::vec3 ShapeRenderable::hexToRGB(std::string_view hex_str) {

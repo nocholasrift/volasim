@@ -58,20 +58,5 @@
 	<!---->
 	<!-- </vehicle> -->
 
-	<!-- ======================================
-	      Obstacle blocks classes definition
-	     ====================================== -->
-	<block:class name="cylinder_red">
-		<color>#a63130</color>
-    <geometry type="cylinder" radius=".075" length="1"/>
-	</block:class>
-
-
-	<!-- ========================
-		Obstacle blocks
-	     ======================== -->
-	<block class="cylinder_red">
-		<init_pose>0 0 0</init_pose>  <!-- In global coords: x,y, yaw(deg) -->
-	</block>
 
 </volasim_world>

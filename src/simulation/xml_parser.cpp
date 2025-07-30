@@ -46,21 +46,15 @@ std::vector<ShapeMetadata> XMLParser::getRenderables() {
 
       case XMLTags::kElement: {
         ShapeMetadata& settings = ret.emplace_back();
-        settings.type = ShapeType::kPlane;
-        settings.x_min = std::stof(item.child_value("x_min"));
-        settings.x_max = std::stof(item.child_value("x_max"));
-        settings.y_min = std::stof(item.child_value("x_min"));
-        settings.y_max = std::stof(item.child_value("y_max"));
-        settings.z = std::stof(item.child_value("z"));
-        settings.color = item.child_value("color");
-        settings.name = item.attribute("class").as_string();
-
-        if (settings.color.length() != 7) {
-          std::string err_str =
-              "[XMLParser] Invalid color string! " + settings.color +
-              "\nShould be formatted as 6 hex digits preceeded by #";
-          throw std::invalid_argument(err_str);
-        }
+        generateShapeBuffers(settings, item);
+        /*settings.type = ShapeType::kPlane;*/
+        /*settings.x_min = std::stof(item.child_value("x_min"));*/
+        /*settings.x_max = std::stof(item.child_value("x_max"));*/
+        /*settings.y_min = std::stof(item.child_value("x_min"));*/
+        /*settings.y_max = std::stof(item.child_value("y_max"));*/
+        /*settings.z = std::stof(item.child_value("z"));*/
+        /*settings.color = item.child_value("color");*/
+        /*settings.name = item.attribute("class").as_string();*/
         break;
       }
 
@@ -141,6 +135,13 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
   settings.type = shape_map_[geometry_node.attribute("type").as_string()];
   settings.color = item.child_value("color");
 
+  if (settings.color.length() != 7) {
+    std::string err_str =
+        "[XMLParser] Invalid color string! " + settings.color +
+        "\nShould be formatted as 6 hex digits preceeded by #";
+    throw std::invalid_argument(err_str);
+  }
+
   glGenVertexArrays(1, &settings.vao);
   glBindVertexArray(settings.vao);
 
@@ -185,6 +186,38 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
 
       break;
     }  // end case kCylinder
+    case ShapeType::kPlane: {
+      std::cout << "handling plane object" << std::endl;
+      settings.x_min = std::stof(item.child_value("x_min"));
+      settings.x_max = std::stof(item.child_value("x_max"));
+      settings.y_min = std::stof(item.child_value("x_min"));
+      settings.y_max = std::stof(item.child_value("y_max"));
+      settings.z = std::stof(item.child_value("z"));
+      settings.name = item.attribute("class").as_string();
+
+      float ground_verts[] = {
+        //positions             
+        settings.x_max, settings.y_max, settings.z,
+        settings.x_max, settings.y_min, settings.z,
+        settings.x_min, settings.y_min, settings.z,
+        settings.x_min, settings.y_max, settings.z
+      };
+
+      unsigned int indices[] = {
+        0, 1, 3,
+        1, 2, 3
+      };
+
+      glBufferData(GL_ARRAY_BUFFER, sizeof(ground_verts), ground_verts, GL_STATIC_DRAW);
+
+      glEnableVertexAttribArray(0);
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) 0);
+
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+      settings.index_count = 6;
+
+      break;
+    } // end case kPlane
   }
 
   glBindVertexArray(0);

@@ -122,10 +122,10 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
 
   ms_per_frame_ = 1000 / frames_per_sec_;
 
-  shapeShader_ =
-      std::make_unique<Shader>(mesh_vertex_shader, mesh_fragment_shader);
+  shape_shader_ =
+      Shader(mesh_vertex_shader, mesh_fragment_shader);
 
-  XMLParser parser("./definitions/worlds/world_250_world.xml");
+  XMLParser parser("./definitions/worlds/demo_world.xml");
   std::vector<ShapeMetadata> renderables = parser.getRenderables();
 
   int i = 0;
@@ -170,29 +170,31 @@ SDL_AppResult Simulation::update(void* appstate) {
     // physics_interface_.update(ms_per_frame_ / 1000.);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluPerspective(camera_.zoom_,
-                   static_cast<float>(window_width_) / window_height_, 0.1,
-                   100.0);
+    glDisable(GL_CULL_FACE);
 
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    glLoadMatrixf(glm::value_ptr(camera_.getViewMatrix()));
-    // gluLookAt(3, 3, 3,   // eye: up and to the side
-    //           0, 0, 0,   // center: look at origin
-    //           0, 0, 1);  // up: Z axis up (assuming Z is vertical)
+    /*glm::mat4 view_mat = camera_.getViewMatrix();*/
+    /*glm::mat4 proj_mat = glm::perspective(*/
+    /*    glm::radians(camera_.zoom_),                         // fov*/
+    /*    static_cast<float>(window_width_) / window_height_,  // aspect ratio*/
+    /*    0.1f, 100.0f);                                       // near & far plane*/
 
-    glm::mat4 view_mat = camera_.getViewMatrix();
-    glm::mat4 proj_mat = glm::perspective(
-        glm::radians(camera_.zoom_),                         // fov
-        static_cast<float>(window_width_) / window_height_,  // aspect ratio
-        0.1f, 100.0f);                                       // near & far plane
+    glm::mat4 view_mat = glm::lookAt(glm::vec3(0, 0, 5),
+                                     glm::vec3(0, 0, 0),
+                                     glm::vec3(0, 1, 0));
 
-    world_->draw();
+    float ortho_scale = 10.f;
+    glm::mat4 proj_mat = glm::ortho(
+      -ortho_scale, ortho_scale,
+      -ortho_scale, ortho_scale,
+      .1f, 100.f
+    );
+
+    glUseProgram(shape_shader_.getID());
+
+    world_->draw(view_mat, proj_mat, shape_shader_);
   }
 
-  Uint64 frame_start_ = SDL_GetTicks();
+  frame_start_ = SDL_GetTicks();
 
   if (last_step_ < 0) {
     last_step_ = SDL_GetTicks();
