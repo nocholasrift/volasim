@@ -5,9 +5,11 @@
 Drone::Drone(const Eigen::Matrix3d& J_mat, double torque_const,
              double boom_length, double mass, double dt)
     : DynamicObject(dt) {
-  x_ = Eigen::Vector<double, Drone::N>::Zero();
+  x_ = Eigen::Matrix<double, Drone::N, 1>::Zero();
+  u_ = Eigen::Matrix<double, Drone::M, 1>::Zero();
+
+  // unit quaternion
   x_(6) = 1.0;
-  u_ = Eigen::Vector<double, Drone::M>::Zero();
 
   mass_ = mass;
   torque_const_ = torque_const;
