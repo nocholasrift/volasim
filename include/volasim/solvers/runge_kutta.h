@@ -46,8 +46,8 @@ class RungeKutta
 {
 public:
   // Syntax Convenience for state and input value
-  using X_t = Eigen::Vector<double, N>;
-  using U_t = Eigen::Vector<double, M>;
+  using X_t = Eigen::Matrix<double, N, 1>;
+  using U_t = Eigen::Matrix<double, M, 1>;
 
   /// Options for RK solver
   enum class SolverType {

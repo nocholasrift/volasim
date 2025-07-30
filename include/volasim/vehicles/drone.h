@@ -10,8 +10,8 @@ class Drone : public DynamicObject{
   static constexpr unsigned int N = 13;
   static constexpr unsigned int M = 4;
 
-  using X_t = Eigen::Vector<double, N>;
-  using U_t = Eigen::Vector<double, M>;
+  using X_t = Eigen::Matrix<double, N, 1>;
+  using U_t = Eigen::Matrix<double, M, 1>;
 
   Drone(const Eigen::Matrix3d& J_mat, double torque_const, double boom_length, double mass, double dt);
 
