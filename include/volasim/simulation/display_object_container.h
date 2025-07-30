@@ -26,7 +26,8 @@ class DisplayObjectContainer : public DisplayObject {
   virtual void draw() override;
   virtual void update() override;
   virtual void cleanUpDisplayTree() override;
-  virtual void setRenderable(ShapeType type, const ShapeMetadata& meta) override;
+  virtual void setRenderable(ShapeType type,
+                             const ShapeMetadata& meta) override;
 
   std::vector<DisplayObject*> children;
 

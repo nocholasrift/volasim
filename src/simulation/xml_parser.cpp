@@ -1,3 +1,6 @@
+#include <glad/glad.h>
+
+#include <volasim/models/cylinder.h>
 #include <volasim/simulation/shape_renderable.h>
 #include <volasim/simulation/xml_parser.h>
 
@@ -71,15 +74,8 @@ std::vector<ShapeMetadata> XMLParser::getRenderables() {
 
         defined_class_count.insert({class_name, 0});
 
-        pugi::xml_node geometry_node = item.child("geometry");
-
         ShapeMetadata settings;
-        settings.type = shape_map_[geometry_node.attribute("type").as_string()];
-        settings.radius =
-            std::stof(geometry_node.attribute("radius").as_string());
-        settings.height =
-            std::stof(geometry_node.attribute("length").as_string());
-        settings.color = item.child_value("color");
+        generateShapeBuffers(settings, item);
 
         class_settings.insert({class_name, settings});
         break;
@@ -135,4 +131,63 @@ void XMLParser::throwError(std::string_view fname,
   err_msg << "Error offset: " << result.offset << "\n";
 
   throw std::runtime_error(err_msg.str());
+}
+
+void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
+                                     const pugi::xml_node& item) {
+
+  pugi::xml_node geometry_node = item.child("geometry");
+
+  settings.type = shape_map_[geometry_node.attribute("type").as_string()];
+  settings.color = item.child_value("color");
+
+  glGenVertexArrays(1, &settings.vao);
+  glBindVertexArray(settings.vao);
+
+  glGenBuffers(1, &settings.vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, settings.vbo);
+
+  glGenBuffers(1, &settings.ebo);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, settings.ebo);
+
+  switch (settings.type) {
+    case ShapeType::kSphere:
+      break;
+    case ShapeType::kCylinder: {
+      settings.radius =
+          std::stof(geometry_node.attribute("radius").as_string());
+      settings.height =
+          std::stof(geometry_node.attribute("length").as_string());
+
+      Cylinder cylinder(settings.radius, settings.radius, settings.height, 32,
+                        2);
+
+      glBufferData(GL_ARRAY_BUFFER, cylinder.getInterleavedVertexSize(),
+                   cylinder.getInterleavedVertices(), GL_STATIC_DRAW);
+
+      // copy index data to VBO
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER, cylinder.getIndexSize(),
+                   cylinder.getIndices(), GL_STATIC_DRAW);
+
+      // activate vertex array attributes
+      // glEnableVertexAttribArray(attVertex);
+      // glEnableVertexAttribArray(attNormal);
+      // glEnableVertexAttribArray(attTexCoord);
+      //
+      // int stride = cylinder.getInterleavedStride();  // should be 32 bytes
+      // glVertexAttribPointer(attVertex, 3, GL_FLOAT, false, stride, (void*)0);
+      // glVertexAttribPointer(attNormal, 3, GL_FLOAT, false, stride,
+      //                       (void*)(sizeof(float) * 3));
+      // glVertexAttribPointer(attTexCoord, 2, GL_FLOAT, false, stride,
+      //                       (void*)(sizeof(float) * 6));
+
+      settings.index_count = cylinder.getIndexCount();
+
+      break;
+    }  // end case kCylinder
+  }
+
+  glBindVertexArray(0);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }

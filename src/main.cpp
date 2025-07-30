@@ -7,14 +7,14 @@
  */
 
 #define SDL_MAIN_USE_CALLBACKS 1 /* use the callbacks instead of main() */
+#include <volasim/simulation/simulation.h>
+
 #include <GL/glu.h>
 #include <GL/glut.h>  // for glutSolidSphere
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_opengl.h>
 #include <math.h>
-
-#include <volasim/simulation/simulation.h>
 
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 960

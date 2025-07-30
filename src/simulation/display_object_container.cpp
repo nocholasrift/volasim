@@ -74,7 +74,6 @@ void DisplayObjectContainer::removeChild(int index, bool should_delete) {
     *it = nullptr;
   }
   children.erase(it);
-
 }
 
 void DisplayObjectContainer::removeAllChildren() {
@@ -86,7 +85,6 @@ void DisplayObjectContainer::removeAllChildren() {
 
     delete *it;
     *it = NULL;
-
   }
   children.clear();
 }
@@ -141,7 +139,8 @@ void DisplayObjectContainer::draw() {
   glPopMatrix();
 }
 
-void DisplayObjectContainer::setRenderable(ShapeType type, const ShapeMetadata& meta){
+void DisplayObjectContainer::setRenderable(ShapeType type,
+                                           const ShapeMetadata& meta) {
   DisplayObject::setRenderable(type, meta);
 }
 

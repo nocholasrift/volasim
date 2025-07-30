@@ -5,7 +5,7 @@
 #include <regex>
 
 #include <volasim/simulation/display_object.h>
-#include <volasim/simulation/simulation.h>
+// #include <volasim/simulation/simulation.h>
 #include <volasim/solvers/runge_kutta.h>
 
 class DynamicObject {
@@ -16,8 +16,8 @@ class DynamicObject {
   // dynamics function
   virtual void update(double dt) = 0;
 
-  virtual Eigen::VectorXd dynamics(
-      const Eigen::VectorXd& x, const Eigen::VectorXd& u) = 0;
+  virtual Eigen::VectorXd dynamics(const Eigen::VectorXd& x,
+                                   const Eigen::VectorXd& u) = 0;
 
   virtual void setTranslation(const glm::vec3& tran) = 0;
   virtual void setRotation(const glm::quat& rot) = 0;

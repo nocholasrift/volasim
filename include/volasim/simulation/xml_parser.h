@@ -37,6 +37,9 @@ class XMLParser {
       {"cylinder", ShapeType::kCylinder},
       {"cube", ShapeType::kCube},
       {"plane", ShapeType::kPlane}};
+
+  void generateShapeBuffers(ShapeMetadata& settings,
+                            const pugi::xml_node& geometry_node);
 };
 
 #endif

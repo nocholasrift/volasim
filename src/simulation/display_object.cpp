@@ -1,4 +1,5 @@
 #include <volasim/simulation/display_object.h>
+#include <glm/ext/matrix_transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -32,7 +33,11 @@ void DisplayObject::draw() {
   if (!is_visible_)
     return;
 
-  glm::mat4 transform = getLocalTransform();
+  glm::mat4 model_mat;
+  if (parent)
+    model_mat = parent->getLocalTransform() * getLocalTransform();
+  else
+    model_mat = getLocalTransform();
 
   if (renderable_) {
     glPushMatrix();
@@ -92,7 +97,7 @@ glm::quat DisplayObject::getRotation() {
   return quaternion_;
 }
 
-const Renderable& DisplayObject::getRenderable(){
+const Renderable& DisplayObject::getRenderable() {
   return *renderable_;
 }
 
@@ -100,6 +105,6 @@ std::string DisplayObject::getID() {
   return id_;
 }
 
-bool DisplayObject::isRenderable(){
+bool DisplayObject::isRenderable() {
   return is_renderable_;
 }

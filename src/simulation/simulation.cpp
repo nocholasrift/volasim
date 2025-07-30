@@ -1,11 +1,16 @@
-#include <GL/glu.h>
-#include <GL/glut.h>  // for glutSolidSphere
-#include <math.h>
-#include <glm/gtc/type_ptr.hpp>
+#include <glad/glad.h>
 
+// #include <volasim/sensors/depth_sensor.h>
 #include <volasim/simulation/simulation.h>
 #include <volasim/simulation/xml_parser.h>
 #include <volasim/vehicles/drone.h>
+
+#include <GL/glu.h>
+#include <GL/glut.h>  // for glutSolidSphere
+#include <math.h>
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include <stdexcept>
 
 // EventDispatcher& event_handler_ = EventDispatcher::getInstance();
@@ -35,40 +40,34 @@ Simulation::Simulation(int win_width, int win_height, int fps)
   double length = 0.315;
   double c_torque = 8.004e-4;
 
-  DynamicObject* drone =
-      new Drone(J, c_torque, length, mass, 1. / static_cast<double>(fps));
-  drone->setTranslation(glm::vec3(0., 0., 2.));
+  // DynamicObject* drone =
+  //     new Drone(J, c_torque, length, mass, 1. / static_cast<double>(fps));
+  // drone->setTranslation(glm::vec3(0., 0., 2.));
+  //
+  // DisplayObject* display_drone = new DisplayObject("drone");
+  // ShapeMetadata sphere_data;
+  // sphere_data.radius = 0.3;
+  // display_drone->setRenderable(ShapeType::kCube, sphere_data);
+  // display_drone->setTranslation(glm::vec3(0., 0., 2.));
+  //
+  // physics_interface_.preRegister(display_drone, drone);
+  //
+  // world_->addChild(display_drone);
 
-  DisplayObject* display_drone = new DisplayObject("drone");
-  ShapeMetadata sphere_data;
-  sphere_data.radius = 0.3;
-  display_drone->setRenderable(ShapeType::kCube, sphere_data);
-  display_drone->setTranslation(glm::vec3(0., 0., 2.));
-
-  physics_interface_.preRegister(display_drone, drone);
-
-  world_->addChild(display_drone);
-
-  // DisplayObject* plane = new DisplayObject("ground plane");
-  // plane->setRenderable(ShapeType::kPlane, ShapeMetadata());
-  // world_->addChild(plane);
+  // add sensor
+  // DepthSensorSettings camera;
+  // camera.fov = camera_
 
   camera_ = Camera(glm::ivec2(win_width, win_height), glm::vec3(3., 3., 7.),
                    glm::vec3(0, 0, 1), -147.0f, -41.0f);
-
-  XMLParser parser("./definitions/worlds/world_250_world.xml");
-  std::vector<ShapeMetadata> renderables = parser.getRenderables();
-
-  int i = 0;
-  for (ShapeMetadata& settings : renderables) {
-    DisplayObject* display_obj = new DisplayObject(settings.name);
-    display_obj->setRenderable(settings.type, settings);
-    display_obj->setTranslation(settings.pos);
-    world_->addChild(display_obj);
-  }
 }
 
 SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
+  if (!SDL_Init(SDL_INIT_VIDEO)) {
+    SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
+    return SDL_APP_FAILURE;
+  }
+
   SDL_SetAppMetadata("Vola Simulator", "1.0",
                      "github.com/nocholasrift/volasim");
 
@@ -82,6 +81,11 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
   gl_ctx_ = SDL_GL_CreateContext(window_);
   SDL_GL_MakeCurrent(window_, gl_ctx_);
   SDL_GL_SetSwapInterval(1);  // enable vsync
+
+  if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
+    std::cerr << "Failed to initialize GLAD\n";
+    return SDL_APP_FAILURE;
+  }
 
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_LIGHTING);
@@ -112,16 +116,25 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
   gluPerspective(60.0, static_cast<float>(window_width_) / window_height_, 0.1,
                  100.0);
 
-  if (!SDL_Init(SDL_INIT_VIDEO)) {
-    SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
-    return SDL_APP_FAILURE;
-  }
-
   time_ = 0.;
   frame_start_ = -1000000;
   last_step_ = -1;
 
   ms_per_frame_ = 1000 / frames_per_sec_;
+
+  shapeShader_ =
+      std::make_unique<Shader>(mesh_vertex_shader, mesh_fragment_shader);
+
+  XMLParser parser("./definitions/worlds/world_250_world.xml");
+  std::vector<ShapeMetadata> renderables = parser.getRenderables();
+
+  int i = 0;
+  for (ShapeMetadata& settings : renderables) {
+    DisplayObject* display_obj = new DisplayObject(settings.name);
+    display_obj->setRenderable(settings.type, settings);
+    display_obj->setTranslation(settings.pos);
+    world_->addChild(display_obj);
+  }
 
   return SDL_APP_CONTINUE; /* carry on with the program! */
 }
@@ -169,6 +182,12 @@ SDL_AppResult Simulation::update(void* appstate) {
     // gluLookAt(3, 3, 3,   // eye: up and to the side
     //           0, 0, 0,   // center: look at origin
     //           0, 0, 1);  // up: Z axis up (assuming Z is vertical)
+
+    glm::mat4 view_mat = camera_.getViewMatrix();
+    glm::mat4 proj_mat = glm::perspective(
+        glm::radians(camera_.zoom_),                         // fov
+        static_cast<float>(window_width_) / window_height_,  // aspect ratio
+        0.1f, 100.0f);                                       // near & far plane
 
     world_->draw();
   }

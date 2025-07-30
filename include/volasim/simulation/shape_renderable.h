@@ -36,6 +36,11 @@ struct ShapeMetadata {
   double x_max = 1.;
   double y_max = 1.;
   double z = 0.;
+
+  GLuint vao = 0;
+  GLuint vbo = 0;
+  GLuint ebo = 0;
+  GLsizei index_count = 0;
 };
 
 class ShapeRenderable : public Renderable {
@@ -61,6 +66,10 @@ class ShapeRenderable : public Renderable {
   ShapeMetadata meta_;
 
   GLUquadric* quad = nullptr;
+
+  GLuint vao_ = 0;
+  GLuint vbo_ = 0;
+  GLuint ebo_ = 0;
 };
 
 #endif

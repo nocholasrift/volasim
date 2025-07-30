@@ -1,10 +1,11 @@
 #ifndef DISPLAYOBJECT_H
 #define DISPLAYOBJECT_H
 
-#include <GL/glu.h>
-#include <GL/glut.h>
-#include <SDL3/SDL.h>
 #include <volasim/simulation/shape_renderable.h>
+
+// #include <GL/glu.h>
+// #include <GL/glut.h>
+#include <SDL3/SDL.h>
 #include <fstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>

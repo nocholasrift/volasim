@@ -1,6 +1,8 @@
 #ifndef SIMULATION_H
 #define SIMULATION_H
 
+#include <volasim/simulation/shader.h>
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_opengl.h>
@@ -10,6 +12,22 @@
 #include <volasim/simulation/display_object_container.h>
 #include <volasim/simulation/input_manager.h>
 #include <volasim/simulation/physics_interface.h>
+
+static const std::string mesh_vertex_shader =
+    "#version 330 core\n"
+    "layout (location = 0) in vec3 aPos;\n"
+    "uniform mat4 mvp;\n"
+    "void main() {\n"
+    "gl_Position = mvp * vec4(aPos, 1.0f);\n"
+    "}\n";
+
+static const std::string mesh_fragment_shader =
+    "#version 330 core\n"
+    "uniform vec3 color;\n"
+    "out vec4 fragColor;\n"
+    "void main(){\n"
+    "fragColor = vec4(color, 1.0);\n"
+    "}\n";
 
 class Simulation {
 
@@ -53,6 +71,8 @@ class Simulation {
   Camera camera_;
 
   InputManager input_manager_;
+
+  std::unique_ptr<Shader> shapeShader_;
 };
 
 #endif
