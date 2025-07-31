@@ -18,12 +18,11 @@ ShapeRenderable::~ShapeRenderable() {}
 
 void ShapeRenderable::draw(Shader& shader) {
 
-  if (meta_.type == ShapeType::kPlane)
-    std::cout << "rendering plane!" << std::endl;
-
+  // std::cout << "indices in draw: " << meta_.index_count << std::endl;
   shader.setUniformVec3("color", hexToRGB(meta_.color));
   glBindVertexArray(meta_.vao);
-  glDrawElements(GL_TRIANGLES, meta_.index_count, GL_UNSIGNED_INT, (void*) 0);
+  glDrawElements(GL_TRIANGLES, meta_.index_count, GL_UNSIGNED_INT, (void*)0);
+  glBindVertexArray(0);
   /*glDrawArrays(GL_TRIANGLE_FAN, 0, 4);*/
 }
 

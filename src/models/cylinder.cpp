@@ -657,9 +657,9 @@ void Cylinder::changeUpAxis(int from, int to) {
     interleavedVertices[j] = vertices[i];
     interleavedVertices[j + 1] = vertices[i + 1];
     interleavedVertices[j + 2] = vertices[i + 2];
-    interleavedVertices[j + 3] = normals[i];
-    interleavedVertices[j + 4] = normals[i + 1];
-    interleavedVertices[j + 5] = normals[i + 2];
+    // interleavedVertices[j + 3] = normals[i];
+    // interleavedVertices[j + 4] = normals[i + 1];
+    // interleavedVertices[j + 5] = normals[i + 2];
   }
 }
 

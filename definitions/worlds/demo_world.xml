@@ -21,12 +21,21 @@
 	<element class="ground_plane">
 		<color>#FFFFFF</color>
 		<cull_face>BACK</cull_face>
-		<x_min>-20</x_min>
-		<y_min>-20</y_min>
-		<x_max> 20</x_max>
-		<y_max> 20</y_max>
+		<x_min>-5</x_min>
+		<y_min>-5</y_min>
+		<x_max>5</x_max>
+		<y_max>5</y_max>
 		<z>0.0</z>
 	</element>
+
+  <block:class name="cylinder_blue">
+    <color>#2761b8</color>
+    <geometry type="cylinder" radius="0.075" length="1"/>
+  </block:class>
+
+  <block class="cylinder_blue">
+    <init_pose>-0.075 0.075 0.0</init_pose>
+  </block>
 
 	<!-- =============================
 		   Vehicle classes definition

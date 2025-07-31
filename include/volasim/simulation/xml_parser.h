@@ -15,6 +15,7 @@ enum class XMLTags {
   kElement,
   kBlockDefinition,
   kBlock,
+  kVehicle,
 };
 
 class XMLParser {
@@ -30,7 +31,8 @@ class XMLParser {
   std::unordered_map<std::string_view, XMLTags> type_map_ = {
       {"element", XMLTags::kElement},
       {"block:class", XMLTags::kBlockDefinition},
-      {"block", XMLTags::kBlock}};
+      {"block", XMLTags::kBlock},
+      {"vehicle", XMLTags::kVehicle}};
 
   std::unordered_map<std::string_view, ShapeType> shape_map_ = {
       {"sphere", ShapeType::kSphere},

@@ -29,10 +29,11 @@ DisplayObject::~DisplayObject() {}
 
 void DisplayObject::update() {}
 
-void DisplayObject::draw(const glm::mat4& view_mat, const glm::mat4& proj_mat, Shader& shader){
+void DisplayObject::draw(const glm::mat4& view_mat, const glm::mat4& proj_mat,
+                         Shader& shader) {
   if (!is_visible_)
     return;
-  
+
   // shader will already have been set to used by this point
   if (renderable_) {
     glm::mat4 model_mat;
@@ -40,6 +41,16 @@ void DisplayObject::draw(const glm::mat4& view_mat, const glm::mat4& proj_mat, S
       model_mat = parent_->getGlobalTransform() * getLocalTransform();
     else
       model_mat = getLocalTransform();
+
+    // if (id_[0] == 'c') {
+    // std::cout << "rendering: " << id_ << std::endl;
+    //
+    // for (int i = 0; i < 4; ++i) {
+    //   std::cout << model_mat[0][i] << " " << model_mat[1][i] << " "
+    //             << model_mat[2][i] << " " << model_mat[3][i] << "\n";
+    // }
+    // std::cout << std::endl;
+    // }
 
     glm::mat4 mvp = proj_mat * view_mat * model_mat;
     shader.setUniformMat4("mvp", mvp);

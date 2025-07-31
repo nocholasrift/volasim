@@ -1,6 +1,7 @@
 #ifndef SIMULATION_H
 #define SIMULATION_H
 
+#include <volasim/sensors/depth_sensor.h>
 #include <volasim/simulation/shader.h>
 
 #include <SDL3/SDL.h>
@@ -24,15 +25,15 @@ static const std::string mesh_vertex_shader =
 static const std::string mesh_fragment_shader =
     "#version 330 core\n"
     "uniform vec3 color;\n"
-    "out vec4 fragColor;\n"
+    "out vec4 FragColor;\n"
     "void main(){\n"
-    "fragColor = vec4(color, 1.0);\n"
+    "FragColor = vec4(color, 1.0);\n"
     "}\n";
 
 class Simulation {
 
  public:
-  // singleton pattern
+  // singleton patternsimulation.h
   static Simulation& getInstance(int win_width, int win_height, int fps) {
     static Simulation instance(win_width, win_height, fps);
     return instance;
@@ -63,7 +64,8 @@ class Simulation {
   SDL_Window* window_;
   SDL_GLContext gl_ctx_;
 
-  std::unique_ptr<DisplayObjectContainer> world_;
+  // std::unique_ptr<DisplayObjectContainer> world_;
+  DisplayObjectContainer* world_;
 
   EventDispatcher& event_handler_;
   PhysicsInterface& physics_interface_;
@@ -71,6 +73,8 @@ class Simulation {
   Camera camera_;
 
   InputManager input_manager_;
+
+  std::unique_ptr<GPUSensor> depth_sensor_;
 
   Shader shape_shader_;
 };

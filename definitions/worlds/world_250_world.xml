@@ -23,6 +23,11 @@
 		<y_max> 20</y_max>
 		<z>0.0</z>
 	 </element>
+
+   <vehicle name="drone1" class="drone">
+     <init_pose>0 0 2</init_pose>
+   </vehicle>
+
   <block:class name="cylinder_blue">
     <color>#2761b8</color>
     <geometry type="cylinder" radius="0.075" length="1"/>

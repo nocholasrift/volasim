@@ -70,7 +70,7 @@ class Shader {
 
   void setUniformVec3(const std::string& attr, const glm::vec3& vec) {
     GLuint loc = glGetUniformLocation(id_, attr.c_str());
-    glUniformMatrix4fv(loc, 1, GL_FALSE, &vec[0]);
+    glUniform3fv(loc, 1, &vec[0]);
   }
 
  private:

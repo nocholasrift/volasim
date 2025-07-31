@@ -10,7 +10,7 @@
 #include <string>
 #include <string_view>
 
-enum class ShapeType { kSphere = 0, kCube, kCylinder, kPlane };
+enum class ShapeType { kUndefined = 0, kSphere, kCube, kCylinder, kPlane };
 
 struct ShapeMetadata {
   ShapeType type = ShapeType::kSphere;
@@ -31,10 +31,10 @@ struct ShapeMetadata {
   int stacks = 2;
 
   // for plane
-  float  x_min = -1.;
-  float  y_min = -1.;
-  float  x_max = 1.;
-  float  y_max = 1.;
+  float x_min = -1.;
+  float y_min = -1.;
+  float x_max = 1.;
+  float y_max = 1.;
   float z = 0.;
 
   GLuint vao = 0;

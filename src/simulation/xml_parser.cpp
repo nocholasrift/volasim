@@ -16,15 +16,6 @@ XMLParser::XMLParser(const std::string& fname) {
 
   pugi::xml_node stuff = doc_.child("volasim_world");
 
-  // for (pugi::xml_node item = stuff.first_child(); item;
-  //      item = item.next_sibling()) {
-  //   std::cout << item.name() << ": ";
-  //   for (pugi::xml_node attr = item.first_child(); attr;
-  //        attr = attr.next_sibling()) {
-  //     std::cout << attr.name() << ": " << attr.child_value() << "\n";
-  //   }
-  // }
-
   type_map_.insert({"element", XMLTags::kElement});
   type_map_.insert({"block:class", XMLTags::kBlockDefinition});
 }
@@ -45,16 +36,11 @@ std::vector<ShapeMetadata> XMLParser::getRenderables() {
         break;
 
       case XMLTags::kElement: {
+        pugi::xml_node geometry_node = item.child("geometry");
+
         ShapeMetadata& settings = ret.emplace_back();
+        settings.type = ShapeType::kPlane;
         generateShapeBuffers(settings, item);
-        /*settings.type = ShapeType::kPlane;*/
-        /*settings.x_min = std::stof(item.child_value("x_min"));*/
-        /*settings.x_max = std::stof(item.child_value("x_max"));*/
-        /*settings.y_min = std::stof(item.child_value("x_min"));*/
-        /*settings.y_max = std::stof(item.child_value("y_max"));*/
-        /*settings.z = std::stof(item.child_value("z"));*/
-        /*settings.color = item.child_value("color");*/
-        /*settings.name = item.attribute("class").as_string();*/
         break;
       }
 
@@ -69,6 +55,8 @@ std::vector<ShapeMetadata> XMLParser::getRenderables() {
         defined_class_count.insert({class_name, 0});
 
         ShapeMetadata settings;
+        pugi::xml_node geometry_node = item.child("geometry");
+        settings.type = shape_map_[geometry_node.attribute("type").as_string()];
         generateShapeBuffers(settings, item);
 
         class_settings.insert({class_name, settings});
@@ -92,6 +80,11 @@ std::vector<ShapeMetadata> XMLParser::getRenderables() {
         settings.name =
             class_name + std::to_string(defined_class_count[class_name]);
 
+        settings.vao = class_settings[class_name].vao;
+        settings.vbo = class_settings[class_name].vbo;
+        settings.ebo = class_settings[class_name].ebo;
+        settings.index_count = class_settings[class_name].index_count;
+
         std::string pos_str = item.child_value("init_pose");
         std::stringstream ss(pos_str);
         std::string axis;
@@ -101,6 +94,11 @@ std::vector<ShapeMetadata> XMLParser::getRenderables() {
           settings.pos[i++] = std::stof(axis);
 
         defined_class_count[class_name]++;
+
+        break;
+      }
+
+      case XMLTags::kVehicle: {
 
         break;
       }
@@ -132,7 +130,9 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
 
   pugi::xml_node geometry_node = item.child("geometry");
 
-  settings.type = shape_map_[geometry_node.attribute("type").as_string()];
+  if (settings.type == ShapeType::kUndefined)
+    settings.type = shape_map_[geometry_node.attribute("type").as_string()];
+
   settings.color = item.child_value("color");
 
   if (settings.color.length() != 7) {
@@ -160,29 +160,108 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
       settings.height =
           std::stof(geometry_node.attribute("length").as_string());
 
-      Cylinder cylinder(settings.radius, settings.radius, settings.height, 32,
-                        2);
+      float n_sectors = 32;
 
-      glBufferData(GL_ARRAY_BUFFER, cylinder.getInterleavedVertexSize(),
-                   cylinder.getInterleavedVertices(), GL_STATIC_DRAW);
+      // Cylinder cylinder(settings.radius, settings.radius, settings.height, 32,
+      //                   2);
+      std::vector<float> vertices;
+      for (int i = 0; i < 2; ++i) {
+        float h = i * settings.height;
+
+        float sector_angle;
+        for (int j = 0; j <= n_sectors; ++j) {
+          sector_angle = j * 2 * M_PI / n_sectors;
+          float vx = settings.radius * cos(sector_angle);
+          float vy = settings.radius * sin(sector_angle);
+
+          vertices.push_back(vx);
+          vertices.push_back(vy);
+          vertices.push_back(h);
+        }
+      }
+
+      int base_center_idx = (int)vertices.size() / 3;
+      int top_center_idx = base_center_idx + n_sectors + 1;
+
+      for (int i = 0; i < 2; ++i) {
+        float h = i * settings.height;
+
+        vertices.push_back(0);
+        vertices.push_back(0);
+        vertices.push_back(h);
+
+        float sector_angle;
+        for (int j = 0; j <= n_sectors; ++j) {
+          sector_angle = j * 2 * M_PI / n_sectors;
+
+          float vx = settings.radius * cos(sector_angle);
+          float vy = settings.radius * sin(sector_angle);
+
+          vertices.push_back(vx);
+          vertices.push_back(vy);
+          vertices.push_back(h);
+        }
+      }
+
+      // int base_center_idx = 2 * (n_sectors + 1);
+      // int top_center_idx = base_center_idx + n_sectors + 1;
+
+      std::vector<int> indices;
+      int k1 = 0;
+      int k2 = n_sectors + 1;
+
+      // indices for side surface
+      for (int i = 0; i < n_sectors; ++i, ++k1, ++k2) {
+        // tri 1
+        indices.push_back(k1);
+        indices.push_back(k1 + 1);
+        indices.push_back(k2);
+
+        // tri 2
+        indices.push_back(k2);
+        indices.push_back(k1 + 1);
+        indices.push_back(k2 + 1);
+      }
+
+      // indices for base
+      for (int i = 0, k = base_center_idx + 1; i < n_sectors; ++i, ++k) {
+        if (i < n_sectors - 1) {
+          indices.push_back(base_center_idx);
+          indices.push_back(k + 1);
+          indices.push_back(k);
+        } else {
+          indices.push_back(base_center_idx);
+          indices.push_back(base_center_idx + 1);
+          indices.push_back(k);
+        }
+      }
+
+      // indices for top
+      for (int i = 0, k = top_center_idx + 1; i < n_sectors; ++i, ++k) {
+        if (i < n_sectors - 1) {
+          indices.push_back(top_center_idx);
+          indices.push_back(k);
+          indices.push_back(k + 1);
+        } else {
+          indices.push_back(top_center_idx);
+          indices.push_back(k);
+          indices.push_back(top_center_idx + 1);
+        }
+      }
+
+      glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float),
+                   vertices.data(), GL_STATIC_DRAW);
 
       // copy index data to VBO
-      glBufferData(GL_ELEMENT_ARRAY_BUFFER, cylinder.getIndexSize(),
-                   cylinder.getIndices(), GL_STATIC_DRAW);
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int),
+                   indices.data(), GL_STATIC_DRAW);
 
-      // activate vertex array attributes
-      // glEnableVertexAttribArray(attVertex);
-      // glEnableVertexAttribArray(attNormal);
-      // glEnableVertexAttribArray(attTexCoord);
-      //
-      // int stride = cylinder.getInterleavedStride();  // should be 32 bytes
-      // glVertexAttribPointer(attVertex, 3, GL_FLOAT, false, stride, (void*)0);
-      // glVertexAttribPointer(attNormal, 3, GL_FLOAT, false, stride,
-      //                       (void*)(sizeof(float) * 3));
-      // glVertexAttribPointer(attTexCoord, 2, GL_FLOAT, false, stride,
-      //                       (void*)(sizeof(float) * 6));
+      glEnableVertexAttribArray(0);
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float),
+                            (void*)0);
 
-      settings.index_count = cylinder.getIndexCount();
+      std::cout << "indices size is: " << indices.size() << std::endl;
+      settings.index_count = indices.size();
 
       break;
     }  // end case kCylinder
@@ -195,29 +274,27 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
       settings.z = std::stof(item.child_value("z"));
       settings.name = item.attribute("class").as_string();
 
-      float ground_verts[] = {
-        //positions             
-        settings.x_max, settings.y_max, settings.z,
-        settings.x_max, settings.y_min, settings.z,
-        settings.x_min, settings.y_min, settings.z,
-        settings.x_min, settings.y_max, settings.z
-      };
+      float ground_verts[] = {//positions
+                              settings.x_max, settings.y_max, settings.z,
+                              settings.x_max, settings.y_min, settings.z,
+                              settings.x_min, settings.y_min, settings.z,
+                              settings.x_min, settings.y_max, settings.z};
 
-      unsigned int indices[] = {
-        0, 1, 3,
-        1, 2, 3
-      };
+      unsigned int indices[] = {0, 1, 3, 1, 2, 3};
 
-      glBufferData(GL_ARRAY_BUFFER, sizeof(ground_verts), ground_verts, GL_STATIC_DRAW);
+      glBufferData(GL_ARRAY_BUFFER, sizeof(ground_verts), ground_verts,
+                   GL_STATIC_DRAW);
 
       glEnableVertexAttribArray(0);
-      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) 0);
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float),
+                            (void*)0);
 
-      glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
+                   GL_STATIC_DRAW);
       settings.index_count = 6;
 
       break;
-    } // end case kPlane
+    }  // end case kPlane
   }
 
   glBindVertexArray(0);
