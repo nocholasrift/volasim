@@ -25,7 +25,17 @@
 	 </element>
 
    <vehicle name="drone1" class="drone">
-     <init_pose>0 0 2</init_pose>
+     <inertia_matrix>0.0820 0. 0. 0. 0.0845 0. 0. 0. .1377</inertia_matrix>
+     <mass>4.34</mass>
+     <length>0.315</length>
+     <c_torque>8.008e-4</c_torque>
+
+     <block:class name="drone_shape">
+       <color>#888888</color>
+       <geometry type="cube" size="1.0"/>
+     </block:class>
+
+     <init_pose>0 0 5</init_pose>
    </vehicle>
 
   <block:class name="cylinder_blue">

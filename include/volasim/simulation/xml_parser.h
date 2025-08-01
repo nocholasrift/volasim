@@ -3,6 +3,7 @@
 
 #include <pugixml.hpp>
 
+#include <volasim/simulation/display_object_container.h>
 #include <volasim/simulation/shape_renderable.h>
 
 #include <memory>
@@ -22,11 +23,32 @@ class XMLParser {
  public:
   XMLParser(const std::string& fname);
 
-  std::vector<ShapeMetadata> getRenderables();
+  void loadWorldFromXML(DisplayObjectContainer* world);
 
  private:
   void throwError(std::string_view fname, const pugi::xml_parse_result& result);
+
+  void generateShapeBuffers(ShapeMetadata& settings,
+                            const pugi::xml_node& geometry_node);
+
+  void handleVehicle(const pugi::xml_node& item, DisplayObjectContainer* world);
+
+  void handleElement(const pugi::xml_node& item, DisplayObjectContainer* world);
+
+  void handleBlockDefinition(const pugi::xml_node& item);
+
+  void handleBlock(const pugi::xml_node& item, DisplayObjectContainer* world);
+
+  void createAndAddRenderable(const std::string& name,
+                              const ShapeMetadata& settings,
+                              const glm::vec3& pos,
+                              DisplayObjectContainer* world);
+
+ private:
   pugi::xml_document doc_;
+
+  std::unordered_map<std::string, int> defined_class_count_;
+  std::unordered_map<std::string, ShapeMetadata> class_settings_;
 
   std::unordered_map<std::string_view, XMLTags> type_map_ = {
       {"element", XMLTags::kElement},
@@ -39,9 +61,6 @@ class XMLParser {
       {"cylinder", ShapeType::kCylinder},
       {"cube", ShapeType::kCube},
       {"plane", ShapeType::kPlane}};
-
-  void generateShapeBuffers(ShapeMetadata& settings,
-                            const pugi::xml_node& geometry_node);
 };
 
 #endif

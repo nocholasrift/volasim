@@ -114,8 +114,8 @@ void DisplayObjectContainer::update() {
   DisplayObject::update();
 }
 
-void DisplayObjectContainer::draw(const glm::mat4& view_mat, const glm::mat4& proj_mat, 
-                                  Shader& shader){
+void DisplayObjectContainer::draw(const glm::mat4& view_mat,
+                                  const glm::mat4& proj_mat, Shader& shader) {
   for (std::vector<DisplayObject*>::iterator it = children.begin();
        it != children.end();) {
     if (*it == nullptr)
@@ -133,12 +133,10 @@ void DisplayObjectContainer::draw(const glm::mat4& view_mat, const glm::mat4& pr
 
     child->draw(view_mat, proj_mat, shader);
   }
-
 }
 
-void DisplayObjectContainer::setRenderable(ShapeType type,
-                                           const ShapeMetadata& meta) {
-  DisplayObject::setRenderable(type, meta);
+void DisplayObjectContainer::setRenderable(const ShapeMetadata& meta) {
+  DisplayObject::setRenderable(meta);
 }
 
 void DisplayObjectContainer::cleanUpDisplayTree() {

@@ -27,9 +27,10 @@ class DisplayObject {
   virtual ~DisplayObject();
 
   virtual void update();
-  virtual void draw(const glm::mat4& view_mat, const glm::mat4& proj_mat, Shader& shader);
+  virtual void draw(const glm::mat4& view_mat, const glm::mat4& proj_mat,
+                    Shader& shader);
   virtual void cleanUpDisplayTree();
-  virtual void setRenderable(ShapeType type, const ShapeMetadata& meta);
+  virtual void setRenderable(const ShapeMetadata& meta);
 
   void toggleVisibility();
   void makeVisible();

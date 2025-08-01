@@ -24,8 +24,6 @@ include_directories(
 add_executable(volasim 
   src/main.cpp
   src/glad/glad.c
-  # src/models/sphere.cpp
-  src/models/cylinder.cpp
   src/simulation/simulation.cpp
   src/simulation/xml_parser.cpp
   src/simulation/display_object.cpp

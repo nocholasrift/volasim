@@ -80,12 +80,16 @@ Simulation::Simulation(int win_width, int win_height, int fps)
   glm::vec3 translation = glm::vec3(cam_world_pos[3]);
   glm::mat3 rotation = glm::mat3(cam_world_pos);
 
-  DisplayObject* depth_sensor = new DisplayObject("depth_sensor");
-  depth_sensor->setTranslation(translation);
-  depth_sensor->setRotation(glm::eulerAngles(glm::quat_cast(rotation)));
-  world_->addChild(depth_sensor);
+  // DisplayObject* depth_sensor = new DisplayObject("depth_sensor");
+  // depth_sensor->setTranslation(translation);
+  // depth_sensor->setRotation(glm::eulerAngles(glm::quat_cast(rotation)));
+  // world_->addChild(depth_sensor);
 
-  depth_sensor_ = std::make_unique<GPUSensor>(props, depth_sensor);
+  // depth_sensor_ = std::make_unique<GPUSensor>(props, depth_sensor);
+}
+
+Simulation::~Simulation() {
+  delete world_;
 }
 
 SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
@@ -142,7 +146,7 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
   // glDepthFunc(GL_LESS);
   // glMatrixMode(GL_PROJECTION);
   // glLoadIdentity();
-  // gluPerspective(60.0, static_cast<float>(window_width_) / window_height_, 0.1,
+  // gluPerspective(60.0, static_caHere's a more detailed explanation:st<float>(window_width_) / window_height_, 0.1,
   //                100.0);
 
   time_ = 0.;
@@ -155,17 +159,17 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
 
   XMLParser parser("./definitions/worlds/world_250_world.xml");
   // XMLParser parser("./definitions/worlds/demo_world.xml");
-  std::vector<ShapeMetadata> renderables = parser.getRenderables();
+  parser.loadWorldFromXML(world_);
 
-  depth_sensor_->init();
+  // depth_sensor_->init();
 
-  int i = 0;
-  for (ShapeMetadata& settings : renderables) {
-    DisplayObject* display_obj = new DisplayObject(settings.name);
-    display_obj->setRenderable(settings.type, settings);
-    display_obj->setTranslation(settings.pos);
-    world_->addChild(display_obj);
-  }
+  // int i = 0;
+  // for (ShapeMetadata& settings : renderables) {
+  //   DisplayObject* display_obj = new DisplayObject(settings.name);
+  //   display_obj->setRenderable(settings.type, settings);
+  //   display_obj->setTranslation(settings.pos);
+  //   world_->addChild(display_obj);
+  // }
 
   return SDL_APP_CONTINUE; /* carry on with the program! */
 }
@@ -234,9 +238,8 @@ SDL_AppResult Simulation::update(void* appstate) {
   Eigen::Vector4d u = Eigen::Vector4d::Zero();
   // Eigen::Vector4d u = Eigen::Vector4d(.95,1.05,1.05,.95) * 4.34 * 9.81/4.;
   // drone->update(u, dt);
-  physics_interface_.update(ms_per_frame_ / 1000.);
-
-  // physics_interface_.update(dt);
+  // physics_interface_.update(ms_per_frame_ / 1000.);
+  physics_interface_.update(dt);
 
   last_step_ = SDL_GetTicks();
 

@@ -9,10 +9,7 @@
 #include <iostream>
 #include <stdexcept>
 
-ShapeRenderable::ShapeRenderable(ShapeType type, const ShapeMetadata& meta)
-    : type_(type), meta_(meta) {
-  /*quad = gluNewQuadric();*/
-}
+ShapeRenderable::ShapeRenderable(const ShapeMetadata& meta) : meta_(meta) {}
 
 ShapeRenderable::~ShapeRenderable() {}
 

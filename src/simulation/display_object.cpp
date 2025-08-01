@@ -20,8 +20,8 @@ DisplayObject::DisplayObject(std::string id) {
   scale_ = glm::vec3(1.f, 1.f, 1.f);
 }
 
-void DisplayObject::setRenderable(ShapeType type, const ShapeMetadata& meta) {
-  renderable_ = std::make_unique<ShapeRenderable>(type, meta);
+void DisplayObject::setRenderable(const ShapeMetadata& meta) {
+  renderable_ = std::make_unique<ShapeRenderable>(meta);
   is_renderable_ = true;
 }
 

@@ -13,7 +13,7 @@
 enum class ShapeType { kUndefined = 0, kSphere, kCube, kCylinder, kPlane };
 
 struct ShapeMetadata {
-  ShapeType type = ShapeType::kSphere;
+  ShapeType type = ShapeType::kUndefined;
 
   glm::vec3 pos = glm::vec3(0., 0., 0.);
   glm::quat rot = glm::quat(1., 0., 0., 0.);
@@ -45,12 +45,12 @@ struct ShapeMetadata {
 
 class ShapeRenderable : public Renderable {
  public:
-  ShapeRenderable(ShapeType type, const ShapeMetadata& meta);
+  ShapeRenderable(const ShapeMetadata& meta);
   virtual ~ShapeRenderable();
 
   void draw(Shader& shader) override;
 
-  ShapeType getType() const { return type_; }
+  ShapeType getType() const { return meta_.type; }
   ShapeMetadata getShapeMeta() const { return meta_; }
 
  private:

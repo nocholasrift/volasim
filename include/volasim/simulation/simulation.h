@@ -40,6 +40,7 @@ class Simulation {
   }
 
   Simulation(int win_width, int win_height, int fps);
+  ~Simulation();
 
   SDL_AppResult update(void* appstate);
   SDL_AppResult SDLEvent(void* appstate, SDL_Event* event);

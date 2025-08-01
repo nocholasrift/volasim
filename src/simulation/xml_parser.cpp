@@ -1,12 +1,14 @@
 #include <glad/glad.h>
 
-#include <volasim/models/cylinder.h>
+#include <volasim/simulation/physics_interface.h>
 #include <volasim/simulation/shape_renderable.h>
 #include <volasim/simulation/xml_parser.h>
+#include <volasim/vehicles/drone.h>
 
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <unordered_map>
 
 XMLParser::XMLParser(const std::string& fname) {
   pugi::xml_parse_result result = doc_.load_file(fname.c_str());
@@ -20,12 +22,8 @@ XMLParser::XMLParser(const std::string& fname) {
   type_map_.insert({"block:class", XMLTags::kBlockDefinition});
 }
 
-std::vector<ShapeMetadata> XMLParser::getRenderables() {
-  std::vector<ShapeMetadata> ret;
+void XMLParser::loadWorldFromXML(DisplayObjectContainer* world) {
   // ret.resize(50);
-
-  std::unordered_map<std::string, int> defined_class_count;
-  std::unordered_map<std::string, ShapeMetadata> class_settings;
 
   pugi::xml_node curr_node = doc_.child("volasim_world");
 
@@ -35,82 +33,29 @@ std::vector<ShapeMetadata> XMLParser::getRenderables() {
       case XMLTags::kGUI:
         break;
 
-      case XMLTags::kElement: {
-        pugi::xml_node geometry_node = item.child("geometry");
-
-        ShapeMetadata& settings = ret.emplace_back();
-        settings.type = ShapeType::kPlane;
-        generateShapeBuffers(settings, item);
+      case XMLTags::kElement:
+        handleElement(item, world);
         break;
-      }
 
-      case XMLTags::kBlockDefinition: {
-        std::string class_name = item.attribute("name").as_string();
-        if (defined_class_count.find(class_name) != defined_class_count.end()) {
-          std::string err_str = "[XMLParser] class name: " + class_name +
-                                " has already been defined more than once.";
-          throw std::invalid_argument(err_str);
-        }
-
-        defined_class_count.insert({class_name, 0});
-
-        ShapeMetadata settings;
-        pugi::xml_node geometry_node = item.child("geometry");
-        settings.type = shape_map_[geometry_node.attribute("type").as_string()];
-        generateShapeBuffers(settings, item);
-
-        class_settings.insert({class_name, settings});
+      case XMLTags::kBlockDefinition:
+        handleBlockDefinition(item);
         break;
-      }
 
-      case XMLTags::kBlock: {
-        std::string class_name = item.attribute("class").as_string();
-
-        if (defined_class_count.find(class_name) == defined_class_count.end()) {
-          std::string err_str = "[XMLParser] class name: " + class_name +
-                                " has not yet been defined.";
-          throw std::invalid_argument(err_str);
-        }
-
-        ShapeMetadata& settings = ret.emplace_back();
-        settings.type = class_settings[class_name].type;
-        settings.color = class_settings[class_name].color;
-        settings.radius = class_settings[class_name].radius;
-        settings.height = class_settings[class_name].height;
-        settings.name =
-            class_name + std::to_string(defined_class_count[class_name]);
-
-        settings.vao = class_settings[class_name].vao;
-        settings.vbo = class_settings[class_name].vbo;
-        settings.ebo = class_settings[class_name].ebo;
-        settings.index_count = class_settings[class_name].index_count;
-
-        std::string pos_str = item.child_value("init_pose");
-        std::stringstream ss(pos_str);
-        std::string axis;
-
-        int i = 0;
-        while (ss >> axis)
-          settings.pos[i++] = std::stof(axis);
-
-        defined_class_count[class_name]++;
-
+      case XMLTags::kBlock:
+        handleBlock(item, world);
         break;
-      }
 
-      case XMLTags::kVehicle: {
-
+      case XMLTags::kVehicle:
+        handleVehicle(item, world);
         break;
-      }
 
-      default:
+      default: {
         std::string err_str =
             std::string("[XMLParser] Invalid tag found ") + item.name();
         throw std::runtime_error(err_str);
+      }
     }
   }
-
-  return ret;
 }
 
 void XMLParser::throwError(std::string_view fname,
@@ -123,6 +68,43 @@ void XMLParser::throwError(std::string_view fname,
   err_msg << "Error offset: " << result.offset << "\n";
 
   throw std::runtime_error(err_msg.str());
+}
+
+void XMLParser::handleVehicle(const pugi::xml_node& item,
+                              DisplayObjectContainer* world) {
+  std::string vehicle_type = item.attribute("class").as_string();
+  DynamicObject* vehicle;
+  if (vehicle_type == "drone") {
+    vehicle = new Drone(item, 1. / 60.);
+    // std::cout << "drone address: " << vehicle << std::endl;
+
+    // hack for now until i include actual drone meshes
+    ShapeMetadata drone_settings;
+    generateShapeBuffers(drone_settings, item.child("block:class"));
+
+    std::string pos_str = item.child_value("init_pose");
+    std::stringstream ss(pos_str);
+    std::string axis;
+
+    glm::vec3 pos;
+    int i = 0;
+    while (ss >> axis)
+      pos[i++] = std::stof(axis);
+
+    vehicle->setTranslation(pos);
+
+    DisplayObject* object =
+        new DisplayObject(item.attribute("name").as_string());
+    object->setRenderable(drone_settings);
+    object->setTranslation(pos);
+
+    PhysicsInterface::getInstance().preRegister(object, vehicle);
+
+    world->addChild(object);
+    // DisplayObject* drone_obj = new DisplayObject("drone");
+    // drone_obj->setRenderable(drone_settings);
+    // drone_obj->setTranslation();
+  }
 }
 
 void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
@@ -165,6 +147,7 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
       // Cylinder cylinder(settings.radius, settings.radius, settings.height, 32,
       //                   2);
       std::vector<float> vertices;
+      std::vector<float> normals;
       for (int i = 0; i < 2; ++i) {
         float h = i * settings.height;
 
@@ -177,6 +160,10 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
           vertices.push_back(vx);
           vertices.push_back(vy);
           vertices.push_back(h);
+
+          normals.push_back(vx / settings.radius);
+          normals.push_back(vy / settings.radius);
+          normals.push_back(0.);
         }
       }
 
@@ -185,10 +172,15 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
 
       for (int i = 0; i < 2; ++i) {
         float h = i * settings.height;
+        float nz = i - 1;
 
         vertices.push_back(0);
         vertices.push_back(0);
         vertices.push_back(h);
+
+        normals.push_back(0);
+        normals.push_back(0);
+        normals.push_back(nz);
 
         float sector_angle;
         for (int j = 0; j <= n_sectors; ++j) {
@@ -200,7 +192,23 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
           vertices.push_back(vx);
           vertices.push_back(vy);
           vertices.push_back(h);
+
+          normals.push_back(0);
+          normals.push_back(0);
+          normals.push_back(nz);
         }
+      }
+
+      // merge indices and normals together
+      std::vector<float> vert_norms;
+      for (int i = 0; i < vertices.size(); i += 3) {
+        vert_norms.push_back(vertices[i]);
+        vert_norms.push_back(vertices[i + 1]);
+        vert_norms.push_back(vertices[i + 2]);
+
+        vert_norms.push_back(normals[i]);
+        vert_norms.push_back(normals[i + 1]);
+        vert_norms.push_back(normals[i + 2]);
       }
 
       // int base_center_idx = 2 * (n_sectors + 1);
@@ -249,16 +257,23 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
         }
       }
 
-      glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float),
-                   vertices.data(), GL_STATIC_DRAW);
+      // glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float),
+      //              vertices.data(), GL_STATIC_DRAW);
+      glBufferData(GL_ARRAY_BUFFER, vert_norms.size() * sizeof(float),
+                   vert_norms.data(), GL_STATIC_DRAW);
 
       // copy index data to VBO
       glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int),
                    indices.data(), GL_STATIC_DRAW);
 
       glEnableVertexAttribArray(0);
-      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float),
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
                             (void*)0);
+
+      // normals
+      glEnableVertexAttribArray(1);
+      glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
+                            (void*)(3 * sizeof(float)));
 
       std::cout << "indices size is: " << indices.size() << std::endl;
       settings.index_count = indices.size();
@@ -266,10 +281,9 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
       break;
     }  // end case kCylinder
     case ShapeType::kPlane: {
-      std::cout << "handling plane object" << std::endl;
       settings.x_min = std::stof(item.child_value("x_min"));
       settings.x_max = std::stof(item.child_value("x_max"));
-      settings.y_min = std::stof(item.child_value("x_min"));
+      settings.y_min = std::stof(item.child_value("y_min"));
       settings.y_max = std::stof(item.child_value("y_max"));
       settings.z = std::stof(item.child_value("z"));
       settings.name = item.attribute("class").as_string();
@@ -295,9 +309,112 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
 
       break;
     }  // end case kPlane
+    case ShapeType::kCube: {
+      // settings.x_mi
+      float sz = std::stof(geometry_node.attribute("size").as_string());
+      settings.size = sz;
+
+      float verts[] = {-sz / 2, -sz / 2, -sz / 2, -sz / 2, sz / 2,  -sz / 2,
+                       -sz / 2, sz / 2,  sz / 2,  -sz / 2, -sz / 2, sz / 2,
+                       sz / 2,  -sz / 2, sz / 2,  sz / 2,  sz / 2,  sz / 2,
+                       sz / 2,  sz / 2,  -sz / 2, sz / 2,  -sz / 2, -sz / 2};
+      unsigned int indices[] = {// left face
+                                0, 1, 2, 0, 2, 3,
+                                // back face
+                                0, 3, 7, 3, 4, 7,
+                                // right face
+                                4, 5, 7, 5, 6, 7,
+                                // front face
+                                1, 2, 6, 2, 5, 6,
+                                // top face
+                                2, 3, 4, 2, 4, 5,
+                                // bottom face
+                                0, 1, 6, 0, 6, 7};
+
+      glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+
+      glEnableVertexAttribArray(0);
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float),
+                            (void*)0);
+
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
+                   GL_STATIC_DRAW);
+
+      settings.index_count = 36;
+
+      break;
+    }
+    default:
+      break;
   }
 
   glBindVertexArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+void XMLParser::handleElement(const pugi::xml_node& item,
+                              DisplayObjectContainer* world) {
+  ShapeMetadata settings;
+  settings.type = ShapeType::kPlane;
+  generateShapeBuffers(settings, item);
+
+  std::string name = item.attribute("class").as_string();
+  createAndAddRenderable(name, settings, glm::vec3(0., 0., 0.), world);
+}
+
+void XMLParser::handleBlockDefinition(const pugi::xml_node& item) {
+  std::string class_name = item.attribute("name").as_string();
+  if (defined_class_count_.find(class_name) != defined_class_count_.end()) {
+    std::string err_str = "[XMLParser] class name: " + class_name +
+                          " has already been defined more than once.";
+    throw std::invalid_argument(err_str);
+  }
+
+  defined_class_count_.insert({class_name, 0});
+
+  ShapeMetadata settings;
+  pugi::xml_node geometry_node = item.child("geometry");
+  settings.type = shape_map_[geometry_node.attribute("type").as_string()];
+  generateShapeBuffers(settings, item);
+
+  class_settings_.insert({class_name, settings});
+}
+
+void XMLParser::handleBlock(const pugi::xml_node& item,
+                            DisplayObjectContainer* world) {
+  std::string class_name = item.attribute("class").as_string();
+
+  if (defined_class_count_.find(class_name) == defined_class_count_.end()) {
+    std::string err_str =
+        "[XMLParser] class name: " + class_name + " has not yet been defined.";
+    throw std::invalid_argument(err_str);
+  }
+
+  std::string name =
+      class_name + std::to_string(defined_class_count_[class_name]);
+
+  std::string pos_str = item.child_value("init_pose");
+  std::stringstream ss(pos_str);
+  std::string axis;
+
+  glm::vec3 pos;
+  int i = 0;
+  while (ss >> axis)
+    pos[i++] = std::stof(axis);
+
+  createAndAddRenderable(name, class_settings_[class_name], pos, world);
+
+  defined_class_count_[class_name]++;
+}
+
+void XMLParser::createAndAddRenderable(const std::string& name,
+                                       const ShapeMetadata& settings,
+                                       const glm::vec3& pos,
+                                       DisplayObjectContainer* world) {
+
+  DisplayObject* object = new DisplayObject(name);
+  object->setRenderable(settings);
+  object->setTranslation(pos);
+  world->addChild(object);
 }
