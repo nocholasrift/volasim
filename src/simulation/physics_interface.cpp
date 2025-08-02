@@ -79,31 +79,26 @@ PhysicsInterface::~PhysicsInterface() {
 
   delete JPH::Factory::sInstance;
   JPH::Factory::sInstance = nullptr;
+
+  for (const auto& [disp_obj, binding] : disp_to_dyna_)
+    delete binding.dynamic_obj;
 }
 
 void PhysicsInterface::update(double dt) {
+  static int count = 0;
   JPH::BodyInterface& body_interface = physics_system_->GetBodyInterface();
 
   // 1. Apply movement to non-static objects
   for (const auto& [disp_obj, binding] : disp_to_dyna_) {
 
     if (binding.getMotionType() != JPH::EMotionType::Static) {
-
-      // Eigen::Vector4d u = Eigen::Vector4d(1, 1, 1, 1) * 4.34 * 9.81 / 4;
       Eigen::Vector4d u =
           Eigen::Vector4d(1.0, 1.0, 1.01, 1.01) * 4.34 * 9.81 / 4.;
+
       binding.dynamic_obj->setInput(u);
       binding.dynamic_obj->update(dt);
-      // glm::vec3 pos = binding.dynamic_obj->getTranslation();
-      // glm::quat rot = binding.dynamic_obj->getRotation();
 
-      // std::cout << "dt: " << dt << std::endl;
-      // std::cout << "updating: " << rot[0] << " " << rot[1] << " " << rot[2]
-      //           << " " << rot[3] << std::endl;
-
-      // JPH::RVec3 jolt_p(pos[0], pos[1], pos[2]);
-      // JPH::Quat jolt_r(rot[1], rot[2], rot[3], rot[0]);
-      // body_interface.MoveKinematic(binding.body_id, jolt_p, jolt_r, dt);
+      glm::quat rota = binding.dynamic_obj->getRotation();
 
       glm::vec3 vel = binding.dynamic_obj->getVelocity();
       glm::vec3 rot = binding.dynamic_obj->getBodyRates();
@@ -111,11 +106,6 @@ void PhysicsInterface::update(double dt) {
       JPH::RVec3 jolt_r(rot[0], rot[1], rot[2]);
       body_interface.SetLinearAndAngularVelocity(binding.body_id, jolt_v,
                                                  jolt_r);
-      // std::cout << "jolt p: " << jolt_p[0] << " " << jolt_p[1] << " "
-      //           << jolt_p[2] << std::endl;
-
-      // JPH::PhysicsSystem::BodyStats stats = physics_system_->GetBodyStats();
-      // std::cout << "num active bodies: " << stats.mNumBodies << std::endl;
     }
   }
 
@@ -127,30 +117,26 @@ void PhysicsInterface::update(double dt) {
 
     if (binding.getMotionType() != JPH::EMotionType::Static) {
 
-      // if (!contact_listener_.is_colliding_) {
-      //   glm::vec3 pos = binding.dynamic_obj->getTranslation();
-      //   glm::quat rot = binding.dynamic_obj->getRotation();
-      //   JPH::RVec3 jolt_p(pos[0], pos[1], pos[2]);
-      //   JPH::Quat jolt_r(rot[1], rot[2], rot[3], rot[0]);
-      //   body_interface.SetPositionAndRotation(binding.body_id, jolt_p, jolt_r,
-      //                                         JPH::EActivation::Activate);
-      // }
-
       JPH::RVec3 jolt_p;
       JPH::Quat jolt_r;
       body_interface.GetPositionAndRotation(binding.body_id, jolt_p, jolt_r);
 
-      // std::cout << "jolt pos: " << jolt_p[0] << " " << jolt_p[1] << " "
-      //           << jolt_p[2] << std::endl;
-      // glm::vec3 p = binding.dynamic_obj->getTranslation();
-      // std::cout << "do pos: " << p[0] << " " << p[1] << " " << p[2]
-      //           << std::endl;
+      JPH::RVec3 jolt_v;
+      JPH::RVec3 jolt_w;
+      body_interface.GetLinearAndAngularVelocity(binding.body_id, jolt_v,
+                                                 jolt_w);
 
       glm::vec3 pos(jolt_p[0], jolt_p[1], jolt_p[2]);
       glm::quat rot(jolt_r.GetW(), jolt_r.GetX(), jolt_r.GetY(), jolt_r.GetZ());
 
       binding.dynamic_obj->setTranslation(pos);
       binding.dynamic_obj->setRotation(rot);
+
+      glm::vec3 vel(jolt_v[0], jolt_v[1], jolt_v[2]);
+      glm::vec3 rpy(jolt_w[0], jolt_w[1], jolt_w[2]);
+
+      binding.dynamic_obj->setVelocity(vel);
+      binding.dynamic_obj->setAngularVelocity(rpy);
 
       disp_obj->setTranslation(pos);
       disp_obj->setRotation(rot);
@@ -222,9 +208,6 @@ void PhysicsInterface::handleEvent(Event* e) {
           break;
 
         case ShapeType::kCylinder: {
-          std::cout << "[physics interface] handling add cylinder event"
-                    << std::endl;
-          // align with how renderable expects cylinders to be
           JPH::Quat align_rot = JPH::Quat::sRotation(JPH::Vec3::sAxisX(), 90.f);
           JPH::Quat renderable_ori(ori[1], ori[2], ori[3], ori[0]);
           shape_settings = JPH::BodyCreationSettings(
@@ -258,13 +241,6 @@ void PhysicsInterface::handleEvent(Event* e) {
       }
 
       binding.body_id = body_id;
-
-      // std::pair<std::string, JPH::BodyID> obj_map(object->getID(), body_id);
-      // str_to_body_id_.insert(obj_map);
-
-      // std::pair<std::string, DisplayObject*> id_obj_pair(object->getID(),
-      //                                                    object);
-      // display_obj_lookup_.insert(id_obj_pair);
     }
 
   } else if (e->getType() == "OBJ_RM") {

@@ -1,4 +1,5 @@
 #include <volasim/simulation/display_object.h>
+
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -19,8 +20,8 @@ DisplayObject::DisplayObject(std::string id) {
   scale_ = glm::vec3(1.f, 1.f, 1.f);
 }
 
-void DisplayObject::setRenderable(ShapeType type, const ShapeMetadata& meta) {
-  renderable_ = std::make_unique<ShapeRenderable>(type, meta);
+void DisplayObject::setRenderable(const ShapeMetadata& meta) {
+  renderable_ = std::make_unique<ShapeRenderable>(meta);
   is_renderable_ = true;
 }
 
@@ -28,17 +29,33 @@ DisplayObject::~DisplayObject() {}
 
 void DisplayObject::update() {}
 
-void DisplayObject::draw() {
+void DisplayObject::draw(const glm::mat4& view_mat, const glm::mat4& proj_mat,
+                         Shader& shader) {
   if (!is_visible_)
     return;
 
-  glm::mat4 transform = getLocalTransform();
-
+  // shader will already have been set to used by this point
   if (renderable_) {
-    glPushMatrix();
-    glMultMatrixf(glm::value_ptr(transform));
-    renderable_->draw();
-    glPopMatrix();
+    glm::mat4 model_mat;
+    if (parent_)
+      model_mat = parent_->getGlobalTransform() * getLocalTransform();
+    else
+      model_mat = getLocalTransform();
+
+    // if (id_[0] == 'c') {
+    // std::cout << "rendering: " << id_ << std::endl;
+    //
+    // for (int i = 0; i < 4; ++i) {
+    //   std::cout << model_mat[0][i] << " " << model_mat[1][i] << " "
+    //             << model_mat[2][i] << " " << model_mat[3][i] << "\n";
+    // }
+    // std::cout << std::endl;
+    // }
+
+    glm::mat4 mvp = proj_mat * view_mat * model_mat;
+    shader.setUniformMat4("mvp", mvp);
+
+    renderable_->draw(shader);
   }
 }
 
@@ -92,7 +109,7 @@ glm::quat DisplayObject::getRotation() {
   return quaternion_;
 }
 
-const Renderable& DisplayObject::getRenderable(){
+const Renderable& DisplayObject::getRenderable() {
   return *renderable_;
 }
 
@@ -100,6 +117,6 @@ std::string DisplayObject::getID() {
   return id_;
 }
 
-bool DisplayObject::isRenderable(){
+bool DisplayObject::isRenderable() {
   return is_renderable_;
 }

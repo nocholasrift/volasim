@@ -23,6 +23,7 @@ include_directories(
 
 add_executable(volasim 
   src/main.cpp
+  src/glad/glad.c
   src/simulation/simulation.cpp
   src/simulation/xml_parser.cpp
   src/simulation/display_object.cpp

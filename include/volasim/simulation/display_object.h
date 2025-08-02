@@ -1,10 +1,13 @@
 #ifndef DISPLAYOBJECT_H
 #define DISPLAYOBJECT_H
 
-#include <GL/glu.h>
-#include <GL/glut.h>
-#include <SDL3/SDL.h>
+#include <volasim/simulation/shader.h>
+
 #include <volasim/simulation/shape_renderable.h>
+
+// #include <GL/glu.h>
+// #include <GL/glut.h>
+#include <SDL3/SDL.h>
 #include <fstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -24,9 +27,10 @@ class DisplayObject {
   virtual ~DisplayObject();
 
   virtual void update();
-  virtual void draw();
+  virtual void draw(const glm::mat4& view_mat, const glm::mat4& proj_mat,
+                    Shader& shader);
   virtual void cleanUpDisplayTree();
-  virtual void setRenderable(ShapeType type, const ShapeMetadata& meta);
+  virtual void setRenderable(const ShapeMetadata& meta);
 
   void toggleVisibility();
   void makeVisible();

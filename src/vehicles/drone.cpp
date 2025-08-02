@@ -2,6 +2,22 @@
 #include <glm/ext/quaternion_common.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include <sstream>
+#include <stdexcept>
+
+Drone::Drone(const pugi::xml_node& root, double dt) : DynamicObject(dt) {
+  buildFromXML(root);
+
+  x_ = Eigen::Matrix<double, Drone::N, 1>::Zero();
+  u_ = Eigen::Matrix<double, Drone::M, 1>::Zero();
+
+  // unit quaternion
+  x_(6) = 1.0;
+
+  solver_ = std::make_unique<amrl::RungeKutta<Drone::N, Drone::M>>(
+      [this](const X_t& x, const U_t& u) { return this->dynamics(x, u); });
+}
+
 Drone::Drone(const Eigen::Matrix3d& J_mat, double torque_const,
              double boom_length, double mass, double dt)
     : DynamicObject(dt) {
@@ -27,11 +43,7 @@ Drone::Drone(const Eigen::Matrix3d& J_mat, double torque_const,
 Drone::~Drone() {}
 
 void Drone::update(double dt) {
-  // std::cout << "input is: " << u_.transpose() << std::endl;
-  // std::cout << "x_old: " << x_.transpose() << std::endl;
   x_ = solver_->step(x_, u_, dt);
-  // std::cout << "x_new: " << x_.transpose() << std::endl;
-  // std::cout << "done with step" << std::endl;
 }
 
 void Drone::setTranslation(const glm::vec3& tran) {
@@ -47,8 +59,45 @@ void Drone::setRotation(const glm::quat& rot) {
   x_(5) = rot[3];
 }
 
+void Drone::setVelocity(const glm::vec3& vel) {
+  x_(7) = vel[0];
+  x_(8) = vel[1];
+  x_(9) = vel[2];
+}
+
+void Drone::setAngularVelocity(const glm::vec3& rpy) {
+  x_(10) = rpy[0];
+  x_(11) = rpy[1];
+  x_(12) = rpy[2];
+}
+
 void Drone::setInput(const Eigen::VectorXd& u) {
   u_ = u;
+}
+
+void Drone::buildFromXML(const pugi::xml_node& root) {
+  mass_ = std::stof(root.child_value("mass"));
+  boom_length_ = std::stof(root.child_value("length"));
+  torque_const_ = std::stof(root.child_value("c_torque"));
+
+  std::string mat_str = root.child_value("inertia_matrix");
+  std::stringstream ss(mat_str);
+  std::string value;
+
+  int i = 0;
+  while (ss >> value) {
+    if (i > 8)
+      throw std::runtime_error("[Drone] Intertia matrix has too many entries!");
+    J_mat_(i / 3, i % 3) = std::stof(value);
+    i++;
+  }
+
+  if (i != 9)
+    throw std::runtime_error(
+        "[Drone] Inertia matrix must have exactly 9 entries, found " +
+        std::to_string(i));
+
+  J_mat_inv_ = J_mat_.inverse();
 }
 
 glm::vec3 Drone::getVelocity() {
@@ -79,30 +128,13 @@ Eigen::VectorXd Drone::dynamics(const Eigen::VectorXd& x,
 
   glm::quat omega_q(0, w[0], w[1], w[2]);
   glm::quat q_dot = 0.5f * q * omega_q;
-  // glm::vec4 q_dot(-1*(w[0]*q[1]+w[1]*q[2]+w[2]*q[3])/2.,
-  //                 (w[0]*q[0]+w[1]*q[3]-w[2]*q[2])/2.,
-  //                 (w[1]*q[0]+w[2]*q[1]-w[0]*q[3])/2.,
-  //                 (w[2]*q[0]+w[0]*q[2]-w[1]*q[1])/2.);
 
   glm::vec4 f(u(0), u(1), u(2), u(3));
   glm::vec3 thrust_vec(0, 0, (u(0) + u(1) + u(2) + u(3)) / mass_);
 
   glm::vec3 v_dot = glm::vec3(0, 0, -9.81) + R * thrust_vec;
 
-  // std::cout << "quat: " << q[0] << " " << q[1] << " " << q[2] << " " << q[3]
-  //           << std::endl;
-  // for (int row = 0; row < 3; ++row) {
-  //   for (int col = 0; col < 3; ++col) {
-  //     std::cout << R[col][row] << " ";
-  //   }
-  //   std::cout << std::endl;
-  // }
-
   glm::vec3 R_thrust = R * thrust_vec;
-  // std::cout << "v " << R_thrust[0] << " " << R_thrust[1] << " " << R_thrust[2]
-  //           << std::endl;
-  // std::cout << "calculating v_dot " << v_dot[0] << " " << v_dot[1] << " "
-  //           << v_dot[2] << std::endl;
 
   // rigid body dynamics for w_dot
   Eigen::Vector3d w_eig(x(10), x(11), x(12));
@@ -110,9 +142,6 @@ Eigen::VectorXd Drone::dynamics(const Eigen::VectorXd& x,
                          boom_length_ * (-u[0] + u[1] + u[2] - u[3]) / sqrt(2),
                          torque_const_ * (u[0] - u[1] + u[2] - u[3]));
   Eigen::Vector3d w_dot = J_mat_inv_ * (torque - w_eig.cross(J_mat_ * w_eig));
-
-  // std::cout << torque.transpose() << std::endl;
-  // std::cout << "w_dot: " << w_dot.transpose() << std::endl;
 
   X_t x_dot;
   x_dot(0) = v[0],      // pos X
@@ -122,8 +151,6 @@ Eigen::VectorXd Drone::dynamics(const Eigen::VectorXd& x,
   x_dot(6) = q_dot[3], x_dot(7) = v_dot[0], x_dot(8) = v_dot[1],
   x_dot(9) = v_dot[2], x_dot(10) = w_dot[0], x_dot(11) = w_dot[1],
   x_dot(12) = w_dot[2];
-
-  // std::cout << "x_dot: " << x_dot.transpose() << std::endl;
 
   return x_dot;
 }
