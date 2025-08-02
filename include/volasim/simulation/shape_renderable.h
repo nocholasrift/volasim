@@ -58,9 +58,6 @@ class ShapeRenderable : public Renderable {
 
   void setup(ShapeType type);
 
-  void drawCylinder();
-  void drawGroundPlane();
-
   glm::vec3 hexToRGB(std::string_view hex_str);
 
   ShapeMetadata meta_;

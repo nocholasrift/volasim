@@ -146,7 +146,7 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
   // glDepthFunc(GL_LESS);
   // glMatrixMode(GL_PROJECTION);
   // glLoadIdentity();
-  // gluPerspective(60.0, static_caHere's a more detailed explanation:st<float>(window_width_) / window_height_, 0.1,
+  // gluPerspective(60.0, static_cast<float>(window_width_) / window_height_, 0.1,
   //                100.0);
 
   time_ = 0.;

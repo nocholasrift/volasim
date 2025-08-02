@@ -23,12 +23,6 @@ void ShapeRenderable::draw(Shader& shader) {
   /*glDrawArrays(GL_TRIANGLE_FAN, 0, 4);*/
 }
 
-void ShapeRenderable::drawCylinder() {
-  // static GLUquadric* quad = gluNewQuadric();
-  /*gluCylinder(quad, meta_.radius, meta_.radius, meta_.height, meta_.slices,*/
-  /*            meta_.stacks);*/
-}
-
 glm::vec3 ShapeRenderable::hexToRGB(std::string_view hex_str) {
   if (hex_str[0] != '#' || hex_str.length() != 7) {
     std::string err_str =
@@ -66,22 +60,4 @@ glm::vec3 ShapeRenderable::hexToRGB(std::string_view hex_str) {
   }
 
   return ret;
-}
-
-void ShapeRenderable::drawGroundPlane() {
-  // glDisable(GL_LIGHTING);  // Optional: disable lighting for flat color
-  glEnable(GL_LIGHTING);
-  glEnable(GL_COLOR_MATERIAL);
-  // glColor3f(0.3f, 0.6f, 0.3f);  // subtle green tone for ground
-
-  glNormal3f(0.0f, 0.0f, 1.0f);  // normal pointing up
-
-  glBegin(GL_QUADS);
-  glVertex3f(meta_.x_min, meta_.y_min, 0.0f);
-  glVertex3f(meta_.x_max, meta_.y_min, 0.0f);
-  glVertex3f(meta_.x_max, meta_.y_max, 0.0f);
-  glVertex3f(meta_.x_min, meta_.y_max, 0.0f);
-  glEnd();
-
-  // glEnable(GL_LIGHTING);  // Re-enable lighting if needed
 }

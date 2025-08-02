@@ -8,12 +8,14 @@
 
 #include <Eigen/Core>
 
-// #include <stdexcept>
-// #include <string>
+#include <iostream>
+#include <stdexcept>
+#include <string>
 
 class Shader {
  public:
-  Shader() = default;
+  Shader() : id_(0) {}
+
   Shader(const std::string& vertex_shader, const std::string& fragment_shader) {
 
     unsigned int vertex, fragment;
@@ -60,6 +62,30 @@ class Shader {
     glDeleteShader(vertex);
     glDeleteShader(fragment);
   }
+
+  ~Shader() {
+    std::cout << "being destructed" << std::endl;
+    if (id_)
+      glDeleteProgram(id_);
+  }
+
+  Shader& operator=(Shader&& other) noexcept {
+    if (this != &other) {
+      if (id_ != 0) {
+        glDeleteProgram(id_);
+      }
+      id_ = other.id_;
+      other.id_ = 0;
+    }
+    return *this;
+  }
+
+  // Delete copy operations
+  Shader(const Shader&) = delete;
+  Shader& operator=(const Shader&) = delete;
+
+  // Move operations
+  Shader(Shader&& other) noexcept : id_(other.id_) { other.id_ = 0; }
 
   unsigned int getID() { return id_; }
 

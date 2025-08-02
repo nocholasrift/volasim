@@ -66,6 +66,16 @@ class GPUSensor {
       throw std::runtime_error("[Depth Sensor] Parent is null!");
 
     settings_ = settings;
+
+    if (settings_.width == 0 || settings_.height == 0)
+      throw std::invalid_argument(
+          "[DepthSensorSettings] width/height must be > 0");
+    if (settings_.fx <= 0 || settings_.fy <= 0)
+      throw std::invalid_argument("[DepthSensorSettings] fx/fy must be > 0");
+    if (settings_.z_near <= 0 || settings_.z_far <= settings_.z_near)
+      throw std::invalid_argument(
+          "[DepthSensorSettings] z_near > 0 and z_far > z_near");
+
     parent_ = parent;
 
     depth_data_.resize(settings.width * settings.height);
@@ -75,7 +85,14 @@ class GPUSensor {
     setProjectionMatrix();
   }
 
-  ~GPUSensor() {}
+  ~GPUSensor() {
+    if (fbo_)
+      glDeleteFramebuffers(1, &fbo_);
+    if (vao_)
+      glDeleteVertexArrays(1, &vao_);
+    if (vbo_)
+      glDeleteBuffers(1, &vbo_);
+  }
 
   void init() {
     glGenFramebuffers(1, &fbo_);
@@ -88,8 +105,8 @@ class GPUSensor {
     // configure the texture
     glBindTexture(GL_TEXTURE_2D, depth_tex);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, 800, 600, 0,
-                 GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, settings_.width,
+                 settings_.height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -234,6 +251,7 @@ class GPUSensor {
 
  private:
   void setProjectionMatrix() {
+
     proj_mat_[0][0] = 2 * settings_.fx / settings_.width;
     proj_mat_[0][2] = 1 - 2 * settings_.cx / settings_.width;
     proj_mat_[1][1] = 2 * settings_.fy / settings_.height;

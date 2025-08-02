@@ -91,6 +91,12 @@ void Drone::buildFromXML(const pugi::xml_node& root) {
     J_mat_(i / 3, i % 3) = std::stof(value);
     i++;
   }
+
+  if (i != 9)
+    throw std::runtime_error(
+        "[Drone] Inertia matrix must have exactly 9 entries, found " +
+        std::to_string(i));
+
   J_mat_inv_ = J_mat_.inverse();
 }
 

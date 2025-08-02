@@ -104,6 +104,9 @@ void XMLParser::handleVehicle(const pugi::xml_node& item,
     // DisplayObject* drone_obj = new DisplayObject("drone");
     // drone_obj->setRenderable(drone_settings);
     // drone_obj->setTranslation();
+  } else {
+    std::string err_str = "[XMLParser] Unknown vehicle type: " + vehicle_type;
+    throw std::runtime_error(err_str);
   }
 }
 
@@ -122,6 +125,17 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
         "[XMLParser] Invalid color string! " + settings.color +
         "\nShould be formatted as 6 hex digits preceeded by #";
     throw std::invalid_argument(err_str);
+  }
+
+  if (settings.color[0] != '#') {
+    throw std::invalid_argument("[XMLParser] Color must start with #");
+  }
+
+  for (size_t i = 1; i < settings.color.length(); ++i) {
+    if (!std::isxdigit(settings.color[i])) {
+      throw std::invalid_argument("[XMLParser] Invalid hex digit in color: " +
+                                  settings.color);
+    }
   }
 
   glGenVertexArrays(1, &settings.vao);
@@ -201,7 +215,7 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
 
       // merge indices and normals together
       std::vector<float> vert_norms;
-      for (int i = 0; i < vertices.size(); i += 3) {
+      for (size_t i = 0; i < vertices.size(); i += 3) {
         vert_norms.push_back(vertices[i]);
         vert_norms.push_back(vertices[i + 1]);
         vert_norms.push_back(vertices[i + 2]);

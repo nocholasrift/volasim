@@ -79,6 +79,9 @@ PhysicsInterface::~PhysicsInterface() {
 
   delete JPH::Factory::sInstance;
   JPH::Factory::sInstance = nullptr;
+
+  for (const auto& [disp_obj, binding] : disp_to_dyna_)
+    delete binding.dynamic_obj;
 }
 
 void PhysicsInterface::update(double dt) {
