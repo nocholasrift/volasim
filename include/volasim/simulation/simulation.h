@@ -39,7 +39,6 @@ class Simulation {
     return instance;
   }
 
-  Simulation(int win_width, int win_height, int fps);
   ~Simulation();
 
   SDL_AppResult update(void* appstate);
@@ -52,6 +51,8 @@ class Simulation {
   PhysicsInterface& getPhysicsInterface() { return physics_interface_; }
 
  private:
+  Simulation(int win_width, int win_height, int fps);
+
   int window_width_;
   int window_height_;
   int frames_per_sec_;

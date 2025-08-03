@@ -16,14 +16,19 @@ find_package(glm REQUIRED)
 find_package(GLUT REQUIRED)
 find_package(Eigen3 REQUIRED system)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(ZeroMQ REQUIRED libzmq)
+
 include_directories(
   include/
   ${EIGEN3_INCLUDE_DIRS}
+  ${ZeroMQ_INCLUDE_DIRS}
 )
 
 add_executable(volasim 
   src/main.cpp
   src/glad/glad.c
+  src/simulation/zmq_server.cpp
   src/simulation/simulation.cpp
   src/simulation/xml_parser.cpp
   src/simulation/display_object.cpp
@@ -42,4 +47,5 @@ target_link_libraries(volasim
   ${GLUT_LIBRARIES}
   ${EIGEN3_LIBRARIES}
   ${GLM_LIBRARIES}
+  ${ZeroMQ_LIBRARIES}
 )

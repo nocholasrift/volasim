@@ -8,6 +8,7 @@
 
 #define SDL_MAIN_USE_CALLBACKS 1 /* use the callbacks instead of main() */
 #include <volasim/simulation/simulation.h>
+#include <volasim/simulation/zmq_server.h>
 
 #include <GL/glu.h>
 #include <GL/glut.h>  // for glutSolidSphere
@@ -21,6 +22,7 @@
 #define FPS 120
 
 Simulation& sim = Simulation::getInstance(WINDOW_WIDTH, WINDOW_HEIGHT, FPS);
+ZMQServer& server = ZMQServer::getInstance();
 
 /* This function runs once at startup. */
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
