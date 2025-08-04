@@ -8,7 +8,7 @@ DisplayObject::DisplayObject() {
   id_ = "DEFAULT_ID";
 
   position_ = glm::vec3(0.f, 0.f, 0.f);
-  quaternion_ = glm::quat(0.f, 0.f, 0.f, 1.f);
+  quaternion_ = glm::quat(1.f, 0.f, 0.f, 0.f);
   scale_ = glm::vec3(1.f, 1.f, 1.f);
 }
 
@@ -16,7 +16,7 @@ DisplayObject::DisplayObject(std::string id) {
   id_ = id;
 
   position_ = glm::vec3(0.f, 0.f, 0.f);
-  quaternion_ = glm::quat(0.f, 0.f, 0.f, 1.f);
+  quaternion_ = glm::quat(1.f, 0.f, 0.f, 0.f);
   scale_ = glm::vec3(1.f, 1.f, 1.f);
 }
 

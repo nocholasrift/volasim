@@ -7,3 +7,6 @@
 [submodule "third_party/pugixml"]
 	path = third_party/pugixml
 	url = git@github.com:zeux/pugixml.git
+[submodule "third_party/cppzmq"]
+	path = third_party/cppzmq
+	url = git@github.com:zeromq/cppzmq.git

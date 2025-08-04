@@ -1,7 +1,12 @@
 #ifndef ZMQ_SERVER_H
 #define ZMQ_SERVER_H
 
+#include <volasim/types.h>
+
 #include <zmq.hpp>
+
+#include <string_view>
+#include <vector>
 
 class ZMQServer {
  public:
@@ -9,6 +14,10 @@ class ZMQServer {
     static ZMQServer instance;
     return instance;
   }
+
+  void publishInfo(const std::string& sim_state);
+
+  bool receiveInfo(std::string& input_buffer);
 
  private:
   ZMQServer();

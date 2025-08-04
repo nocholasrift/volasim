@@ -1,4 +1,6 @@
 #include <volasim/vehicles/drone.h>
+#include <volasim/comms/msgs/Thrust.pb.h>
+
 #include <glm/ext/quaternion_common.hpp>
 #include <glm/gtc/quaternion.hpp>
 
@@ -12,7 +14,7 @@ Drone::Drone(const pugi::xml_node& root, double dt) : DynamicObject(dt) {
   u_ = Eigen::Matrix<double, Drone::M, 1>::Zero();
 
   // unit quaternion
-  x_(6) = 1.0;
+  x_(3) = 1.0;
 
   solver_ = std::make_unique<amrl::RungeKutta<Drone::N, Drone::M>>(
       [this](const X_t& x, const U_t& u) { return this->dynamics(x, u); });
@@ -25,7 +27,7 @@ Drone::Drone(const Eigen::Matrix3d& J_mat, double torque_const,
   u_ = Eigen::Matrix<double, Drone::M, 1>::Zero();
 
   // unit quaternion
-  x_(6) = 1.0;
+  x_(3) = 1.0;
 
   mass_ = mass;
   torque_const_ = torque_const;
@@ -53,10 +55,10 @@ void Drone::setTranslation(const glm::vec3& tran) {
 }
 
 void Drone::setRotation(const glm::quat& rot) {
-  x_(6) = rot[0];
-  x_(3) = rot[1];
-  x_(4) = rot[2];
-  x_(5) = rot[3];
+  x_[3] = rot[3];
+  x_[4] = rot[0];
+  x_[5] = rot[1];
+  x_[6] = rot[2];
 }
 
 void Drone::setVelocity(const glm::vec3& vel) {
@@ -73,6 +75,16 @@ void Drone::setAngularVelocity(const glm::vec3& rpy) {
 
 void Drone::setInput(const Eigen::VectorXd& u) {
   u_ = u;
+}
+
+void Drone::setInput(const std::string& buffer){
+  volasim_msgs::Thrust msg;
+
+  msg.ParseFromArray(buffer.data(), buffer.size());
+  u_[0] = msg.f1();
+  u_[1] = msg.f2();
+  u_[2] = msg.f3();
+  u_[3] = msg.f4();
 }
 
 void Drone::buildFromXML(const pugi::xml_node& root) {
@@ -113,7 +125,23 @@ glm::vec3 Drone::getTranslation() {
 }
 
 glm::quat Drone::getRotation() {
-  return glm::quat(x_[6], x_[3], x_[4], x_[5]);
+  return glm::quat(x_[3], x_[4], x_[5], x_[6]);
+}
+
+volasim_msgs::Odometry Drone::getSimState() {
+  static int count = 0;
+  volasim_msgs::Odometry odom_msg;
+
+  odom_msg.mutable_position()->set_x(x_(0));
+  odom_msg.mutable_position()->set_y(x_(1));
+  odom_msg.mutable_position()->set_z(x_(2));
+
+  odom_msg.mutable_orientation()->set_x(x_(4));
+  odom_msg.mutable_orientation()->set_y(x_(5));
+  odom_msg.mutable_orientation()->set_z(x_(6));
+  odom_msg.mutable_orientation()->set_w(x_(3));
+
+  return odom_msg;
 }
 
 Eigen::VectorXd Drone::dynamics(const Eigen::VectorXd& x,
@@ -147,8 +175,8 @@ Eigen::VectorXd Drone::dynamics(const Eigen::VectorXd& x,
   x_dot(0) = v[0],      // pos X
       x_dot(1) = v[1],  // pos Y
       x_dot(2) = v[2],  // pos Z
-      x_dot(3) = q_dot[0], x_dot(4) = q_dot[1], x_dot(5) = q_dot[2],
-  x_dot(6) = q_dot[3], x_dot(7) = v_dot[0], x_dot(8) = v_dot[1],
+      x_dot(3) = q_dot[3], x_dot(4) = q_dot[0], x_dot(5) = q_dot[1],
+  x_dot(6) = q_dot[2], x_dot(7) = v_dot[0], x_dot(8) = v_dot[1],
   x_dot(9) = v_dot[2], x_dot(10) = w_dot[0], x_dot(11) = w_dot[1],
   x_dot(12) = w_dot[2];
 

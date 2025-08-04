@@ -27,9 +27,11 @@ class Drone : public DynamicObject {
   virtual void setAngularVelocity(const glm::vec3& rpy) override;
 
   virtual void setInput(const Eigen::VectorXd& u) override;
+  virtual void setInput(const std::string& buffer) override;
 
   virtual void buildFromXML(const pugi::xml_node& root) override;
 
+  virtual volasim_msgs::Odometry getSimState() override;
   virtual glm::vec3 getTranslation() override;
   virtual glm::quat getRotation() override;
   virtual glm::vec3 getVelocity() override;
