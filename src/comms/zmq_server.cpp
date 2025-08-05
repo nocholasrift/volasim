@@ -6,10 +6,14 @@ ZMQServer::ZMQServer() {
   publisher_ = zmq::socket_t(context_, zmq::socket_type::pub);
   subscriber_ = zmq::socket_t(context_, zmq::socket_type::sub);
 
-  publisher_.bind("tcp://*:5556");
-
-  subscriber_.connect("tcp://localhost:5557");
-  subscriber_.set(zmq::sockopt::subscribe, "");
+  try {
+    publisher_.bind("tcp://*:5556");
+    subscriber_.connect("tcp://localhost:5557");
+    subscriber_.set(zmq::sockopt::subscribe, "");
+  } catch (const zmq::error_t& e) {
+    throw std::runtime_error("Failed to initialize ZMQ server: " +
+                             std::string(e.what()));
+  }
 }
 
 void ZMQServer::publishInfo(const std::string& sim_state) {
@@ -18,10 +22,10 @@ void ZMQServer::publishInfo(const std::string& sim_state) {
   publisher_.send(message, zmq::send_flags::none);
 }
 
-bool ZMQServer::receiveInfo(std::string& input_buffer){
+bool ZMQServer::receiveInfo(std::string& input_buffer) {
   zmq::message_t msg;
   auto result = subscriber_.recv(msg, zmq::recv_flags::dontwait);
-  if(result){
+  if (result) {
     input_buffer.assign(static_cast<char*>(msg.data()), msg.size());
     return true;
   }

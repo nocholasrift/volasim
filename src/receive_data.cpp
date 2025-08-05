@@ -12,7 +12,7 @@
 class VolasimROSWrapper{
 public:
   VolasimROSWrapper(ros::NodeHandle& nh){
-    cmd_pub_ = nh.subscribe("/command", 1, &VolasimROSWrapper::cmd_cb, this);
+    cmd_sub_ = nh.subscribe("/command", 1, &VolasimROSWrapper::cmd_cb, this);
 
     state_pub_ = nh.advertise<nav_msgs::Odometry>("odometry", 10);
 
@@ -38,8 +38,10 @@ public:
   }
 
   void cmd_cb(const std_msgs::Float32MultiArray::ConstPtr& msg){
-    if (msg->data.size() != 4)
+    if (msg->data.size() != 4){
       ROS_WARN("[VolasimROSWrapper] input vector does not contain exacty 4 values!");
+      return;
+    }
 
     input_ = {msg->data[0], msg->data[1], msg->data[2], msg->data[3]};
   }
@@ -61,7 +63,7 @@ public:
 
   void timer_cb(const ros::TimerEvent&){
 
-    if (cmd_pub_.getNumPublishers() == 0){
+    if (cmd_sub_.getNumPublishers() == 0){
       input_ = {0, 0, 0, 0};
     }
 
@@ -74,7 +76,9 @@ public:
       return;
     }
 
-    odom.ParseFromArray(update.data(), update.size());
+    if (!odom.ParseFromArray(update.data(), update.size())){
+      ROS_WARN("[VolasimROSWrapper] Failed to parse odometry message");
+    }
 
     nav_msgs::Odometry msg;
     msg.pose.pose.position.x = odom.position().x();
@@ -90,12 +94,11 @@ public:
 
     publish_cmd();
 
-    ROS_INFO("hello");
   }
 
 private:
   ros::Publisher state_pub_;
-  ros::Subscriber cmd_pub_;
+  ros::Subscriber cmd_sub_;
 
   ros::Timer timer_;
 

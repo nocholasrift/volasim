@@ -55,8 +55,7 @@ class Simulation {
 
 
   bool isRunning() { 
-    std::unique_lock<std::mutex> lock (running_mtx_);
-    return is_running_; 
+    return is_running_.load(); 
   }
 
   void setSimState();
