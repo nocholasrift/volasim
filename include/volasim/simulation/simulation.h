@@ -3,16 +3,21 @@
 
 #include <volasim/sensors/depth_sensor.h>
 #include <volasim/simulation/shader.h>
-
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_main.h>
-#include <SDL3/SDL_opengl.h>
-
 #include <volasim/event/event_dispatcher.h>
 #include <volasim/simulation/camera.h>
 #include <volasim/simulation/display_object_container.h>
 #include <volasim/simulation/input_manager.h>
 #include <volasim/simulation/physics_interface.h>
+#include <volasim/types.h>
+
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_opengl.h>
+
+
+#include <condition_variable>
+#include <thread>
+#include <string_view>
 
 static const std::string mesh_vertex_shader =
     "#version 330 core\n"
@@ -30,6 +35,7 @@ static const std::string mesh_fragment_shader =
     "FragColor = vec4(color, 1.0);\n"
     "}\n";
 
+
 class Simulation {
 
  public:
@@ -39,7 +45,6 @@ class Simulation {
     return instance;
   }
 
-  Simulation(int win_width, int win_height, int fps);
   ~Simulation();
 
   SDL_AppResult update(void* appstate);
@@ -48,15 +53,30 @@ class Simulation {
   SDL_AppResult initSDL(void** appstate, int argc, char* argv[]);
   void quitSDL(void* appstate, SDL_AppResult result);
 
+
+  bool isRunning() { 
+    return is_running_.load(); 
+  }
+
+  void setSimState();
+  void setInputs(const std::string& buffer);
+
+  const std::string getSimState();
   EventDispatcher& getHandler() { return event_handler_; }
   PhysicsInterface& getPhysicsInterface() { return physics_interface_; }
 
  private:
+  Simulation(int win_width, int win_height, int fps);
+
   int window_width_;
   int window_height_;
   int frames_per_sec_;
 
   double time_;
+
+  std::atomic<bool> is_running_ = false;
+  std::condition_variable running_cv_;
+  std::mutex running_mtx_;
 
   Uint64 ms_per_frame_;
   Uint64 frame_start_;
@@ -78,6 +98,8 @@ class Simulation {
   std::unique_ptr<GPUSensor> depth_sensor_;
 
   Shader shape_shader_;
+
+  SimState sim_state_;
 };
 
 #endif

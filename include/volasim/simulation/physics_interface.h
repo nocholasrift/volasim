@@ -234,11 +234,21 @@ class PhysicsInterface : public EventListener {
   void update(double dt);
   void preRegister(DisplayObject* display_obj, DynamicObject* dynamic_obj);
 
+  std::vector<DynamicObject*> getDynamicObjects(){
+    std::vector<DynamicObject*> dyna_objs;
+
+    for(auto &[disp_obj, binding] : disp_to_dyna_){
+      if (binding.isDynamic()){
+        dyna_objs.push_back(binding.dynamic_obj);
+      }
+    }
+
+    return dyna_objs;
+  }
+
  private:
   std::unique_ptr<JPH::PhysicsSystem> physics_system_;
 
-  // std::unordered_map<std::string, JPH::BodyID> str_to_body_id_;
-  // std::unordered_map<std::string, DisplayObject*> display_obj_lookup_;
   std::unordered_map<DisplayObject*, PhysicsBinding> disp_to_dyna_;
 
   MyContactListener contact_listener_;

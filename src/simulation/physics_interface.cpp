@@ -92,20 +92,24 @@ void PhysicsInterface::update(double dt) {
   for (const auto& [disp_obj, binding] : disp_to_dyna_) {
 
     if (binding.getMotionType() != JPH::EMotionType::Static) {
-      Eigen::Vector4d u =
-          Eigen::Vector4d(1.0, 1.0, 1.01, 1.01) * 4.34 * 9.81 / 4.;
+      /*Eigen::Vector4d u =*/
+      /*    Eigen::Vector4d(1.0, 1.0, 1.01, 1.01) * 4.34 * 9.81 / 4.;*/
 
-      binding.dynamic_obj->setInput(u);
+      /*binding.dynamic_obj->setInput(u);*/
       binding.dynamic_obj->update(dt);
 
-      glm::quat rota = binding.dynamic_obj->getRotation();
+      JPH::RVec3 jolt_p;
+      JPH::Quat jolt_r;
+      body_interface.GetPositionAndRotation(binding.body_id, jolt_p, jolt_r);
 
+      /*std::cout << "setting rotation in interface as: " << jolt_r.GetX() << " " << jolt_r.GetY() << " " << jolt_r.GetZ() << " " << jolt_r.GetW() << std::endl;*/
+      /**/
       glm::vec3 vel = binding.dynamic_obj->getVelocity();
       glm::vec3 rot = binding.dynamic_obj->getBodyRates();
       JPH::RVec3 jolt_v(vel[0], vel[1], vel[2]);
-      JPH::RVec3 jolt_r(rot[0], rot[1], rot[2]);
+      JPH::RVec3 jolt_w(rot[0], rot[1], rot[2]);
       body_interface.SetLinearAndAngularVelocity(binding.body_id, jolt_v,
-                                                 jolt_r);
+                                                 jolt_w);
     }
   }
 
@@ -128,6 +132,10 @@ void PhysicsInterface::update(double dt) {
 
       glm::vec3 pos(jolt_p[0], jolt_p[1], jolt_p[2]);
       glm::quat rot(jolt_r.GetW(), jolt_r.GetX(), jolt_r.GetY(), jolt_r.GetZ());
+
+      /*std::cout << "setting rotation in interface as: " << rot[0] << " " << rot[1] << " " << rot[2] << " " << rot[3] << std::endl;*/
+      /**/
+      /*std::cout << "setting rotation in interface as: " << jolt_r.GetX() << " " << jolt_r.GetY() << " " << jolt_r.GetZ() << " " << jolt_r.GetW() << std::endl;*/
 
       binding.dynamic_obj->setTranslation(pos);
       binding.dynamic_obj->setRotation(rot);
@@ -179,6 +187,7 @@ void PhysicsInterface::handleEvent(Event* e) {
 
       glm::vec3 pos = object->getTranslation();
       glm::quat ori = object->getRotation();
+      /*std::cout << "rotation dispobj: " << ori[0] << " " << ori[1] << " " << ori[2] << " " << ori[3] << "\n";*/
       ShapeMetadata shape_meta = renderable.getShapeMeta();
 
       JPH::ObjectLayer obj_layer =
@@ -200,7 +209,7 @@ void PhysicsInterface::handleEvent(Event* e) {
                                           shape_meta.size / 2,
                                           shape_meta.size / 2)),
               JPH::RVec3(pos[0], pos[1], pos[2]),
-              JPH::Quat(ori[1], ori[2], ori[3], ori[0]),
+              JPH::Quat(ori[0], ori[1], ori[2], ori[3]),
               binding.getMotionType(), binding.getLayer());
           body_id = body_interface.CreateAndAddBody(shape_settings,
                                                     JPH::EActivation::Activate);

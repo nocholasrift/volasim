@@ -31,31 +31,12 @@ Simulation::Simulation(int win_width, int win_height, int fps)
   event_handler_.addEventListener(&PhysicsInterface::getInstance(), "OBJ_RM");
 
   world_ = new DisplayObjectContainer("world");
-  // world_->makeInvisible();
 
   Eigen::Matrix3d J;
   J << 0.0820, 0., 0., 0., 0.0845, 0., 0., 0., .1377;
   double mass = 4.34;
   double length = 0.315;
   double c_torque = 8.004e-4;
-
-  // DynamicObject* drone =
-  //     new Drone(J, c_torque, length, mass, 1. / static_cast<double>(fps));
-  // drone->setTranslation(glm::vec3(0., 0., 2.));
-  //
-  // DisplayObject* display_drone = new DisplayObject("drone");
-  // ShapeMetadata sphere_data;
-  // sphere_data.radius = 0.3;
-  // display_drone->setRenderable(ShapeType::kCube, sphere_data);
-  // display_drone->setTranslation(glm::vec3(0., 0., 2.));
-  //
-  // physics_interface_.preRegister(display_drone, drone);
-  //
-  // world_->addChild(display_drone);
-
-  // add sensor
-
-  // camera.fov = camera_
 
   camera_ = Camera(glm::ivec2(win_width, win_height), glm::vec3(3., 3., 7.),
                    glm::vec3(0, 0, 1), -147.0f, -41.0f);
@@ -142,13 +123,6 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
 
   glClearColor(0.25f, 0.25f, 0.25f, 1.0f);  // lighter background
 
-  // glEnable(GL_DEPTH_TEST);
-  // glDepthFunc(GL_LESS);
-  // glMatrixMode(GL_PROJECTION);
-  // glLoadIdentity();
-  // gluPerspective(60.0, static_cast<float>(window_width_) / window_height_, 0.1,
-  //                100.0);
-
   time_ = 0.;
   frame_start_ = -1000000;
   last_step_ = -1;
@@ -158,18 +132,15 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
   shape_shader_ = Shader(mesh_vertex_shader, mesh_fragment_shader);
 
   XMLParser parser("./definitions/worlds/world_250_world.xml");
-  // XMLParser parser("./definitions/worlds/demo_world.xml");
   parser.loadWorldFromXML(world_);
 
-  // depth_sensor_->init();
+  setSimState();
 
-  // int i = 0;
-  // for (ShapeMetadata& settings : renderables) {
-  //   DisplayObject* display_obj = new DisplayObject(settings.name);
-  //   display_obj->setRenderable(settings.type, settings);
-  //   display_obj->setTranslation(settings.pos);
-  //   world_->addChild(display_obj);
-  // }
+  {
+    std::unique_lock<std::mutex> lock(running_mtx_);
+    is_running_ = true;
+    running_cv_.notify_one();
+  }
 
   return SDL_APP_CONTINUE; /* carry on with the program! */
 }
@@ -236,10 +207,10 @@ SDL_AppResult Simulation::update(void* appstate) {
 
   double dt = (SDL_GetTicks() - last_step_) / 1000.;
   Eigen::Vector4d u = Eigen::Vector4d::Zero();
-  // Eigen::Vector4d u = Eigen::Vector4d(.95,1.05,1.05,.95) * 4.34 * 9.81/4.;
-  // drone->update(u, dt);
-  // physics_interface_.update(ms_per_frame_ / 1000.);
+
   physics_interface_.update(dt);
+
+  setSimState();
 
   last_step_ = SDL_GetTicks();
 
@@ -249,7 +220,71 @@ SDL_AppResult Simulation::update(void* appstate) {
 }
 
 void Simulation::quitSDL(void* appstate, SDL_AppResult result) {
+  {
+    std::unique_lock<std::mutex> lock(running_mtx_);
+    is_running_ = false;
+  }
 
   SDL_GL_DestroyContext(gl_ctx_);
   SDL_Quit();
+}
+
+void Simulation::setInputs(const std::string& buffer) {
+  std::vector<DynamicObject*> dyna_objs =
+      physics_interface_.getDynamicObjects();
+
+  if (dyna_objs.empty())
+    return;
+
+  {
+    std::lock_guard<std::mutex> lock(sim_state_.mutex);
+    for (DynamicObject* dyna_obj : dyna_objs) {
+      if (!dyna_obj) {
+        std::cerr << "[Simulation] null dynamic object detected in interface\n";
+      }
+      dyna_obj->setInput(buffer);
+      break;
+    }
+  }
+}
+
+void Simulation::setSimState() {
+  /*std::cout << "trying to get dynamic objects\n";*/
+  std::vector<DynamicObject*> dyna_objs =
+      physics_interface_.getDynamicObjects();
+  /*std::cout << "checking if list empty\n";*/
+
+  if (dyna_objs.empty())
+    return;
+
+  /*std::string buffer;*/
+
+  {
+    std::lock_guard<std::mutex> lock(sim_state_.mutex);
+    for (DynamicObject* dyna_obj : dyna_objs) {
+      if (!dyna_obj) {
+        std::cerr << "[Simulation] null dynamic object detected in interface\n";
+      }
+      dyna_obj->getSimState().SerializeToString(&sim_state_.state);
+      break;
+    }
+  }
+
+  /*sim_state_.state = buffer;*/
+}
+
+const std::string Simulation::getSimState() {
+  {
+    std::unique_lock<std::mutex> lock(running_mtx_);
+    running_cv_.wait(lock, [this] { return is_running_.load(); });
+  }
+
+  std::lock_guard<std::mutex> lock(sim_state_.mutex);
+  std::string state = sim_state_.state;
+
+  /*volasim_msgs::Odometry odom;*/
+  /*odom.ParseFromArray(std::string(state).c_str(), state.length());*/
+  /*std::cout << odom.DebugString() << "\n";*/
+
+  return state;
 }

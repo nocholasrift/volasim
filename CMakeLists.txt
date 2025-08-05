@@ -10,20 +10,33 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 add_subdirectory(third_party/SDL EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/JoltPhysics/Build EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/pugixml EXCLUDE_FROM_ALL)
+add_subdirectory(third_party/cppzmq EXCLUDE_FROM_ALL)
+
+add_subdirectory(include/volasim/comms/msgs)
 
 find_package(OpenGL REQUIRED)
 find_package(glm REQUIRED)
 find_package(GLUT REQUIRED)
 find_package(Eigen3 REQUIRED system)
 
+# ROS
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  nav_msgs
+  std_msgs
+)
+
 include_directories(
   include/
+  ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
+  ${cppzmq_INCLUDE_DIRS}
 )
 
 add_executable(volasim 
   src/main.cpp
   src/glad/glad.c
+  src/comms/zmq_server.cpp
   src/simulation/simulation.cpp
   src/simulation/xml_parser.cpp
   src/simulation/display_object.cpp
@@ -42,4 +55,17 @@ target_link_libraries(volasim
   ${GLUT_LIBRARIES}
   ${EIGEN3_LIBRARIES}
   ${GLM_LIBRARIES}
+  cppzmq
+  myproto
 )
+
+add_executable(receive_data
+  src/receive_data.cpp
+)
+target_link_libraries(receive_data
+  PRIVATE 
+  ${catkin_LIBRARIES}
+  cppzmq
+  myproto
+)
+

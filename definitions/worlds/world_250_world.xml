@@ -35,7 +35,7 @@
        <geometry type="cube" size="1.0"/>
      </block:class>
 
-     <init_pose>0 0 5</init_pose>
+     <init_pose>-2.25 2.5 5</init_pose>
    </vehicle>
 
   <block:class name="cylinder_blue">

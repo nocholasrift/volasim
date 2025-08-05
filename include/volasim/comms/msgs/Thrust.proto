@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package volasim_msgs;
+
+message Thrust {
+  float f1 = 1;
+  float f2 = 2;
+  float f3 = 3;
+  float f4 = 4;
+}

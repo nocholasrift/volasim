@@ -289,7 +289,6 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
       glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
                             (void*)(3 * sizeof(float)));
 
-      std::cout << "indices size is: " << indices.size() << std::endl;
       settings.index_count = indices.size();
 
       break;
