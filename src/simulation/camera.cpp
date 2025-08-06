@@ -33,10 +33,10 @@ void Camera::processMouseMovement(float xoffset, float yoffset) {
   yaw_ += (xoffset * kMouseSense);
   pitch_ += (yoffset * kMouseSense);
 
-  if (pitch_ > M_PI / 2 - .01)
-    pitch_ = M_PI / 2 - .01;
-  if (pitch_ < -M_PI / 2 + .01)
-    pitch_ = -M_PI / 2 + .01;
+  if (pitch_ > M_PI / 2 - kPitchClipMargin)
+    pitch_ = M_PI / 2 - kPitchClipMargin;
+  if (pitch_ < -M_PI / 2 + kPitchClipMargin)
+    pitch_ = -M_PI / 2 + kPitchClipMargin;
 
   updateCameraVectors();
 }

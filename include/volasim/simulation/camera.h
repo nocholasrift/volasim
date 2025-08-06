@@ -42,17 +42,19 @@ class Camera {
   void updateCameraVectors();
 
  private:
-  glm::vec3 position_;
-  glm::vec3 direction_;
-  glm::vec3 up_;
-  glm::vec3 right_;
-  glm::vec3 world_up_;
+  static constexpr float kPitchClipMargin = 0.01f;
 
   static constexpr float kMinRadius = 0.1f;
   static constexpr float kMaxRadius = 10.f;
 
   static constexpr float kMouseSense = .005f;
   static constexpr float kMouseWheelSense = .1f;
+
+  glm::vec3 position_;
+  glm::vec3 direction_;
+  glm::vec3 up_;
+  glm::vec3 right_;
+  glm::vec3 world_up_;
 
   // camera options
   float movement_speed_;
