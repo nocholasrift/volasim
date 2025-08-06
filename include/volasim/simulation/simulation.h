@@ -1,23 +1,22 @@
 #ifndef SIMULATION_H
 #define SIMULATION_H
 
-#include <volasim/sensors/depth_sensor.h>
-#include <volasim/simulation/shader.h>
 #include <volasim/event/event_dispatcher.h>
+#include <volasim/sensors/depth_sensor.h>
 #include <volasim/simulation/camera.h>
 #include <volasim/simulation/display_object_container.h>
 #include <volasim/simulation/input_manager.h>
 #include <volasim/simulation/physics_interface.h>
+#include <volasim/simulation/shader.h>
 #include <volasim/types.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_opengl.h>
 
-
 #include <condition_variable>
-#include <thread>
 #include <string_view>
+#include <thread>
 
 static const std::string mesh_vertex_shader =
     "#version 330 core\n"
@@ -34,7 +33,6 @@ static const std::string mesh_fragment_shader =
     "void main(){\n"
     "FragColor = vec4(color, 1.0);\n"
     "}\n";
-
 
 class Simulation {
 
@@ -53,10 +51,7 @@ class Simulation {
   SDL_AppResult initSDL(void** appstate, int argc, char* argv[]);
   void quitSDL(void* appstate, SDL_AppResult result);
 
-
-  bool isRunning() { 
-    return is_running_.load(); 
-  }
+  bool isRunning() { return is_running_.load(); }
 
   void setSimState();
   void setInputs(const std::string& buffer);
@@ -67,6 +62,10 @@ class Simulation {
 
  private:
   Simulation(int win_width, int win_height, int fps);
+
+  static constexpr uint8_t kMouseRightClick = 1;
+  static constexpr uint8_t kMouseMiddleClick = 2;
+  static constexpr uint8_t kMouseLeftClick = 3;
 
   int window_width_;
   int window_height_;
