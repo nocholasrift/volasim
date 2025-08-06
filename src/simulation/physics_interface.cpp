@@ -102,8 +102,10 @@ void PhysicsInterface::update(double dt) {
       JPH::Quat jolt_r;
       body_interface.GetPositionAndRotation(binding.body_id, jolt_p, jolt_r);
 
-      /*std::cout << "setting rotation in interface as: " << jolt_r.GetX() << " " << jolt_r.GetY() << " " << jolt_r.GetZ() << " " << jolt_r.GetW() << std::endl;*/
-      /**/
+      // std::cout << "setting rotation in interface as: " << jolt_r.GetX() << " "
+      //           << jolt_r.GetY() << " " << jolt_r.GetZ() << " " << jolt_r.GetW()
+      //           << std::endl;
+
       glm::vec3 vel = binding.dynamic_obj->getVelocity();
       glm::vec3 rot = binding.dynamic_obj->getBodyRates();
       JPH::RVec3 jolt_v(vel[0], vel[1], vel[2]);
@@ -133,9 +135,8 @@ void PhysicsInterface::update(double dt) {
       glm::vec3 pos(jolt_p[0], jolt_p[1], jolt_p[2]);
       glm::quat rot(jolt_r.GetW(), jolt_r.GetX(), jolt_r.GetY(), jolt_r.GetZ());
 
-      /*std::cout << "setting rotation in interface as: " << rot[0] << " " << rot[1] << " " << rot[2] << " " << rot[3] << std::endl;*/
-      /**/
-      /*std::cout << "setting rotation in interface as: " << jolt_r.GetX() << " " << jolt_r.GetY() << " " << jolt_r.GetZ() << " " << jolt_r.GetW() << std::endl;*/
+      // std::cout << "position: " << jolt_p[0] << " " << jolt_p[1] << " "
+      //           << jolt_p[2] << "\n";
 
       binding.dynamic_obj->setTranslation(pos);
       binding.dynamic_obj->setRotation(rot);
@@ -240,7 +241,7 @@ void PhysicsInterface::handleEvent(Event* e) {
           double half_height = fabs(shape_meta.y_max - shape_meta.y_min) / 2.;
 
           shape_settings = JPH::BodyCreationSettings(
-              new JPH::BoxShape(JPH::Vec3(half_width, half_height, 1.0)),
+              new JPH::BoxShape(JPH::Vec3(half_width, half_height, .5)),
               JPH::RVec3(pos[0], pos[1], pos[2] - 0.5),
               JPH::Quat(ori[1], ori[2], ori[3], ori[0]),
               binding.getMotionType(), binding.getLayer());

@@ -20,17 +20,34 @@ find_package(GLUT REQUIRED)
 find_package(Eigen3 REQUIRED system)
 
 # ROS
-find_package(catkin REQUIRED COMPONENTS
+find_package(catkin COMPONENTS
   roscpp
   nav_msgs
   std_msgs
 )
 
+
+list(APPEND catkin_includes "")
+
+if(${catkin_FOUND})
+  list(APPEND catkin_includes ${catkin_INCLUDE_DIRS})
+
+  add_executable(receive_data
+    src/receive_data.cpp
+  )
+  target_link_libraries(receive_data
+    PRIVATE 
+    ${catkin_LIBRARIES}
+    cppzmq
+    myproto
+  )
+endif()
+
 include_directories(
   include/
-  ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
   ${cppzmq_INCLUDE_DIRS}
+  ${catkin_INCLUDES}
 )
 
 add_executable(volasim 
@@ -43,6 +60,7 @@ add_executable(volasim
   src/simulation/display_object_container.cpp
   src/simulation/shape_renderable.cpp
   src/simulation/physics_interface.cpp
+  src/simulation/camera.cpp
   src/vehicles/drone.cpp
   src/event/event_dispatcher.cpp
 )
@@ -59,13 +77,4 @@ target_link_libraries(volasim
   myproto
 )
 
-add_executable(receive_data
-  src/receive_data.cpp
-)
-target_link_libraries(receive_data
-  PRIVATE 
-  ${catkin_LIBRARIES}
-  cppzmq
-  myproto
-)
 

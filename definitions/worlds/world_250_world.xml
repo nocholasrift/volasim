@@ -32,7 +32,7 @@
 
      <block:class name="drone_shape">
        <color>#888888</color>
-       <geometry type="cube" size="1.0"/>
+       <geometry type="cube" size=".63"/>
      </block:class>
 
      <init_pose>-2.25 2.5 5</init_pose>

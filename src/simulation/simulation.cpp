@@ -38,9 +38,6 @@ Simulation::Simulation(int win_width, int win_height, int fps)
   double length = 0.315;
   double c_torque = 8.004e-4;
 
-  camera_ = Camera(glm::ivec2(win_width, win_height), glm::vec3(3., 3., 7.),
-                   glm::vec3(0, 0, 1), -147.0f, -41.0f);
-
   DepthSensorSettings props;
   props.width = 640;
   props.height = 480;
@@ -134,6 +131,21 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
   XMLParser parser("./definitions/worlds/world_250_world.xml");
   parser.loadWorldFromXML(world_);
 
+  DynamicObject* target = nullptr;
+  std::vector<DynamicObject*> dyna_objs =
+      physics_interface_.getDynamicObjects();
+
+  // default to using the first dynamic object in the scene if
+  // present. Otherwise the camera will focus on the world origin.
+  if (dyna_objs.size() > 0) {
+    camera_ = Camera(glm::ivec2(window_width_, window_height_), 0.f, M_PI / 4.,
+                     5.f, glm::vec3(0.f, 0.f, 1.f), dyna_objs[0]);
+  }
+
+  // camera_ = Camera(glm::ivec2(window_width_, window_height_),
+  //                  glm::vec3(0.f, 3.f, 4.f), glm::vec3(0.f, 0.f, 1.f),
+  //                  physics_interface_.getDynamicObjects()[0]);
+
   setSimState();
 
   {
@@ -158,6 +170,13 @@ SDL_AppResult Simulation::SDLEvent(void* appstate, SDL_Event* event) {
     case SDL_EVENT_MOUSE_WHEEL:
       camera_.processMouseScroll(event->wheel.y);
       break;
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+      if (event->button.button == kMouseRightClick)
+        camera_.enableOrbitAndPan();
+      break;
+    case SDL_EVENT_MOUSE_BUTTON_UP:
+      camera_.disableOrbitAndPan();
+      break;
     case SDL_EVENT_KEY_DOWN:
       if (event->key.key == SDLK_Q)
         return SDL_APP_SUCCESS;
@@ -177,7 +196,7 @@ SDL_AppResult Simulation::update(void* appstate) {
 
     glm::mat4 view_mat = camera_.getViewMatrix();
     glm::mat4 proj_mat = glm::perspective(
-        glm::radians(camera_.zoom_),                         // fov
+        glm::radians(camera_.getFov()),                      // fov
         static_cast<float>(window_width_) / window_height_,  // aspect ratio
         0.1f, 100.0f);                                       // near & far plane
 
