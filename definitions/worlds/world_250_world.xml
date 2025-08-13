@@ -2,6 +2,7 @@
   <simul_timestep>0</simul_timestep>
   <joystick_enabled>true</joystick_enabled>
   <collision_threshold>0.1</collision_threshold>
+
   <gui>
     <ortho>false</ortho>
     <show_forces>false</show_forces>
@@ -9,11 +10,13 @@
     <fov_deg>60</fov_deg>
     <refresh_fps>40</refresh_fps>
   </gui>
+
   <lights>
     <enable_shadows>true</enable_shadows>
     <light_azimuth_deg>60.0</light_azimuth_deg>
     <light_elevation_deg>75.0</light_elevation_deg>
   </lights>
+
 	<element class="ground_plane">
 		<color>#FFFFFF</color>
 		<cull_face>BACK</cull_face>
@@ -24,19 +27,19 @@
 		<z>0.0</z>
 	 </element>
 
-   <vehicle name="drone1" class="drone">
-     <inertia_matrix>0.0820 0. 0. 0. 0.0845 0. 0. 0. .1377</inertia_matrix>
-     <mass>4.34</mass>
-     <length>0.315</length>
-     <c_torque>8.008e-4</c_torque>
-
-     <block:class name="drone_shape">
-       <color>#888888</color>
-       <geometry type="cube" size=".63"/>
-     </block:class>
-
-     <init_pose>-2.25 2.5 5</init_pose>
-   </vehicle>
+   <!-- <vehicle name="drone1" class="drone"> -->
+   <!--   <inertia_matrix>0.0820 0. 0. 0. 0.0845 0. 0. 0. .1377</inertia_matrix> -->
+   <!--   <mass>4.34</mass> -->
+   <!--   <length>0.315</length> -->
+   <!--   <c_torque>8.008e-4</c_torque> -->
+   <!---->
+   <!--   <block:class name="drone_shape"> -->
+   <!--     <color>#888888</color> -->
+   <!--     <geometry type="cube" size=".63"/> -->
+   <!--   </block:class> -->
+   <!---->
+   <!--   <init_pose>-2.25 2.5 5</init_pose> -->
+   <!-- </vehicle> -->
 
   <block:class name="cylinder_blue">
     <color>#2761b8</color>

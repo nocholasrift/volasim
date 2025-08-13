@@ -129,6 +129,7 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
   shape_shader_ = Shader(mesh_vertex_shader, mesh_fragment_shader);
 
   XMLParser parser("./definitions/worlds/world_250_world.xml");
+  // XMLParser parser("./definitions/worlds/demo_world.xml");
   parser.loadWorldFromXML(world_);
 
   DynamicObject* target = nullptr;
@@ -140,6 +141,9 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
   if (dyna_objs.size() > 0) {
     camera_ = Camera(glm::ivec2(window_width_, window_height_), 0.f, M_PI / 4.,
                      5.f, glm::vec3(0.f, 0.f, 1.f), dyna_objs[0]);
+  } else {
+    camera_ = Camera(glm::ivec2(window_width_, window_height_), 0.f, M_PI / 4.,
+                     5.f, glm::vec3(0.f, 0.f, 1.f), nullptr);
   }
 
   // camera_ = Camera(glm::ivec2(window_width_, window_height_),
@@ -208,6 +212,9 @@ SDL_AppResult Simulation::update(void* appstate) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(shape_shader_.getID());
+
+    shape_shader_.setUniformVec3("lightColor", glm::vec3(.8f, .8f, .8f));
+    shape_shader_.setUniformVec3("lightPos", glm::vec3(0, 0, 5));
 
     world_->draw(view_mat, proj_mat, shape_shader_);
 

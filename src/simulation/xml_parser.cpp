@@ -186,7 +186,7 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
 
       for (int i = 0; i < 2; ++i) {
         float h = i * settings.height;
-        float nz = i - 1;
+        float nz = 2 * i - 1;
 
         vertices.push_back(0);
         vertices.push_back(0);
@@ -301,20 +301,29 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
       settings.z = std::stof(item.child_value("z"));
       settings.name = item.attribute("class").as_string();
 
-      float ground_verts[] = {//positions
-                              settings.x_max, settings.y_max, settings.z,
-                              settings.x_max, settings.y_min, settings.z,
-                              settings.x_min, settings.y_min, settings.z,
-                              settings.x_min, settings.y_max, settings.z};
+      float ground_verts[] = {
+          //positions
+          settings.x_max, settings.y_max, settings.z, 0, 0, 1,
+          settings.x_max, settings.y_min, settings.z, 0, 0, 1,
+          settings.x_min, settings.y_min, settings.z, 0, 0, 1,
+          settings.x_min, settings.y_max, settings.z, 0, 0, 1,
+      };
 
       unsigned int indices[] = {0, 1, 3, 1, 2, 3};
+
+      // float normals[] = {0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1};
 
       glBufferData(GL_ARRAY_BUFFER, sizeof(ground_verts), ground_verts,
                    GL_STATIC_DRAW);
 
       glEnableVertexAttribArray(0);
-      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float),
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
                             (void*)0);
+
+      // normals
+      glEnableVertexAttribArray(1);
+      glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
+                            (void*)(3 * sizeof(float)));
 
       glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
                    GL_STATIC_DRAW);
@@ -327,28 +336,78 @@ void XMLParser::generateShapeBuffers(ShapeMetadata& settings,
       float sz = std::stof(geometry_node.attribute("size").as_string());
       settings.size = sz;
 
-      float verts[] = {-sz / 2, -sz / 2, -sz / 2, -sz / 2, sz / 2,  -sz / 2,
-                       -sz / 2, sz / 2,  sz / 2,  -sz / 2, -sz / 2, sz / 2,
-                       sz / 2,  -sz / 2, sz / 2,  sz / 2,  sz / 2,  sz / 2,
-                       sz / 2,  sz / 2,  -sz / 2, sz / 2,  -sz / 2, -sz / 2};
-      unsigned int indices[] = {// left face
-                                0, 1, 2, 0, 2, 3,
-                                // back face
-                                0, 3, 7, 3, 4, 7,
-                                // right face
-                                4, 5, 7, 5, 6, 7,
-                                // front face
-                                1, 2, 6, 2, 5, 6,
-                                // top face
-                                2, 3, 4, 2, 4, 5,
-                                // bottom face
-                                0, 1, 6, 0, 6, 7};
+      // float verts[] = {0 - sz / 2, -sz / 2,    -sz / 2,  1 - sz / 2, sz / 2,
+      //                  -sz / 2,    2 - sz / 2, sz / 2,   sz / 2,     3 - sz / 2,
+      //                  -sz / 2,    sz / 2,     4 sz / 2, -sz / 2,    sz / 2,
+      //                  5 sz / 2,   sz / 2,     sz / 2,   6 sz / 2,   sz / 2,
+      //                  -sz / 2,    7 sz / 2,   -sz / 2,  -sz / 2};
+      //
+      // unsigned int indices[] = {// left face
+      //                           0, 1, 2, 0, 2, 3,
+      //                           // back face
+      //                           0, 3, 7, 3, 4, 7,
+      //                           // right face
+      //                           4, 5, 7, 5, 6, 7,
+      //                           // front face
+      //                           1, 2, 6, 2, 5, 6,
+      //                           // top face
+      //                           2, 3, 4, 2, 4, 5,
+      //                           // bottom face
+      //                           0, 1, 6, 0, 6, 7};
+
+      float verts[] = {
+          // left face
+          -sz / 2, -sz / 2, -sz / 2, -1, 0, 0, -sz / 2, sz / 2, -sz / 2, -1, 0,
+          0, -sz / 2, sz / 2, sz / 2, -1, 0, 0, -sz / 2, -sz / 2, -sz / 2, -1,
+          0, 0, -sz / 2, sz / 2, sz / 2, -1, 0, 0, -sz / 2, -sz / 2, sz / 2, -1,
+          0, 0,
+
+          // back face
+          -sz / 2, -sz / 2, -sz / 2, 0, -1, 0, -sz / 2, -sz / 2, sz / 2, 0, -1,
+          0, sz / 2, -sz / 2, -sz / 2, 0, -1, 0, -sz / 2, -sz / 2, sz / 2, 0,
+          -1, 0, sz / 2, -sz / 2, sz / 2, 0, -1, 0, sz / 2, -sz / 2, -sz / 2, 0,
+          -1, 0,
+
+          // right face
+          sz / 2, -sz / 2, sz / 2, 1, 0, 0, sz / 2, sz / 2, sz / 2, 1, 0, 0,
+          sz / 2, -sz / 2, -sz / 2, 1, 0, 0, sz / 2, sz / 2, sz / 2, 1, 0, 0,
+          sz / 2, sz / 2, -sz / 2, 1, 0, 0, sz / 2, -sz / 2, -sz / 2, 1, 0, 0,
+
+          // front face
+          -sz / 2, sz / 2, -sz / 2, 0, 1, 0, -sz / 2, sz / 2, sz / 2, 0, 1, 0,
+          sz / 2, sz / 2, -sz / 2, 0, 1, 0, -sz / 2, sz / 2, sz / 2, 0, 1, 0,
+          sz / 2, sz / 2, sz / 2, 0, 1, 0, sz / 2, sz / 2, -sz / 2, 0, 1, 0,
+
+          // top face
+          -sz / 2, sz / 2, sz / 2, 0, 0, 1, -sz / 2, -sz / 2, sz / 2, 0, 0, 1,
+          sz / 2, -sz / 2, sz / 2, 0, 0, 1, -sz / 2, sz / 2, sz / 2, 0, 0, 1,
+          sz / 2, -sz / 2, sz / 2, 0, 0, 1, sz / 2, sz / 2, sz / 2, 0, 0, 1,
+
+          // bottom face
+          -sz / 2, -sz / 2, -sz / 2, 0, 0, -1, -sz / 2, sz / 2, -sz / 2, 0, 0,
+          -1, sz / 2, sz / 2, -sz / 2, 0, 0, -1, -sz / 2, -sz / 2, -sz / 2, 0,
+          0, -1, sz / 2, sz / 2, -sz / 2, 0, 0, -1, sz / 2, -sz / 2, -sz / 2, 0,
+          0, -1
+
+      };
+
+      int indices[36];
+      for (int i = 0; i < 36; ++i)
+        indices[i] = i;
+
+      // float normals[] = {-1, 0, 0, -1, 0, 0, 0, -1, 0,  0, -1, 0,
+      //                    1,  0, 0, 1,  0, 0, 0, 1,  0,  0, 1,  0,
+      //                    0,  0, 1, 0,  0, 1, 0, 0,  -1, 0, 0,  -1};
 
       glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
 
       glEnableVertexAttribArray(0);
-      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float),
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
                             (void*)0);
+
+      glEnableVertexAttribArray(1);
+      glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
+                            (void*)(3 * sizeof(float)));
 
       glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
                    GL_STATIC_DRAW);

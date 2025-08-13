@@ -19,35 +19,13 @@ find_package(glm REQUIRED)
 find_package(GLUT REQUIRED)
 find_package(Eigen3 REQUIRED system)
 
-# ROS
-find_package(catkin COMPONENTS
-  roscpp
-  nav_msgs
-  std_msgs
-)
+add_subdirectory(volasim_node)
 
-
-list(APPEND catkin_includes "")
-
-if(${catkin_FOUND})
-  list(APPEND catkin_includes ${catkin_INCLUDE_DIRS})
-
-  add_executable(receive_data
-    src/receive_data.cpp
-  )
-  target_link_libraries(receive_data
-    PRIVATE 
-    ${catkin_LIBRARIES}
-    cppzmq
-    myproto
-  )
-endif()
 
 include_directories(
   include/
   ${EIGEN3_INCLUDE_DIRS}
   ${cppzmq_INCLUDE_DIRS}
-  ${catkin_INCLUDES}
 )
 
 add_executable(volasim 
