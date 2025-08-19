@@ -8,6 +8,7 @@
 #include <volasim/simulation/input_manager.h>
 #include <volasim/simulation/physics_interface.h>
 #include <volasim/simulation/shader.h>
+#include <volasim/simulation/xml_parser.h>
 #include <volasim/types.h>
 
 #include <SDL3/SDL.h>
@@ -45,7 +46,8 @@ static const std::string mesh_fragment_shader =
     "vec3 lightDir = normalize(lightPos - FragPos);\n"
     "float diff = max(dot(norm, lightDir), 0.0);\n"
     "vec3 diffuse = diff * lightColor;\n"
-    "vec3 result = diffuse * color;\n"
+    "float ambient = 0.1;\n"
+    "vec3 result = (diffuse + ambient) * color;\n"
     "FragColor = vec4(result, 1.0);\n"
     "}\n";
 
@@ -110,6 +112,7 @@ class Simulation {
   InputManager input_manager_;
 
   std::unique_ptr<GPUSensor> depth_sensor_;
+  // std::unique_ptr<XMLParser> xml_parser_;
 
   Shader shape_shader_;
 

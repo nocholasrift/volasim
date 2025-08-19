@@ -1,7 +1,6 @@
 #include <glad/glad.h>
 
 #include <volasim/simulation/simulation.h>
-#include <volasim/simulation/xml_parser.h>
 #include <volasim/vehicles/drone.h>
 
 #include <GL/glu.h>
@@ -22,21 +21,10 @@ Simulation::Simulation(int win_width, int win_height, int fps)
   // event_handler_ = EventDispatcher::getInstance();
   // physics_interface_ = PhysicsInterface::getInstance();
 
-  window_width_ = win_width;
-  window_height_ = win_height;
-
-  frames_per_sec_ = fps;
-
   event_handler_.addEventListener(&PhysicsInterface::getInstance(), "OBJ_ADD");
   event_handler_.addEventListener(&PhysicsInterface::getInstance(), "OBJ_RM");
 
   world_ = new DisplayObjectContainer("world");
-
-  Eigen::Matrix3d J;
-  J << 0.0820, 0., 0., 0., 0.0845, 0., 0., 0., .1377;
-  double mass = 4.34;
-  double length = 0.315;
-  double c_torque = 8.004e-4;
 
   DepthSensorSettings props;
   props.width = 640;
@@ -57,6 +45,11 @@ Simulation::Simulation(int win_width, int win_height, int fps)
 
   glm::vec3 translation = glm::vec3(cam_world_pos[3]);
   glm::mat3 rotation = glm::mat3(cam_world_pos);
+
+  // xml_parser_ =
+  //     std::make_unique<XMLParser>("./definitions/worlds/world_250_world.xml");
+
+  frames_per_sec_ = fps;
 
   // DisplayObject* depth_sensor = new DisplayObject("depth_sensor");
   // depth_sensor->setTranslation(translation);
@@ -81,10 +74,18 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
 
   glutInit(&argc, argv);
 
+  XMLParser xml_parser("./definitions/worlds/world_250_world.xml");
+  CameraSettings cam_settings = xml_parser.getCameraSettings();
+
+  window_width_ = cam_settings.window_sz[0];
+  window_height_ = cam_settings.window_sz[1];
+
   window_ = SDL_CreateWindow("Floating Sphere", window_width_, window_height_,
                              SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
-  SDL_SetWindowRelativeMouseMode(window_, true);
+  camera_ = Camera(cam_settings);
+
+  // SDL_SetWindowRelativeMouseMode(window_, true);
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
   gl_ctx_ = SDL_GL_CreateContext(window_);
@@ -128,27 +129,16 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
 
   shape_shader_ = Shader(mesh_vertex_shader, mesh_fragment_shader);
 
-  XMLParser parser("./definitions/worlds/world_250_world.xml");
   // XMLParser parser("./definitions/worlds/demo_world.xml");
-  parser.loadWorldFromXML(world_);
+  xml_parser.loadWorldFromXML(world_);
 
-  DynamicObject* target = nullptr;
   std::vector<DynamicObject*> dyna_objs =
       physics_interface_.getDynamicObjects();
 
-  // default to using the first dynamic object in the scene if
-  // present. Otherwise the camera will focus on the world origin.
-  if (dyna_objs.size() > 0) {
-    camera_ = Camera(glm::ivec2(window_width_, window_height_), 0.f, M_PI / 4.,
-                     5.f, glm::vec3(0.f, 0.f, 1.f), dyna_objs[0]);
-  } else {
-    camera_ = Camera(glm::ivec2(window_width_, window_height_), 0.f, M_PI / 4.,
-                     5.f, glm::vec3(0.f, 0.f, 1.f), nullptr);
-  }
-
-  // camera_ = Camera(glm::ivec2(window_width_, window_height_),
-  //                  glm::vec3(0.f, 3.f, 4.f), glm::vec3(0.f, 0.f, 1.f),
-  //                  physics_interface_.getDynamicObjects()[0]);
+  // default to first dynamic object registered as target
+  // if no dynamic object, default to origin for focus
+  if (dyna_objs.size() > 0)
+    camera_.setTarget(dyna_objs[0]);
 
   setSimState();
 

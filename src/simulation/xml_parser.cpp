@@ -16,10 +16,28 @@ XMLParser::XMLParser(const std::string& fname) {
   if (!result)
     throwError(fname, result);
 
-  pugi::xml_node stuff = doc_.child("volasim_world");
-
   type_map_.insert({"element", XMLTags::kElement});
   type_map_.insert({"block:class", XMLTags::kBlockDefinition});
+}
+
+CameraSettings XMLParser::getCameraSettings() {
+  CameraSettings ret;
+
+  pugi::xml_node curr_node = doc_.child("volasim_world");
+  pugi::xml_node camera_xml = curr_node.child("gui");
+
+  ret.yaw = std::stof(camera_xml.child_value("cam_yaw"));
+  ret.pitch = std::stof(camera_xml.child_value("cam_pitch"));
+  ret.radius = std::stof(camera_xml.child_value("cam_distance"));
+  ret.fov = std::stof(camera_xml.child_value("fov_deg"));
+
+  float width = std::stof(camera_xml.child_value("window_width"));
+  float height = std::stof(camera_xml.child_value("window_height"));
+  ret.window_sz = glm::ivec2(width, height);
+
+  ret.target = nullptr;
+
+  return ret;
 }
 
 void XMLParser::loadWorldFromXML(DisplayObjectContainer* world) {

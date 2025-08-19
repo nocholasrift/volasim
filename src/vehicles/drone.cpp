@@ -1,5 +1,5 @@
-#include <volasim/vehicles/drone.h>
 #include <volasim/comms/msgs/Thrust.pb.h>
+#include <volasim/vehicles/drone.h>
 
 #include <glm/ext/quaternion_common.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -77,7 +77,7 @@ void Drone::setInput(const Eigen::VectorXd& u) {
   u_ = u;
 }
 
-void Drone::setInput(const std::string& buffer){
+void Drone::setInput(const std::string& buffer) {
   volasim_msgs::Thrust msg;
 
   msg.ParseFromArray(buffer.data(), buffer.size());
@@ -140,6 +140,10 @@ volasim_msgs::Odometry Drone::getSimState() {
   odom_msg.mutable_orientation()->set_y(x_(5));
   odom_msg.mutable_orientation()->set_z(x_(6));
   odom_msg.mutable_orientation()->set_w(x_(3));
+
+  odom_msg.mutable_angvel()->set_x(x_(10));
+  odom_msg.mutable_angvel()->set_y(x_(11));
+  odom_msg.mutable_angvel()->set_z(x_(12));
 
   return odom_msg;
 }

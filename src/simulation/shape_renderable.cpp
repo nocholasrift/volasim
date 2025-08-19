@@ -2,9 +2,6 @@
 
 #include <volasim/simulation/shape_renderable.h>
 
-/*#include <GL/gl.h>*/
-/*#include <GL/glut.h>*/
-
 #include <array>
 #include <iostream>
 #include <stdexcept>

@@ -3,6 +3,7 @@
 
 #include <pugixml.hpp>
 
+#include <volasim/simulation/camera.h>
 #include <volasim/simulation/display_object_container.h>
 #include <volasim/simulation/shape_renderable.h>
 
@@ -21,9 +22,12 @@ enum class XMLTags {
 
 class XMLParser {
  public:
+  XMLParser() = delete;
   XMLParser(const std::string& fname);
 
   void loadWorldFromXML(DisplayObjectContainer* world);
+
+  CameraSettings getCameraSettings();
 
  private:
   void throwError(std::string_view fname, const pugi::xml_parse_result& result);
