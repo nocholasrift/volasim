@@ -85,8 +85,9 @@ PhysicsInterface::~PhysicsInterface() {
 }
 
 void PhysicsInterface::update(double dt) {
-  static int count = 0;
   JPH::BodyInterface& body_interface = physics_system_->GetBodyInterface();
+
+  // std::cout << "applying update at " << dt << " seconds\n";
 
   // 1. Apply movement to non-static objects
   for (const auto& [disp_obj, binding] : disp_to_dyna_) {
@@ -112,6 +113,9 @@ void PhysicsInterface::update(double dt) {
       JPH::RVec3 jolt_w(rot[0], rot[1], rot[2]);
       body_interface.SetLinearAndAngularVelocity(binding.body_id, jolt_v,
                                                  jolt_w);
+
+      if (!contact_listener_.is_colliding_)
+        std::cout << "velocity is: " << vel[2] << std::endl;
     }
   }
 
@@ -141,11 +145,11 @@ void PhysicsInterface::update(double dt) {
       binding.dynamic_obj->setTranslation(pos);
       binding.dynamic_obj->setRotation(rot);
 
-      glm::vec3 vel(jolt_v[0], jolt_v[1], jolt_v[2]);
-      glm::vec3 rpy(jolt_w[0], jolt_w[1], jolt_w[2]);
+      // glm::vec3 vel(jolt_v[0], jolt_v[1], jolt_v[2]);
+      // glm::vec3 rpy(jolt_w[0], jolt_w[1], jolt_w[2]);
 
-      binding.dynamic_obj->setVelocity(vel);
-      binding.dynamic_obj->setAngularVelocity(rpy);
+      // binding.dynamic_obj->setVelocity(vel);
+      // binding.dynamic_obj->setAngularVelocity(rpy);
 
       disp_obj->setTranslation(pos);
       disp_obj->setRotation(rot);

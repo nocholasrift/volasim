@@ -6,6 +6,7 @@
 #include <GL/glu.h>
 #include <GL/glut.h>  // for glutSolidSphere
 #include <math.h>
+#include <chrono>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -14,7 +15,7 @@
 // EventDispatcher& event_handler_ = EventDispatcher::getInstance();
 // PhysicsInterface& physics_interface_ = PhysicsInterface::getInstance();
 
-Simulation::Simulation(int win_width, int win_height, int fps)
+Simulation::Simulation()
     : event_handler_(EventDispatcher::getInstance()),
       physics_interface_(PhysicsInterface::getInstance()) {
 
@@ -49,8 +50,6 @@ Simulation::Simulation(int win_width, int win_height, int fps)
   // xml_parser_ =
   //     std::make_unique<XMLParser>("./definitions/worlds/world_250_world.xml");
 
-  frames_per_sec_ = fps;
-
   // DisplayObject* depth_sensor = new DisplayObject("depth_sensor");
   // depth_sensor->setTranslation(translation);
   // depth_sensor->setRotation(glm::eulerAngles(glm::quat_cast(rotation)));
@@ -79,6 +78,7 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
 
   window_width_ = cam_settings.window_sz[0];
   window_height_ = cam_settings.window_sz[1];
+  frames_per_sec_ = cam_settings.fps;
 
   window_ = SDL_CreateWindow("Floating Sphere", window_width_, window_height_,
                              SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
@@ -123,7 +123,7 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
 
   time_ = 0.;
   frame_start_ = -1000000;
-  last_step_ = -1;
+  last_step_ = 0;
 
   ms_per_frame_ = 1000 / frames_per_sec_;
 
@@ -182,7 +182,7 @@ SDL_AppResult Simulation::SDLEvent(void* appstate, SDL_Event* event) {
 }
 
 SDL_AppResult Simulation::update(void* appstate) {
-  static int count = 0;
+  static std::chrono::system_clock::time_point last_time;
 
   Uint64 duration = SDL_GetTicks() - frame_start_;
   if (duration > ms_per_frame_) {
@@ -213,7 +213,9 @@ SDL_AppResult Simulation::update(void* appstate) {
     frame_start_ = SDL_GetTicks();
   }
 
-  if (last_step_ < 0) {
+  if (last_step_ == 0) {
+    last_time = std::chrono::high_resolution_clock::now();
+    precise_time_ = std::chrono::high_resolution_clock::now();
     last_step_ = SDL_GetTicks();
     return SDL_APP_CONTINUE;
   }
@@ -221,12 +223,40 @@ SDL_AppResult Simulation::update(void* appstate) {
   // DynamicDisplayWrapper<13, 4>* drone =
   //   (DynamicDisplayWrapper<13, 4>*) world_->getChild("drone");
 
-  double dt = (SDL_GetTicks() - last_step_) / 1000.;
-  Eigen::Vector4d u = Eigen::Vector4d::Zero();
+  auto t_elapsed = std::chrono::high_resolution_clock::now() - precise_time_;
 
-  physics_interface_.update(dt);
+  // std::cout
+  //     << std::chrono::duration_cast<std::chrono::nanoseconds>(t_elapsed).count()
+  //     << std::endl;
+  auto one_s_elapsed = std::chrono::high_resolution_clock::now() - last_time;
+  double os_dt =
+      std::chrono::duration_cast<std::chrono::milliseconds>(one_s_elapsed)
+          .count();
 
-  setSimState();
+  // std::cout << os_dt << "\n";
+
+  // if (os_dt > 1e3) {
+  //   std::vector<DynamicObject*> dyna_objs =
+  //       physics_interface_.getDynamicObjects();
+  //
+  //   std::cout << "drone vel: " << dyna_objs[0]->getVelocity()[2] << "\n";
+  //   last_time = std::chrono::high_resolution_clock::now();
+  // }
+
+  // double dt = (SDL_GetTicks() - last_step_) / 1000.;
+  double dt =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(t_elapsed).count() /
+      1e9;
+
+  if (dt > 5e-3) {
+    // std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(t_elapsed)
+    //                  .count()
+    //           << "\n";
+    // std::cout << "dt is: " << dt << std::endl;
+    physics_interface_.update(dt);
+    setSimState();
+    precise_time_ = std::chrono::high_resolution_clock::now();
+  }
 
   last_step_ = SDL_GetTicks();
 

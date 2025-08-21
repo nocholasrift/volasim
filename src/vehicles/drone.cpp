@@ -45,7 +45,9 @@ Drone::Drone(const Eigen::Matrix3d& J_mat, double torque_const,
 Drone::~Drone() {}
 
 void Drone::update(double dt) {
+  // std::cout << "velocity before step: " << x_.segment(7, 3).transpose() << "\n";
   x_ = solver_->step(x_, u_, dt);
+  // std::cout << "velocity after step: " << x_.segment(7, 3).transpose() << "\n";
 }
 
 void Drone::setTranslation(const glm::vec3& tran) {

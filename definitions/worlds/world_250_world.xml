@@ -4,6 +4,7 @@
   <collision_threshold>0.1</collision_threshold>
 
   <gui>
+    <fps>60</fps>
     <ortho>false</ortho>
     <cam_yaw>0</cam_yaw>
     <cam_pitch>0.7854</cam_pitch>
@@ -40,7 +41,7 @@
        <geometry type="cube" size=".63"/>
      </block:class>
 
-     <init_pose>-2.25 2.5 5</init_pose>
+     <init_pose>-2.25 2.5 100</init_pose>
    </vehicle>
 
   <block:class name="cylinder_blue">

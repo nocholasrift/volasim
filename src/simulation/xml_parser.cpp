@@ -30,6 +30,7 @@ CameraSettings XMLParser::getCameraSettings() {
   ret.pitch = std::stof(camera_xml.child_value("cam_pitch"));
   ret.radius = std::stof(camera_xml.child_value("cam_distance"));
   ret.fov = std::stof(camera_xml.child_value("fov_deg"));
+  ret.fps = std::stof(camera_xml.child_value("fps"));
 
   float width = std::stof(camera_xml.child_value("window_width"));
   float height = std::stof(camera_xml.child_value("window_height"));

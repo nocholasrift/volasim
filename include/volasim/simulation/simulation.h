@@ -15,6 +15,7 @@
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_opengl.h>
 
+#include <chrono>
 #include <condition_variable>
 #include <string_view>
 #include <thread>
@@ -55,8 +56,8 @@ class Simulation {
 
  public:
   // singleton patternsimulation.h
-  static Simulation& getInstance(int win_width, int win_height, int fps) {
-    static Simulation instance(win_width, win_height, fps);
+  static Simulation& getInstance() {
+    static Simulation instance;
     return instance;
   }
 
@@ -78,7 +79,7 @@ class Simulation {
   PhysicsInterface& getPhysicsInterface() { return physics_interface_; }
 
  private:
-  Simulation(int win_width, int win_height, int fps);
+  Simulation();
 
   static constexpr uint8_t kMouseRightClick = 1;
   static constexpr uint8_t kMouseMiddleClick = 2;
@@ -97,6 +98,8 @@ class Simulation {
   Uint64 ms_per_frame_;
   Uint64 frame_start_;
   Uint64 last_step_;
+
+  std::chrono::system_clock::time_point precise_time_;
 
   SDL_Window* window_;
   SDL_GLContext gl_ctx_;

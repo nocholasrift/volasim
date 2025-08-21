@@ -15,6 +15,8 @@ struct CameraSettings {
   float radius = 1.f;
   float fov = 60.f;
 
+  float fps = 60.f;
+
   glm::ivec2 window_sz = glm::ivec2(640, 480);
 
   DynamicObject* target = nullptr;
