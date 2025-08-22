@@ -4,7 +4,7 @@
   <collision_threshold>0.1</collision_threshold>
 
   <gui>
-    <fps>60</fps>
+    <fps>120</fps>
     <ortho>false</ortho>
     <cam_yaw>0</cam_yaw>
     <cam_pitch>0.7854</cam_pitch>
@@ -34,14 +34,14 @@
      <inertia_matrix>0.0820 0. 0. 0. 0.0845 0. 0. 0. .1377</inertia_matrix>
      <mass>4.34</mass>
      <length>0.315</length>
-     <c_torque>8.008e-4</c_torque>
+     <c_torque>8.004e-4</c_torque>
 
      <block:class name="drone_shape">
        <color>#888888</color>
        <geometry type="cube" size=".63"/>
      </block:class>
 
-     <init_pose>-2.25 2.5 100</init_pose>
+     <init_pose>-2.25 2.5 0.5</init_pose>
    </vehicle>
 
   <block:class name="cylinder_blue">

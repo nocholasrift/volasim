@@ -67,7 +67,7 @@ class Camera {
   static constexpr float kMaxRadius = 100.f;
 
   static constexpr float kMouseSense = .005f;
-  static constexpr float kMouseWheelSense = .1f;
+  static constexpr float kMouseWheelSense = .5f;
 
   glm::vec3 position_;
   glm::vec3 direction_;

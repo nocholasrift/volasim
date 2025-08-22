@@ -143,6 +143,10 @@ volasim_msgs::Odometry Drone::getSimState() {
   odom_msg.mutable_orientation()->set_z(x_(6));
   odom_msg.mutable_orientation()->set_w(x_(3));
 
+  odom_msg.mutable_linvel()->set_x(x_(7));
+  odom_msg.mutable_linvel()->set_y(x_(8));
+  odom_msg.mutable_linvel()->set_z(x_(9));
+
   odom_msg.mutable_angvel()->set_x(x_(10));
   odom_msg.mutable_angvel()->set_y(x_(11));
   odom_msg.mutable_angvel()->set_z(x_(12));

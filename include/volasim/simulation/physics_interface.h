@@ -115,11 +115,11 @@ class BPLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface {
 
 #if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
   virtual const char* GetBroadPhaseLayerName(
-      BroadPhaseLayer inLayer) const override {
-    switch ((BroadPhaseLayer::Type)inLayer) {
-      case (BroadPhaseLayer::Type)BroadPhaseLayers::NON_MOVING:
+      JPH::BroadPhaseLayer inLayer) const override {
+    switch ((JPH::BroadPhaseLayer::Type)inLayer) {
+      case (JPH::BroadPhaseLayer::Type)BroadPhaseLayers::NON_MOVING:
         return "NON_MOVING";
-      case (BroadPhaseLayer::Type)BroadPhaseLayers::MOVING:
+      case (JPH::BroadPhaseLayer::Type)BroadPhaseLayers::MOVING:
         return "MOVING";
       default:
         JPH_ASSERT(false);
@@ -234,11 +234,11 @@ class PhysicsInterface : public EventListener {
   void update(double dt);
   void preRegister(DisplayObject* display_obj, DynamicObject* dynamic_obj);
 
-  std::vector<DynamicObject*> getDynamicObjects(){
+  std::vector<DynamicObject*> getDynamicObjects() {
     std::vector<DynamicObject*> dyna_objs;
 
-    for(auto &[disp_obj, binding] : disp_to_dyna_){
-      if (binding.isDynamic()){
+    for (auto& [disp_obj, binding] : disp_to_dyna_) {
+      if (binding.isDynamic()) {
         dyna_objs.push_back(binding.dynamic_obj);
       }
     }

@@ -24,8 +24,8 @@ void LeeController::loadParams(
   J_(2, 2) = params["j2"];
 }
 
-void LeeController::computeControls(const state_t& state,
-                                    const state_t& desired_state) {
+Eigen::Vector4d LeeController::computeControls(const state_t& state,
+                                               const state_t& desired_state) {
 
   Eigen::Vector3d ep = state.pos - desired_state.pos;
   Eigen::Vector3d ev = state.vel - desired_state.vel;
@@ -37,12 +37,12 @@ void LeeController::computeControls(const state_t& state,
 
   double pid_term_norm = pid_term.norm();
 
-  if (pid_term_norm != 0) {
+  if (pid_term_norm == 0) {
     std::cerr << "Z_DW NORM WAS 0!!!" << std::endl;
     exit(-1);
   }
 
-  // Desired rotation matrix calculation
+  // z_dw stores the desired thrust direction
   Eigen::Vector3d z_dw = pid_term / pid_term_norm;
 
   Eigen::Vector3d yaw_vec(cos(desired_state.yaw), sin(desired_state.yaw), 0);
@@ -66,6 +66,15 @@ void LeeController::computeControls(const state_t& state,
 
   Eigen::Vector3d torque =
       -kR_ * eR - kw_ * ew + state.w.cross(J_ * state.w) - J_ * diff_dyna;
+
+  // std::cout << "kr * er - kw * ew: " << (-kR_ * eR - kw_ * ew).transpose()
+  //           << "\n";
+
+  Eigen::Vector4d cmd;
+  cmd[0] = fz;
+  cmd.tail(3) = torque;
+
+  return cmd;
 }
 
 }  // namespace vola

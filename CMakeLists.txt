@@ -55,4 +55,3 @@ target_link_libraries(volasim
   myproto
 )
 
-

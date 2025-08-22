@@ -20,7 +20,8 @@ class LeeController {
 
   void loadParams(std::unordered_map<std::string_view, double>& params);
 
-  void computeControls(const state_t& state, const state_t& desired_state);
+  Eigen::Vector4d computeControls(const state_t& state,
+                                  const state_t& desired_state);
 
  private:
   state_t state_;
