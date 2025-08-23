@@ -16,6 +16,20 @@ message Odometry {
     float w = 4;
   }
 
+  message LinVel {
+    float x = 1;
+    float y = 2;
+    float z = 3;
+  }
+
+  message AngVel {
+    float x = 1;
+    float y = 2;
+    float z = 3;
+  }
+
   Position position = 1;
   Orientation orientation = 2;
+  LinVel linvel = 3;
+  AngVel angvel = 4;
 }

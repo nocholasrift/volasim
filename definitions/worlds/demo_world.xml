@@ -21,21 +21,35 @@
 	<element class="ground_plane">
 		<color>#FFFFFF</color>
 		<cull_face>BACK</cull_face>
-		<x_min>-5</x_min>
-		<y_min>-5</y_min>
-		<x_max>5</x_max>
-		<y_max>5</y_max>
+		<x_min>-20</x_min>
+		<y_min>-20</y_min>
+		<x_max>20</x_max>
+		<y_max>20</y_max>
 		<z>0.0</z>
 	</element>
 
-  <block:class name="cylinder_blue">
-    <color>#2761b8</color>
-    <geometry type="cylinder" radius="0.075" length="1"/>
-  </block:class>
+   <!-- <vehicle name="drone1" class="drone"> -->
+   <!--   <inertia_matrix>0.0820 0. 0. 0. 0.0845 0. 0. 0. .1377</inertia_matrix> -->
+   <!--   <mass>4.34</mass> -->
+   <!--   <length>0.315</length> -->
+   <!--   <c_torque>8.008e-4</c_torque> -->
+   <!---->
+   <!--   <block:class name="drone_shape"> -->
+   <!--     <color>#888888</color> -->
+   <!--     <geometry type="cube" size=".63"/> -->
+   <!--   </block:class> -->
+   <!---->
+   <!--   <init_pose>-2.25 2.5 5</init_pose> -->
+   <!-- </vehicle> -->
 
-  <block class="cylinder_blue">
-    <init_pose>-0.075 0.075 0.0</init_pose>
-  </block>
+  <!-- <block:class name="cylinder_blue"> -->
+  <!--   <color>#2761b8</color> -->
+  <!--   <geometry type="cylinder" radius="0.075" length="1"/> -->
+  <!-- </block:class> -->
+  <!---->
+  <!-- <block class="cylinder_blue"> -->
+  <!--   <init_pose>-0.075 0.075 0.0</init_pose> -->
+  <!-- </block> -->
 
 	<!-- =============================
 		   Vehicle classes definition

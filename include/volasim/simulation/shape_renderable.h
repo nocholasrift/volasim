@@ -10,8 +10,6 @@
 #include <string>
 #include <string_view>
 
-enum class ShapeType { kUndefined = 0, kSphere, kCube, kCylinder, kPlane };
-
 struct ShapeMetadata {
   ShapeType type = ShapeType::kUndefined;
 
@@ -50,7 +48,7 @@ class ShapeRenderable : public Renderable {
 
   void draw(Shader& shader) override;
 
-  ShapeType getType() const { return meta_.type; }
+  virtual ShapeType getType() const override { return meta_.type; }
   ShapeMetadata getShapeMeta() const { return meta_; }
 
  private:

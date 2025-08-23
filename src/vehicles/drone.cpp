@@ -1,5 +1,5 @@
-#include <volasim/vehicles/drone.h>
 #include <volasim/comms/msgs/Thrust.pb.h>
+#include <volasim/vehicles/drone.h>
 
 #include <glm/ext/quaternion_common.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -46,6 +46,20 @@ Drone::~Drone() {}
 
 void Drone::update(double dt) {
   x_ = solver_->step(x_, u_, dt);
+
+  // Re-normalize quaternion (w, x, y, z) to avoid drift
+  glm::quat q(x_[3], x_[4], x_[5], x_[6]);
+  q = glm::normalize(q);
+
+  // just in case any nans pop up
+  if (glm::any(glm::isnan(glm::vec4(q.x, q.y, q.z, q.w)))) {
+    q = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+  }
+
+  x_(3) = q.w;
+  x_(4) = q.x;
+  x_(5) = q.y;
+  x_(6) = q.z;
 }
 
 void Drone::setTranslation(const glm::vec3& tran) {
@@ -55,10 +69,10 @@ void Drone::setTranslation(const glm::vec3& tran) {
 }
 
 void Drone::setRotation(const glm::quat& rot) {
-  x_[3] = rot[3];
-  x_[4] = rot[0];
-  x_[5] = rot[1];
-  x_[6] = rot[2];
+  x_(3) = rot[3];
+  x_(4) = rot[0];
+  x_(5) = rot[1];
+  x_(6) = rot[2];
 }
 
 void Drone::setVelocity(const glm::vec3& vel) {
@@ -77,7 +91,7 @@ void Drone::setInput(const Eigen::VectorXd& u) {
   u_ = u;
 }
 
-void Drone::setInput(const std::string& buffer){
+void Drone::setInput(const std::string& buffer) {
   volasim_msgs::Thrust msg;
 
   msg.ParseFromArray(buffer.data(), buffer.size());
@@ -140,6 +154,14 @@ volasim_msgs::Odometry Drone::getSimState() {
   odom_msg.mutable_orientation()->set_y(x_(5));
   odom_msg.mutable_orientation()->set_z(x_(6));
   odom_msg.mutable_orientation()->set_w(x_(3));
+
+  odom_msg.mutable_linvel()->set_x(x_(7));
+  odom_msg.mutable_linvel()->set_y(x_(8));
+  odom_msg.mutable_linvel()->set_z(x_(9));
+
+  odom_msg.mutable_angvel()->set_x(x_(10));
+  odom_msg.mutable_angvel()->set_y(x_(11));
+  odom_msg.mutable_angvel()->set_z(x_(12));
 
   return odom_msg;
 }

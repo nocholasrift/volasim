@@ -8,12 +8,14 @@
 #include <volasim/simulation/input_manager.h>
 #include <volasim/simulation/physics_interface.h>
 #include <volasim/simulation/shader.h>
+#include <volasim/simulation/xml_parser.h>
 #include <volasim/types.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_opengl.h>
 
+#include <chrono>
 #include <condition_variable>
 #include <string_view>
 #include <thread>
@@ -21,25 +23,41 @@
 static const std::string mesh_vertex_shader =
     "#version 330 core\n"
     "layout (location = 0) in vec3 aPos;\n"
+    "layout (location = 1) in vec3 aNormal;\n"
+    "uniform mat4 model;\n"
     "uniform mat4 mvp;\n"
+    "out vec3 Normal;\n"
+    "out vec3 FragPos;\n"
     "void main() {\n"
     "gl_Position = mvp * vec4(aPos, 1.0f);\n"
+    "FragPos = vec3(model * vec4(aPos, 1.0f));\n"
+    "Normal = aNormal;\n"
     "}\n";
 
 static const std::string mesh_fragment_shader =
     "#version 330 core\n"
+    "in vec3 Normal;\n"
+    "in vec3 FragPos;\n"
+    "uniform vec3 lightColor;\n"
+    "uniform vec3 lightPos;\n"
     "uniform vec3 color;\n"
     "out vec4 FragColor;\n"
     "void main(){\n"
-    "FragColor = vec4(color, 1.0);\n"
+    "vec3 norm = Normal;\n"
+    "vec3 lightDir = normalize(lightPos - FragPos);\n"
+    "float diff = max(dot(norm, lightDir), 0.0);\n"
+    "vec3 diffuse = diff * lightColor;\n"
+    "float ambient = 0.1;\n"
+    "vec3 result = (diffuse + ambient) * color;\n"
+    "FragColor = vec4(result, 1.0);\n"
     "}\n";
 
 class Simulation {
 
  public:
   // singleton patternsimulation.h
-  static Simulation& getInstance(int win_width, int win_height, int fps) {
-    static Simulation instance(win_width, win_height, fps);
+  static Simulation& getInstance() {
+    static Simulation instance;
     return instance;
   }
 
@@ -61,7 +79,7 @@ class Simulation {
   PhysicsInterface& getPhysicsInterface() { return physics_interface_; }
 
  private:
-  Simulation(int win_width, int win_height, int fps);
+  Simulation();
 
   static constexpr uint8_t kMouseRightClick = 1;
   static constexpr uint8_t kMouseMiddleClick = 2;
@@ -81,6 +99,8 @@ class Simulation {
   Uint64 frame_start_;
   Uint64 last_step_;
 
+  std::chrono::system_clock::time_point precise_time_;
+
   SDL_Window* window_;
   SDL_GLContext gl_ctx_;
 
@@ -95,6 +115,7 @@ class Simulation {
   InputManager input_manager_;
 
   std::unique_ptr<GPUSensor> depth_sensor_;
+  // std::unique_ptr<XMLParser> xml_parser_;
 
   Shader shape_shader_;
 

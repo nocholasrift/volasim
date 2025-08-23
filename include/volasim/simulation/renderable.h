@@ -3,10 +3,13 @@
 
 #include <volasim/simulation/shader.h>
 
+enum class ShapeType { kUndefined = 0, kSphere, kCube, kCylinder, kPlane };
+
 class Renderable {
  public:
   virtual ~Renderable() = default;
   virtual void draw(Shader& shader) = 0;
+  virtual ShapeType getType() const = 0;
 
  private:
 };

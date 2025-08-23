@@ -20,15 +20,11 @@
 #include <math.h>
 #include <chrono>
 
-#define WINDOW_WIDTH 1280
-#define WINDOW_HEIGHT 960
-#define FPS 120
-
 // possibly add mutex to a SimState struct if needed in the future
 // removes the global variable here...
 std::thread t1;
 
-Simulation& sim = Simulation::getInstance(WINDOW_WIDTH, WINDOW_HEIGHT, FPS);
+Simulation& sim = Simulation::getInstance();
 ZMQServer& server = ZMQServer::getInstance();
 
 /* This function runs once at startup. */

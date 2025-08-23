@@ -2,9 +2,6 @@
 
 #include <volasim/simulation/shape_renderable.h>
 
-/*#include <GL/gl.h>*/
-/*#include <GL/glut.h>*/
-
 #include <array>
 #include <iostream>
 #include <stdexcept>
@@ -15,12 +12,10 @@ ShapeRenderable::~ShapeRenderable() {}
 
 void ShapeRenderable::draw(Shader& shader) {
 
-  // std::cout << "indices in draw: " << meta_.index_count << std::endl;
   shader.setUniformVec3("color", hexToRGB(meta_.color));
   glBindVertexArray(meta_.vao);
   glDrawElements(GL_TRIANGLES, meta_.index_count, GL_UNSIGNED_INT, (void*)0);
   glBindVertexArray(0);
-  /*glDrawArrays(GL_TRIANGLE_FAN, 0, 4);*/
 }
 
 glm::vec3 ShapeRenderable::hexToRGB(std::string_view hex_str) {

@@ -85,8 +85,9 @@ PhysicsInterface::~PhysicsInterface() {
 }
 
 void PhysicsInterface::update(double dt) {
-  static int count = 0;
   JPH::BodyInterface& body_interface = physics_system_->GetBodyInterface();
+
+  // std::cout << "applying update at " << dt << " seconds\n";
 
   // 1. Apply movement to non-static objects
   for (const auto& [disp_obj, binding] : disp_to_dyna_) {
