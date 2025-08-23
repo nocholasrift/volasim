@@ -45,9 +45,21 @@ Drone::Drone(const Eigen::Matrix3d& J_mat, double torque_const,
 Drone::~Drone() {}
 
 void Drone::update(double dt) {
-  // std::cout << "velocity before step: " << x_.segment(7, 3).transpose() << "\n";
   x_ = solver_->step(x_, u_, dt);
-  // std::cout << "velocity after step: " << x_.segment(7, 3).transpose() << "\n";
+
+  // Re-normalize quaternion (w, x, y, z) to avoid drift
+  glm::quat q(x_[3], x_[4], x_[5], x_[6]);
+  q = glm::normalize(q);
+
+  // just in case any nans pop up
+  if (glm::any(glm::isnan(glm::vec4(q.x, q.y, q.z, q.w)))) {
+    q = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+  }
+
+  x_(3) = q.w;
+  x_(4) = q.x;
+  x_(5) = q.y;
+  x_(6) = q.z;
 }
 
 void Drone::setTranslation(const glm::vec3& tran) {
@@ -57,10 +69,10 @@ void Drone::setTranslation(const glm::vec3& tran) {
 }
 
 void Drone::setRotation(const glm::quat& rot) {
-  x_[3] = rot[3];
-  x_[4] = rot[0];
-  x_[5] = rot[1];
-  x_[6] = rot[2];
+  x_(3) = rot[3];
+  x_(4) = rot[0];
+  x_(5) = rot[1];
+  x_(6) = rot[2];
 }
 
 void Drone::setVelocity(const glm::vec3& vel) {

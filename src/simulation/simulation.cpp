@@ -12,15 +12,9 @@
 
 #include <stdexcept>
 
-// EventDispatcher& event_handler_ = EventDispatcher::getInstance();
-// PhysicsInterface& physics_interface_ = PhysicsInterface::getInstance();
-
 Simulation::Simulation()
     : event_handler_(EventDispatcher::getInstance()),
       physics_interface_(PhysicsInterface::getInstance()) {
-
-  // event_handler_ = EventDispatcher::getInstance();
-  // physics_interface_ = PhysicsInterface::getInstance();
 
   event_handler_.addEventListener(&PhysicsInterface::getInstance(), "OBJ_ADD");
   event_handler_.addEventListener(&PhysicsInterface::getInstance(), "OBJ_RM");
@@ -46,9 +40,6 @@ Simulation::Simulation()
 
   glm::vec3 translation = glm::vec3(cam_world_pos[3]);
   glm::mat3 rotation = glm::mat3(cam_world_pos);
-
-  // xml_parser_ =
-  //     std::make_unique<XMLParser>("./definitions/worlds/world_250_world.xml");
 
   // DisplayObject* depth_sensor = new DisplayObject("depth_sensor");
   // depth_sensor->setTranslation(translation);
@@ -220,39 +211,12 @@ SDL_AppResult Simulation::update(void* appstate) {
     return SDL_APP_CONTINUE;
   }
 
-  // DynamicDisplayWrapper<13, 4>* drone =
-  //   (DynamicDisplayWrapper<13, 4>*) world_->getChild("drone");
-
   auto t_elapsed = std::chrono::high_resolution_clock::now() - precise_time_;
-
-  // std::cout
-  //     << std::chrono::duration_cast<std::chrono::nanoseconds>(t_elapsed).count()
-  //     << std::endl;
-  auto one_s_elapsed = std::chrono::high_resolution_clock::now() - last_time;
-  double os_dt =
-      std::chrono::duration_cast<std::chrono::milliseconds>(one_s_elapsed)
-          .count();
-
-  // std::cout << os_dt << "\n";
-
-  // if (os_dt > 1e3) {
-  //   std::vector<DynamicObject*> dyna_objs =
-  //       physics_interface_.getDynamicObjects();
-  //
-  //   std::cout << "drone vel: " << dyna_objs[0]->getVelocity()[2] << "\n";
-  //   last_time = std::chrono::high_resolution_clock::now();
-  // }
-
-  // double dt = (SDL_GetTicks() - last_step_) / 1000.;
   double dt =
       std::chrono::duration_cast<std::chrono::nanoseconds>(t_elapsed).count() /
       1e9;
 
   if (dt > 5e-3) {
-    // std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(t_elapsed)
-    //                  .count()
-    //           << "\n";
-    // std::cout << "dt is: " << dt << std::endl;
     physics_interface_.update(dt);
     setSimState();
     precise_time_ = std::chrono::high_resolution_clock::now();
@@ -327,10 +291,6 @@ const std::string Simulation::getSimState() {
 
   std::lock_guard<std::mutex> lock(sim_state_.mutex);
   std::string state = sim_state_.state;
-
-  /*volasim_msgs::Odometry odom;*/
-  /*odom.ParseFromArray(std::string(state).c_str(), state.length());*/
-  /*std::cout << odom.DebugString() << "\n";*/
 
   return state;
 }

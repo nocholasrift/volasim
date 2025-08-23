@@ -22,6 +22,8 @@ Camera::Camera(const CameraSettings& settings) {
   fov_ = settings.fov;
   radius_ = settings.radius;
 
+  target_obj_ = settings.target;
+
   lastx_ = static_cast<float>(settings.window_sz[0]) / 2.;
   lasty_ = static_cast<float>(settings.window_sz[1]) / 2.;
 

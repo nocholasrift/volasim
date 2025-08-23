@@ -6,6 +6,7 @@
 #include <std_msgs/Float32MultiArray.h>
 #include <zmq.hpp>
 
+#include <array>
 #include <iostream>
 #include <sstream>
 
@@ -56,7 +57,10 @@ class VolasimROSWrapper {
     thrust_msg.set_f4(input_[3]);
 
     std::string data;
-    thrust_msg.SerializeToString(&data);
+    if (!thrust_msg.SerializeToString(&data)) {
+      ROS_WARN("[VolasimROSWrapper] Failed to serialize Thrust message.");
+      return;
+    }
 
     zmq::message_t message(data.size());
     memcpy(message.data(), data.data(), data.size());
@@ -80,6 +84,7 @@ class VolasimROSWrapper {
 
     if (!odom.ParseFromArray(update.data(), update.size())) {
       ROS_WARN("[VolasimROSWrapper] Failed to parse odometry message");
+      return;
     }
 
     nav_msgs::Odometry msg;

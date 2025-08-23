@@ -16,11 +16,6 @@ LeeControlNode::LeeControlNode(ros::NodeHandle& nh) {
   initialized_ = false;
   state_set_ = false;
 
-  // params_["kp"] = 69.44;
-  // params_["kv"] = 24.304;
-  // params_["kR"] = 8.81;
-  // params_["kw"] = 2.54;
-
   params_["kp"] = 69.44;
   params_["kv"] = 24.304;
   params_["kR"] = 30.0;
@@ -35,6 +30,24 @@ LeeControlNode::LeeControlNode(ros::NodeHandle& nh) {
   params_["j2"] = 0.1377;
 
   controller_.loadParams(params_);
+
+  // Mixer matrix for X-configuration quadrotor:
+  //   conv * [f1, f2, f3, f4]^T = [total_thrust, torque_x, torque_y, torque_z]^T
+  //   forces = conv.inverse() * cmd
+  //
+  // Motor numbering (vehicle frame: X forward, Y left):
+  //    1 (front-right)    2 (front-left)
+  //           X axis
+  //    3 (back-left)      4 (back-right)
+
+  conv_mat_ << 1, 1, 1, 1, 1, 1, -1, -1, -1, 1, 1, -1, 1, -1, 1, -1;
+
+  double l = params_["length"];
+  conv_mat_.row(1) *= l / sqrt(2);
+  conv_mat_.row(2) *= l / sqrt(2);
+  conv_mat_.row(3) *= params_["c_torque"];
+
+  conv_mat_inverse_ = conv_mat_.inverse();
 }
 
 void LeeControlNode::odom_cb(const nav_msgs::Odometry::ConstPtr& msg) {
@@ -71,17 +84,9 @@ void LeeControlNode::control_loop(const ros::TimerEvent&) {
   if (!initialized_ || !state_set_)
     return;
 
-  double l = params_["length"];
-
   Eigen::Vector4d cmd = controller_.computeControls(state_, desired_state_);
-  Eigen::Matrix4d conv;
-  conv << 1, 1, 1, 1, 1, 1, -1, -1, -1, 1, 1, -1, 1, -1, 1, -1;
 
-  conv.row(1) *= l / sqrt(2);
-  conv.row(2) *= l / sqrt(2);
-  conv.row(3) *= params_["c_torque"];
-
-  Eigen::Vector4d forces = conv.inverse() * cmd;
+  Eigen::Vector4d forces = conv_mat_inverse_ * cmd;
 
   std_msgs::Float32MultiArray msg;
   std_msgs::MultiArrayDimension dim;

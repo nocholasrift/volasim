@@ -3,7 +3,9 @@
 
 #include "lee_controller.h"
 
+#include <geometry_msgs/Point.h>
 #include <nav_msgs/Odometry.h>
+
 #include <ros/ros.h>
 #include <Eigen/Core>
 
@@ -39,6 +41,9 @@ class LeeControlNode {
   vola::state_t desired_state_;
 
   vola::LeeController controller_;
+
+  Eigen::Matrix4d conv_mat_;
+  Eigen::Matrix4d conv_mat_inverse_;
 };
 
 #endif

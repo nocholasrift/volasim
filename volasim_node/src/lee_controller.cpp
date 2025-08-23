@@ -38,8 +38,9 @@ Eigen::Vector4d LeeController::computeControls(const state_t& state,
   double pid_term_norm = pid_term.norm();
 
   if (pid_term_norm == 0) {
-    std::cerr << "Z_DW NORM WAS 0!!!" << std::endl;
-    exit(-1);
+    throw std::runtime_error(
+        "Controller error: PID term norm is zero, cannot compute thrust "
+        "direction");
   }
 
   // z_dw stores the desired thrust direction
