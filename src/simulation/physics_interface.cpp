@@ -54,6 +54,7 @@ PhysicsInterface::PhysicsInterface() {
 
   // Now we can create the actual physics system.
   physics_system_ = std::make_unique<JPH::PhysicsSystem>();
+  physics_system_->SetGravity(JPH::Vec3(0., 0., -9.81));
   // PhysicsSystem physics_system;
   physics_system_->Init(cMaxBodies, cNumBodyMutexes, cMaxBodyPairs,
                         cMaxContactConstraints, broad_phase_layer_interface_,
@@ -97,22 +98,29 @@ void PhysicsInterface::update(double dt) {
       /*    Eigen::Vector4d(1.0, 1.0, 1.01, 1.01) * 4.34 * 9.81 / 4.;*/
 
       /*binding.dynamic_obj->setInput(u);*/
-      binding.dynamic_obj->update(dt);
+      // binding.dynamic_obj->update(dt);
 
-      JPH::RVec3 jolt_p;
-      JPH::Quat jolt_r;
-      body_interface.GetPositionAndRotation(binding.body_id, jolt_p, jolt_r);
+      JPH::RVec3 jolt_p = body_interface.GetPosition(binding.body_id);
+      // JPH::Quat jolt_r;
+      // body_interface.GetPositionAndRotation(binding.body_id, jolt_p, jolt_r);
 
       // std::cout << "setting rotation in interface as: " << jolt_r.GetX() << " "
       //           << jolt_r.GetY() << " " << jolt_r.GetZ() << " " << jolt_r.GetW()
       //           << std::endl;
 
-      glm::vec3 vel = binding.dynamic_obj->getVelocity();
-      glm::vec3 rot = binding.dynamic_obj->getBodyRates();
-      JPH::RVec3 jolt_v(vel[0], vel[1], vel[2]);
-      JPH::RVec3 jolt_w(rot[0], rot[1], rot[2]);
-      body_interface.SetLinearAndAngularVelocity(binding.body_id, jolt_v,
-                                                 jolt_w);
+      // glm::vec3 vel = binding.dynamic_obj->getVelocity();
+      // glm::vec3 rot = binding.dynamic_obj->getBodyRates();
+      // JPH::RVec3 jolt_v(vel[0], vel[1], vel[2]);
+      // JPH::RVec3 jolt_w(rot[0], rot[1], rot[2]);
+      // body_interface.SetLinearAndAngularVelocity(binding.body_id, jolt_v,
+      //                                            jolt_w);
+      Eigen::Vector3d force, rpy;
+      binding.dynamic_obj->getForceAndTorque(force, rpy);
+
+      JPH::Vec3 j_rpy(rpy[0], rpy[1], rpy[2]);
+      JPH::Vec3 j_force(force[0], force[1], force[2]);
+      body_interface.AddTorque(binding.body_id, j_rpy);
+      body_interface.AddForce(binding.body_id, j_force, jolt_p);
     }
   }
 
@@ -203,8 +211,8 @@ void PhysicsInterface::handleEvent(Event* e) {
           break;
 
         case ShapeType::kCube:
-          std::cout << "[physics interface] handling add cube event"
-                    << std::endl;
+          // std::cout << "[physics interface] handling add cube event"
+          //           << std::endl;
 
           shape_settings = JPH::BodyCreationSettings(
               new JPH::BoxShape(JPH::Vec3(shape_meta.size / 2,
@@ -213,9 +221,6 @@ void PhysicsInterface::handleEvent(Event* e) {
               JPH::RVec3(pos[0], pos[1], pos[2]),
               JPH::Quat(ori[0], ori[1], ori[2], ori[3]),
               binding.getMotionType(), binding.getLayer());
-          body_id = body_interface.CreateAndAddBody(shape_settings,
-                                                    JPH::EActivation::Activate);
-          body_interface.SetGravityFactor(body_id, 0.);
           break;
 
         case ShapeType::kCylinder: {
@@ -227,15 +232,13 @@ void PhysicsInterface::handleEvent(Event* e) {
               // JPH::Quat(ori[1], ori[2], ori[3], ori[0]),
               align_rot * renderable_ori, binding.getMotionType(),
               binding.getLayer());
-          body_id = body_interface.CreateAndAddBody(shape_settings,
-                                                    JPH::EActivation::Activate);
 
           break;
         }
 
-        case ShapeType::kPlane:
-          std::cout << "[physics interface] handling add plane event"
-                    << std::endl;
+        case ShapeType::kPlane: {
+          // std::cout << "[physics interface] handling add plane event"
+          //           << std::endl;
 
           // in case max is somehow smaller than min
           double half_width = fabs(shape_meta.x_max - shape_meta.x_min) / 2.;
@@ -246,10 +249,29 @@ void PhysicsInterface::handleEvent(Event* e) {
               JPH::RVec3(pos[0], pos[1], pos[2] - 0.5),
               JPH::Quat(ori[1], ori[2], ori[3], ori[0]),
               binding.getMotionType(), binding.getLayer());
-          body_id = body_interface.CreateAndAddBody(shape_settings,
-                                                    JPH::EActivation::Activate);
           break;
+        }
       }
+
+      if (binding.isDynamic()) {
+        shape_settings.mOverrideMassProperties =
+            JPH::EOverrideMassProperties::MassAndInertiaProvided;
+        JPH::MassProperties mass_properties;
+        mass_properties.mMass = binding.dynamic_obj->getMass();
+
+        Eigen::Matrix3d inertia_mat = binding.dynamic_obj->getInertia();
+
+        mass_properties.mInertia = JPH::Mat44::sIdentity();
+        mass_properties.mInertia(0, 0) = inertia_mat(0, 0);
+        mass_properties.mInertia(1, 1) = inertia_mat(1, 1);
+        mass_properties.mInertia(2, 2) = inertia_mat(2, 2);
+
+        shape_settings.mMassPropertiesOverride = mass_properties;
+        // shape_settings.mGravityFactor = 0.f;
+      }
+
+      body_id = body_interface.CreateAndAddBody(shape_settings,
+                                                JPH::EActivation::Activate);
 
       binding.body_id = body_id;
     }

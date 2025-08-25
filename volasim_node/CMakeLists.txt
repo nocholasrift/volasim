@@ -3,6 +3,7 @@ find_package(catkin COMPONENTS
   roscpp
   nav_msgs
   std_msgs
+  trajectory_msgs
 )
 
 include_directories(

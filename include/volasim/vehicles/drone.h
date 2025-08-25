@@ -37,18 +37,19 @@ class Drone : public DynamicObject {
   virtual glm::vec3 getVelocity() override;
   virtual glm::vec3 getBodyRates() override;
 
+  virtual void getForceAndTorque(Eigen::Vector3d& force,
+                                 Eigen::Vector3d& torque) override;
+
  private:
   std::unique_ptr<amrl::RungeKutta<N, M>> solver_;
 
   virtual Eigen::VectorXd dynamics(const Eigen::VectorXd& x,
                                    const Eigen::VectorXd& u) override;
 
-  double mass_;
   double boom_length_;
   double torque_const_;
 
-  Eigen::Matrix3d J_mat_;
-  Eigen::Matrix3d J_mat_inv_;
+  double max_thrust_;
 
   X_t x_;
   U_t u_;

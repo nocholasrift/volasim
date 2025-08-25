@@ -16,6 +16,9 @@ Drone::Drone(const pugi::xml_node& root, double dt) : DynamicObject(dt) {
   // unit quaternion
   x_(3) = 1.0;
 
+  // sporty drone, thrust to weight ratio of 3:1
+  max_thrust_ = 3 * mass_ * 9.81;
+
   solver_ = std::make_unique<amrl::RungeKutta<Drone::N, Drone::M>>(
       [this](const X_t& x, const U_t& u) { return this->dynamics(x, u); });
 }
@@ -29,12 +32,15 @@ Drone::Drone(const Eigen::Matrix3d& J_mat, double torque_const,
   // unit quaternion
   x_(3) = 1.0;
 
-  mass_ = mass;
+  setMass(mass);
+  setInertia(J_mat);
+
   torque_const_ = torque_const;
 
-  J_mat_ = J_mat;
-  J_mat_inv_ = J_mat.inverse();
   boom_length_ = boom_length;
+
+  // sporty drone, thrust to weight ratio of 3:1
+  max_thrust_ = 3 * mass_ * 9.81;
 
   solver_ = std::make_unique<amrl::RungeKutta<Drone::N, Drone::M>>(
       [this](const X_t& x, const U_t& u) { return this->dynamics(x, u); });
@@ -89,6 +95,9 @@ void Drone::setAngularVelocity(const glm::vec3& rpy) {
 
 void Drone::setInput(const Eigen::VectorXd& u) {
   u_ = u;
+
+  u_[0] = std::min(max_thrust_, u_[0]);
+  u_[0] = std::max(0., u_[0]);
 }
 
 void Drone::setInput(const std::string& buffer) {
@@ -99,10 +108,24 @@ void Drone::setInput(const std::string& buffer) {
   u_[1] = msg.f2();
   u_[2] = msg.f3();
   u_[3] = msg.f4();
+
+  u_[0] = std::min(max_thrust_, u_[0]);
+  u_[0] = std::max(0., u_[0]);
+
+  u_.tail(3) = u_.tail(3).cwiseMin(max_thrust_ / 4. * boom_length_);
+  u_.tail(3) = u_.tail(3).cwiseMax(-max_thrust_ / 4. * boom_length_);
+}
+
+void Drone::getForceAndTorque(Eigen::Vector3d& force, Eigen::Vector3d& torque) {
+
+  Eigen::Quaterniond quat(x_[3], x_[4], x_[5], x_[6]);
+
+  force = quat * Eigen::Vector3d(0, 0, u_[0]);
+  torque = quat * u_.tail(3);
 }
 
 void Drone::buildFromXML(const pugi::xml_node& root) {
-  mass_ = std::stof(root.child_value("mass"));
+  setMass(std::stof(root.child_value("mass")));
   boom_length_ = std::stof(root.child_value("length"));
   torque_const_ = std::stof(root.child_value("c_torque"));
 
@@ -110,11 +133,13 @@ void Drone::buildFromXML(const pugi::xml_node& root) {
   std::stringstream ss(mat_str);
   std::string value;
 
+  Eigen::Matrix3d J_mat;
+
   int i = 0;
   while (ss >> value) {
     if (i > 8)
       throw std::runtime_error("[Drone] Intertia matrix has too many entries!");
-    J_mat_(i / 3, i % 3) = std::stof(value);
+    J_mat(i / 3, i % 3) = std::stof(value);
     i++;
   }
 
@@ -123,7 +148,7 @@ void Drone::buildFromXML(const pugi::xml_node& root) {
         "[Drone] Inertia matrix must have exactly 9 entries, found " +
         std::to_string(i));
 
-  J_mat_inv_ = J_mat_.inverse();
+  setInertia(J_mat);
 }
 
 glm::vec3 Drone::getVelocity() {
