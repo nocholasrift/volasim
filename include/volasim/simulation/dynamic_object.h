@@ -6,9 +6,9 @@
 #include <memory>
 #include <regex>
 
+#include <volasim/comms/msgs/Odometry.pb.h>
 #include <volasim/simulation/display_object.h>
 #include <volasim/solvers/runge_kutta.h>
-#include <volasim/comms/msgs/Odometry.pb.h>
 
 class DynamicObject {
  public:
@@ -29,6 +29,13 @@ class DynamicObject {
   virtual void setInput(const Eigen::VectorXd& u) = 0;
   virtual void setInput(const std::string& buffer) = 0;
 
+  virtual void setMass(double mass) { mass_ = mass; }
+
+  virtual void setInertia(const Eigen::Matrix3d& J) {
+    J_mat_ = J;
+    J_mat_inv_ = J.inverse();
+  }
+
   virtual void buildFromXML(const pugi::xml_node& root) = 0;
 
   virtual volasim_msgs::Odometry getSimState() = 0;
@@ -39,9 +46,19 @@ class DynamicObject {
   virtual glm::vec3 getVelocity() = 0;
   virtual glm::vec3 getBodyRates() = 0;
 
+  virtual double getMass() { return mass_; }
+  virtual Eigen::Matrix3d getInertia() { return J_mat_; }
+  virtual Eigen::Matrix3d getInertiaInv() { return J_mat_inv_; }
+
+  virtual void getForceAndTorque(Eigen::Vector3d& force,
+                                 Eigen::Vector3d& torque) = 0;
+
  protected:
   double dt_;
-};
 
+  double mass_;
+  Eigen::Matrix3d J_mat_;
+  Eigen::Matrix3d J_mat_inv_;
+};
 
 #endif

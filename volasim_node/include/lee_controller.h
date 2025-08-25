@@ -24,6 +24,7 @@ class LeeController {
                                   const state_t& desired_state);
 
  private:
+  double orientationError(const Eigen::Matrix3d& m1, const Eigen::Matrix3d& m2);
   state_t state_;
 
   double kp_ = 1.;
