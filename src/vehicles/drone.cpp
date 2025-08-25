@@ -111,6 +111,9 @@ void Drone::setInput(const std::string& buffer) {
 
   u_[0] = std::min(max_thrust_, u_[0]);
   u_[0] = std::max(0., u_[0]);
+
+  u_.tail(3) = u_.tail(3).cwiseMin(max_thrust_ / 4. * boom_length_);
+  u_.tail(3) = u_.tail(3).cwiseMax(-max_thrust_ / 4. * boom_length_);
 }
 
 void Drone::getForceAndTorque(Eigen::Vector3d& force, Eigen::Vector3d& torque) {
