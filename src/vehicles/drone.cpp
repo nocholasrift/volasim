@@ -32,11 +32,11 @@ Drone::Drone(const Eigen::Matrix3d& J_mat, double torque_const,
   // unit quaternion
   x_(3) = 1.0;
 
-  mass_ = mass;
+  setMass(mass);
+  setInertia(J_mat);
+
   torque_const_ = torque_const;
 
-  J_mat_ = J_mat;
-  J_mat_inv_ = J_mat.inverse();
   boom_length_ = boom_length;
 
   // sporty drone, thrust to weight ratio of 3:1
@@ -125,7 +125,7 @@ void Drone::getForceAndTorque(Eigen::Vector3d& force, Eigen::Vector3d& torque) {
 }
 
 void Drone::buildFromXML(const pugi::xml_node& root) {
-  mass_ = std::stof(root.child_value("mass"));
+  setMass(std::stof(root.child_value("mass")));
   boom_length_ = std::stof(root.child_value("length"));
   torque_const_ = std::stof(root.child_value("c_torque"));
 
@@ -133,11 +133,13 @@ void Drone::buildFromXML(const pugi::xml_node& root) {
   std::stringstream ss(mat_str);
   std::string value;
 
+  Eigen::Matrix3d J_mat;
+
   int i = 0;
   while (ss >> value) {
     if (i > 8)
       throw std::runtime_error("[Drone] Intertia matrix has too many entries!");
-    J_mat_(i / 3, i % 3) = std::stof(value);
+    J_mat(i / 3, i % 3) = std::stof(value);
     i++;
   }
 
@@ -146,7 +148,7 @@ void Drone::buildFromXML(const pugi::xml_node& root) {
         "[Drone] Inertia matrix must have exactly 9 entries, found " +
         std::to_string(i));
 
-  J_mat_inv_ = J_mat_.inverse();
+  setInertia(J_mat);
 }
 
 glm::vec3 Drone::getVelocity() {

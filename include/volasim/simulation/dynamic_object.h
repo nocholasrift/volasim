@@ -29,11 +29,27 @@ class DynamicObject {
   virtual void setInput(const Eigen::VectorXd& u) = 0;
   virtual void setInput(const std::string& buffer) = 0;
 
-  virtual void setMass(double mass) { mass_ = mass; }
+  virtual void setMass(double mass) {
+    if (mass < 1e-6) {
+      throw std::invalid_argument("[DynamicObject] mass must be > 0");
+    }
+    mass_ = mass;
+  }
 
   virtual void setInertia(const Eigen::Matrix3d& J) {
-    J_mat_ = J;
-    J_mat_inv_ = J.inverse();
+    const Eigen::Matrix3d sym = (J + J.transpose()) / 2.;
+    Eigen::LLT<Eigen::Matrix3d> llt(sym);
+
+    if (llt.info() != Eigen::Success) {
+      throw std::invalid_argument(
+          "DynamicObject::setInertia: inertia must be symmetric "
+          "positive-definite");
+    }
+
+    J_mat_ = sym;
+    J_mat_inv_ = llt.solve(Eigen::Matrix3d::Identity());
+
+    std::cout << J_mat_;
   }
 
   virtual void buildFromXML(const pugi::xml_node& root) = 0;
