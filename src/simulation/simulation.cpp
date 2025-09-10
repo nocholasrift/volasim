@@ -31,22 +31,20 @@ Simulation::Simulation()
   props.z_near = 0.25f;
   props.z_far = 10.0f;
 
-  glm::vec3 cam_pos = glm::vec3(3, 3, 7);
+  glm::vec3 cam_pos = glm::vec3(2.25, 2.5, 1);
 
   glm::mat4 cam_world_pos =
-      glm::lookAt(cam_pos, glm::vec3(0, 0, 0), glm::vec3(0, 0, 1));
-  cam_world_pos =
-      glm::rotate(cam_world_pos, glm::pi<float>(), glm::vec3(1, 0, 0));
+      glm::lookAt(cam_pos, glm::vec3(2.25, 10, 1), glm::vec3(0, 0, 1));
 
   glm::vec3 translation = glm::vec3(cam_world_pos[3]);
   glm::mat3 rotation = glm::mat3(cam_world_pos);
 
-  // DisplayObject* depth_sensor = new DisplayObject("depth_sensor");
-  // depth_sensor->setTranslation(translation);
-  // depth_sensor->setRotation(glm::eulerAngles(glm::quat_cast(rotation)));
-  // world_->addChild(depth_sensor);
+  DisplayObject* depth_sensor = new DisplayObject("depth_sensor");
+  depth_sensor->setTranslation(translation);
+  depth_sensor->setRotation(glm::eulerAngles(glm::quat_cast(rotation)));
+  world_->addChild(depth_sensor);
 
-  // depth_sensor_ = std::make_unique<GPUSensor>(props, depth_sensor);
+  depth_sensor_ = std::make_unique<GPUSensor>(props, depth_sensor);
 }
 
 Simulation::~Simulation() {
@@ -133,6 +131,8 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
 
   setSimState();
 
+  depth_sensor_->init();
+
   {
     std::unique_lock<std::mutex> lock(running_mtx_);
     is_running_ = true;
@@ -180,15 +180,19 @@ SDL_AppResult Simulation::update(void* appstate) {
     // physics_interface_.update(ms_per_frame_ / 1000.);
 
     glm::mat4 view_mat = camera_.getViewMatrix();
+
     glm::mat4 proj_mat = glm::perspective(
         glm::radians(camera_.getFov()),                      // fov
         static_cast<float>(window_width_) / window_height_,  // aspect ratio
         0.1f, 100.0f);                                       // near & far plane
+                                                             //
 
     // glUseProgram(shape_shader_.getID());
-    // depth_sensor_->update(world_, shape_shader_);
+    depth_sensor_->update(world_, shape_shader_);
 
-    // depth_sensor_->draw(view_mat, proj_mat, shape_shader_);
+    depth_sensor_->draw(view_mat, proj_mat, shape_shader_);
+
+    std::cout << depth_sensor_->getPointCloud().size() << "\n";
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

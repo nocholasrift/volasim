@@ -249,6 +249,15 @@ class GPUSensor {
     return ret;
   }
 
+  glm::mat4 getViewMat() {
+    glm::mat4 transform = parent_->getLocalTransform();
+    glm::mat4 flip_x =
+        glm::rotate(glm::mat4(1.0f), glm::pi<float>(), glm::vec3(1, 0, 0));
+    return glm::inverse(transform * flip_x);
+  }
+
+  glm::mat4 getProjMat() { return proj_mat_; }
+
  private:
   void setProjectionMatrix() {
 
@@ -257,9 +266,10 @@ class GPUSensor {
     proj_mat_[1][1] = 2 * settings_.fy / settings_.height;
     proj_mat_[1][2] = 2 * settings_.cy / settings_.height - 1;
     proj_mat_[2][2] = settings_.z_near / (settings_.z_far - settings_.z_near);
-    proj_mat_[2][3] = settings_.z_far * settings_.z_near /
+    proj_mat_[2][3] = -1;
+
+    proj_mat_[3][2] = -settings_.z_far * settings_.z_near /
                       (settings_.z_far - settings_.z_near);
-    proj_mat_[3][2] = -1;
   }
 
  private:
