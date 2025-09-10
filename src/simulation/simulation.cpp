@@ -189,10 +189,8 @@ SDL_AppResult Simulation::update(void* appstate) {
 
     // glUseProgram(shape_shader_.getID());
     depth_sensor_->update(world_, shape_shader_);
-
-    depth_sensor_->draw(view_mat, proj_mat, shape_shader_);
-
-    std::cout << depth_sensor_->getPointCloud().size() << "\n";
+    /**/
+    /*depth_sensor_->draw(view_mat, proj_mat, shape_shader_);*/
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -202,6 +200,7 @@ SDL_AppResult Simulation::update(void* appstate) {
     shape_shader_.setUniformVec3("lightPos", glm::vec3(0, 0, 5));
 
     world_->draw(view_mat, proj_mat, shape_shader_);
+    depth_sensor_->draw(view_mat, proj_mat, shape_shader_);
 
     SDL_GL_SwapWindow(window_);
 

@@ -78,9 +78,11 @@ class GPUSensor {
 
     parent_ = parent;
 
-    depth_data_.resize(settings.width * settings.height);
 
-    num_points_ = settings_.width * settings_.height * 3;
+    num_points_ = settings_.width * settings_.height;
+
+    depth_data_.resize(num_points_);
+    pcl_.resize(num_points_ * 3);
 
     setProjectionMatrix();
   }
@@ -173,9 +175,11 @@ class GPUSensor {
         depth = fn / (depth * dz + settings_.z_near);
     }
 
-    std::vector<float> pcl;
-    pcl.reserve(settings_.width * settings_.height * 3);
+    /*std::vector<float> pcl;*/
+    /*pcl.resize(settings_.width * settings_.height * 3);*/
 
+    size_t count = 0;
+    size_t debug_count = 0;
     for (int i = 0; i < settings_.height; ++i) {
       for (int j = 0; j < settings_.width; ++j) {
         float distance = depth_data_[i * settings_.width + j];
@@ -183,18 +187,20 @@ class GPUSensor {
         float y = (i - settings_.cy) * distance / settings_.fy;
         float z = distance;
 
-        pcl.emplace_back(x);
-        pcl.emplace_back(y);
-        pcl.emplace_back(z);
+        pcl_[count++] = x;
+        pcl_[count++] = y;
+        pcl_[count++] = z;
 
-        // if (z > .5)
-        //   std::cout << x << " " << y << " " << z << std::endl;
       }
     }
 
+    exit(0);
+
+    std::cout << "debug count: " << debug_count << "\n";
+
     glBindVertexArray(vao_);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    glBufferData(GL_ARRAY_BUFFER, pcl.size() * sizeof(float), pcl.data(),
+    glBufferData(GL_ARRAY_BUFFER, pcl_.size() * sizeof(float), pcl_.data(),
                  GL_DYNAMIC_DRAW);
 
     glEnableVertexAttribArray(0);
@@ -208,46 +214,24 @@ class GPUSensor {
   void draw(const glm::mat4& view_mat, const glm::mat4& proj_mat,
             Shader& shader) {
 
-    std::cout << "setting program " << point_shader_.get() << "\n";
     glUseProgram(point_shader_->getID());
 
-    // std::vector<float> pcl = getPointCloud();
-
-    std::cout << "setting up rotation and translation matrices\n";
     glm::mat4 rot = glm::mat4_cast(parent_->getRotation());
     glm::mat4 trans =
         glm::translate(glm::mat4(1.0f), parent_->getTranslation());
 
-    std::cout << "setting uniform mvp\n";
-
     glm::mat4 full_pcl_transform = proj_mat * view_mat * trans * rot;
     point_shader_->setUniformMat4("mvp", full_pcl_transform);
 
-    std::cout << "draw time\n";
     glBindVertexArray(vao_);
     glDrawArrays(GL_POINTS, 0, num_points_);
     glBindVertexArray(0);
   }
 
-  std::vector<float> getPointCloud() {
-    std::vector<float> ret;
-    ret.reserve(settings_.width * settings_.height * 3);
-
-    for (int i = 0; i < settings_.height; ++i) {
-      for (int j = 0; j < settings_.width; ++j) {
-        float distance = depth_data_[i * settings_.width + j];
-        float x = (j - settings_.cx) * distance / settings_.fx;
-        float y = (i - settings_.cy) * distance / settings_.fy;
-        float z = distance;
-
-        ret.emplace_back(x);
-        ret.emplace_back(y);
-        ret.emplace_back(z);
-      }
-    }
-
-    return ret;
+  const std::vector<float>& getPointCloud() {
+    return pcl_;
   }
+
 
   glm::mat4 getViewMat() {
     glm::mat4 transform = parent_->getLocalTransform();
@@ -287,6 +271,8 @@ class GPUSensor {
   std::unique_ptr<Shader> point_shader_;
 
   int num_points_ = 0;
+
+  std::vector<float> pcl_;
 };
 
 #endif
