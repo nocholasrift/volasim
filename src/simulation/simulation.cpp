@@ -31,17 +31,12 @@ Simulation::Simulation()
   props.z_near = 0.25f;
   props.z_far = 10.0f;
 
-  glm::vec3 cam_pos = glm::vec3(2.25, 2.5, 1);
-
-  glm::mat4 cam_world_pos =
-      glm::lookAt(cam_pos, glm::vec3(2.25, 10, 1), glm::vec3(0, 0, 1));
-
-  glm::vec3 translation = glm::vec3(cam_world_pos[3]);
-  glm::mat3 rotation = glm::mat3(cam_world_pos);
+  glm::vec3 cam_pos = glm::vec3(-2.25, 1.5, 2);
 
   DisplayObject* depth_sensor = new DisplayObject("depth_sensor");
-  depth_sensor->setTranslation(translation);
-  depth_sensor->setRotation(glm::eulerAngles(glm::quat_cast(rotation)));
+  depth_sensor->setTranslation(cam_pos);
+  // depth_sensor->setRotation(glm::quat(.7071, -0.7071, 0., 0.));
+  depth_sensor->setRotation(glm::quat(.7071, 0.7071, 0., 0.));
   world_->addChild(depth_sensor);
 
   depth_sensor_ = std::make_unique<GPUSensor>(props, depth_sensor);
@@ -86,7 +81,6 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
     return SDL_APP_FAILURE;
   }
 
-  glEnable(GL_DEPTH_TEST);
   glEnable(GL_LIGHTING);
   glEnable(GL_LIGHT0);
   glEnable(GL_LIGHT1);  // Additional light
@@ -109,6 +103,12 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
   glShadeModel(GL_SMOOTH);  // for better lighting transitions
 
   glClearColor(0.25f, 0.25f, 0.25f, 1.0f);  // lighter background
+
+  int major = 0, minor = 0;
+  glGetIntegerv(GL_MAJOR_VERSION, &major);
+  glGetIntegerv(GL_MINOR_VERSION, &minor);
+
+  std::cout << "OpenGL version: " << major << "." << minor << std::endl;
 
   time_ = 0.;
   frame_start_ = -1000000;
@@ -185,19 +185,24 @@ SDL_AppResult Simulation::update(void* appstate) {
         glm::radians(camera_.getFov()),                      // fov
         static_cast<float>(window_width_) / window_height_,  // aspect ratio
         0.1f, 100.0f);                                       // near & far plane
-                                                             //
+
+    // glm::mat4 view_mat = depth_sensor_->getViewMat();
+    // glm::mat4 proj_mat = depth_sensor_->getProjMat();
 
     // glUseProgram(shape_shader_.getID());
     depth_sensor_->update(world_, shape_shader_);
     /**/
     /*depth_sensor_->draw(view_mat, proj_mat, shape_shader_);*/
 
+    glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(shape_shader_.getID());
 
     shape_shader_.setUniformVec3("lightColor", glm::vec3(.8f, .8f, .8f));
     shape_shader_.setUniformVec3("lightPos", glm::vec3(0, 0, 5));
+
+    // depth_sensor_->update(world_, shape_shader_);
 
     world_->draw(view_mat, proj_mat, shape_shader_);
     depth_sensor_->draw(view_mat, proj_mat, shape_shader_);
