@@ -51,6 +51,8 @@ class ShapeRenderable : public Renderable {
   virtual ShapeType getType() const override { return meta_.type; }
   ShapeMetadata getShapeMeta() const { return meta_; }
 
+  virtual void createBuffer();
+
  private:
   ShapeType type_;
 

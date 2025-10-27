@@ -115,7 +115,11 @@ glm::quat DisplayObject::getRotation() {
   return quaternion_;
 }
 
-const Renderable& DisplayObject::getRenderable() {
+const Renderable& DisplayObject::getRenderable() const {
+  return *renderable_;
+}
+
+Renderable& DisplayObject::getRenderable() {
   return *renderable_;
 }
 

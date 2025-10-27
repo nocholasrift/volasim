@@ -24,7 +24,7 @@
 		<z>0.0</z>
   </element>
 
-   <block:class name="cylinder_blue">
+  <block:class name="cylinder_blue">
     <color>#2761b8</color>
     <geometry type="cylinder" radius="0.075" length="1"/>
   </block:class>

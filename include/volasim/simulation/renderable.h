@@ -10,6 +10,7 @@ class Renderable {
   virtual ~Renderable() = default;
   virtual void draw(Shader& shader) = 0;
   virtual ShapeType getType() const = 0;
+  virtual void createBuffer() = 0;
 
  private:
 };

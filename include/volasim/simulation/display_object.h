@@ -46,7 +46,8 @@ class DisplayObject {
   glm::mat4 getLocalTransform();
   glm::mat4 getGlobalTransform();
 
-  const Renderable& getRenderable();
+  const Renderable& getRenderable() const;
+  Renderable& getRenderable();
 
   bool isRenderable();
 

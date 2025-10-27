@@ -1,0 +1,57 @@
+<volasim_world version="1.0">
+  <simul_timestep>0</simul_timestep>
+  <joystick_enabled>true</joystick_enabled>
+  <collision_threshold>0.1</collision_threshold>
+
+  <gui>
+    <fps>120</fps>
+    <ortho>false</ortho>
+    <cam_yaw>0</cam_yaw>
+    <cam_pitch>0.7854</cam_pitch>
+    <cam_distance>15</cam_distance>
+    <fov_deg>60</fov_deg>
+    <window_width>1280</window_width>
+    <window_height>960</window_height>
+  </gui>
+
+  <lights>
+    <enable_shadows>true</enable_shadows>
+    <light_azimuth_deg>60.0</light_azimuth_deg>
+    <light_elevation_deg>75.0</light_elevation_deg>
+  </lights>
+
+	<element class="ground_plane">
+		<color>#FFFFFF</color>
+		<cull_face>BACK</cull_face>
+		<x_min>-20</x_min>
+		<y_min>-20</y_min>
+		<x_max> 20</x_max>
+		<y_max> 20</y_max>
+		<z>0.0</z>
+	 </element>
+
+   <vehicle name="drone1" class="drone">
+     <inertia_matrix>0.0820 0. 0. 0. 0.0845 0. 0. 0. .1377</inertia_matrix>
+     <mass>4.34</mass>
+     <length>0.315</length>
+     <c_torque>8.004e-4</c_torque>
+
+     <block:class name="drone_shape">
+       <color>#888888</color>
+       <geometry type="cube" size=".63"/>
+     </block:class>
+
+     <init_pose>-2.25 2.5 0.5</init_pose>
+     <!-- <init_pose>0 2.5 3.0</init_pose> -->
+   </vehicle>
+
+  <block:class name="cylinder_blue">
+    <color>#2761b8</color>
+    <geometry type="cylinder" radius="2.0" length="5"/>
+  </block:class>
+
+  <block class="cylinder_blue">
+    <init_pose>-2.25 8.0 0.0</init_pose>
+  </block>
+</volasim_world>
+
