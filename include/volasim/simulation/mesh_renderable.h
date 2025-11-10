@@ -25,8 +25,8 @@ class MeshRenderable : public Renderable {
   }
 
  private:
-  std::string_view model_fname_;
-  std::string_view cvx_decomp_fname_;
+  std::string model_fname_;
+  std::string cvx_decomp_fname_;
 
   std::vector<Eigen::MatrixX3d> convex_meshes_;
   GLuint vao_ = 0;
