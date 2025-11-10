@@ -20,10 +20,22 @@ DisplayObject::DisplayObject(std::string id) {
   scale_ = glm::vec3(1.f, 1.f, 1.f);
 }
 
-void DisplayObject::setRenderable(const ShapeMetadata& meta) {
-  renderable_ = std::make_unique<ShapeRenderable>(meta);
+void DisplayObject::setRenderable(
+    const std::shared_ptr<Renderable> renderable) {
+  renderable_ = renderable;
   is_renderable_ = true;
 }
+
+// void DisplayObject::setShapeRenderable(const ShapeMetadata& meta) {
+//   renderable_ = std::make_unique<ShapeRenderable>(meta);
+//   is_renderable_ = true;
+// }
+//
+// void DisplayObject::setMeshRenderable(std::string_view model_fname,
+//                                       std::string_view cvx_dcmp_fname) {
+//   renderable_ = std::make_unique<MeshRenderable>(model_fname, cvx_dcmp_fname);
+//   is_renderable_ = true;
+// }
 
 DisplayObject::~DisplayObject() {}
 
@@ -42,24 +54,9 @@ void DisplayObject::draw(const glm::mat4& view_mat, const glm::mat4& proj_mat,
     else
       model_mat = getLocalTransform();
 
-    // if (id_[0] == 'c') {
-
     glm::mat4 mvp = proj_mat * view_mat * model_mat;
     shader.setUniformMat4("mvp", mvp);
     shader.setUniformMat4("model", model_mat);
-
-    // if (renderable_->getType() == ShapeType::kPlane) {
-    //   for (int i = 0; i < 4; ++i) {
-    //     std::cout << model_mat[0][i] << " " << model_mat[1][i] << " "
-    //               << model_mat[2][i] << " " << model_mat[3][i] << "\n";
-    //   }
-    //   std::cout << std::endl;
-    //   glm::vec3 model_pos = model_mat * glm::vec4(-20, -20, 0, 1);
-    //   glm::vec3 light_dir = glm::vec3(0, 0, 8) - model_pos;
-    //   std::cout << light_dir[0] << " " << light_dir[1] << " " << light_dir[2]
-    //             << "\n";
-    //   std::cout << glm::dot(light_dir, glm::vec3(0, 0, 1)) << "\n";
-    // }
 
     renderable_->draw(shader);
   }
@@ -115,8 +112,12 @@ glm::quat DisplayObject::getRotation() {
   return quaternion_;
 }
 
-const Renderable& DisplayObject::getRenderable() {
-  return *renderable_;
+const std::shared_ptr<Renderable> DisplayObject::getRenderable() const {
+  return renderable_;
+}
+
+std::shared_ptr<Renderable> DisplayObject::getRenderable() {
+  return renderable_;
 }
 
 std::string DisplayObject::getID() {

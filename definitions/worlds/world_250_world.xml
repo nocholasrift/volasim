@@ -23,26 +23,20 @@
 	<element class="ground_plane">
 		<color>#FFFFFF</color>
 		<cull_face>BACK</cull_face>
-		<x_min>-20</x_min>
-		<y_min>-20</y_min>
-		<x_max> 20</x_max>
-		<y_max> 20</y_max>
-		<z>0.0</z>
+    <geometry type="plane" x_min="-20" x_max="20" y_min="-20" y_max="20" z="0.0"/>
 	 </element>
 
-   <vehicle name="drone1" class="drone">
+  <block:class name="hummingbird">
+    <color>#FFFFFF</color>
+    <geometry type="mesh" model_file="./build/definitions/meshes/hummingbird.obj" decomp_file="./build/definitions/meshes/hummingbird_cd.obj"/>
+  </block:class>
+
+   <vehicle name="drone1" class="hummingbird">
      <inertia_matrix>0.0820 0. 0. 0. 0.0845 0. 0. 0. .1377</inertia_matrix>
      <mass>4.34</mass>
      <length>0.315</length>
      <c_torque>8.004e-4</c_torque>
-
-     <block:class name="drone_shape">
-       <color>#888888</color>
-       <geometry type="cube" size=".63"/>
-     </block:class>
-
      <init_pose>-2.25 2.5 0.5</init_pose>
-     <!-- <init_pose>0 2.5 3.0</init_pose> -->
    </vehicle>
 
   <block:class name="cylinder_blue">

@@ -32,9 +32,6 @@ class XMLParser {
  private:
   void throwError(std::string_view fname, const pugi::xml_parse_result& result);
 
-  void generateShapeBuffers(ShapeMetadata& settings,
-                            const pugi::xml_node& geometry_node);
-
   void handleVehicle(const pugi::xml_node& item, DisplayObjectContainer* world);
 
   void handleElement(const pugi::xml_node& item, DisplayObjectContainer* world);
@@ -44,7 +41,7 @@ class XMLParser {
   void handleBlock(const pugi::xml_node& item, DisplayObjectContainer* world);
 
   void createAndAddRenderable(const std::string& name,
-                              const ShapeMetadata& settings,
+                              const std::shared_ptr<Renderable> renderable,
                               const glm::vec3& pos,
                               DisplayObjectContainer* world);
 
@@ -54,17 +51,13 @@ class XMLParser {
   std::unordered_map<std::string, int> defined_class_count_;
   std::unordered_map<std::string, ShapeMetadata> class_settings_;
 
+  std::unordered_map<std::string, std::shared_ptr<Renderable>> renderables_;
+
   std::unordered_map<std::string_view, XMLTags> type_map_ = {
       {"element", XMLTags::kElement},
       {"block:class", XMLTags::kBlockDefinition},
       {"block", XMLTags::kBlock},
       {"vehicle", XMLTags::kVehicle}};
-
-  std::unordered_map<std::string_view, ShapeType> shape_map_ = {
-      {"sphere", ShapeType::kSphere},
-      {"cylinder", ShapeType::kCylinder},
-      {"cube", ShapeType::kCube},
-      {"plane", ShapeType::kPlane}};
 };
 
 #endif

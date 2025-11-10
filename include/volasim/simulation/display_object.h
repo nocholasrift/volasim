@@ -3,6 +3,7 @@
 
 #include <volasim/simulation/shader.h>
 
+#include <volasim/simulation/mesh_renderable.h>
 #include <volasim/simulation/shape_renderable.h>
 
 // #include <GL/glu.h>
@@ -30,8 +31,12 @@ class DisplayObject {
   virtual void draw(const glm::mat4& view_mat, const glm::mat4& proj_mat,
                     Shader& shader);
   virtual void cleanUpDisplayTree();
-  virtual void setRenderable(const ShapeMetadata& meta);
 
+  virtual void setRenderable(const std::shared_ptr<Renderable> renderable);
+  // virtual void setShapeRenderable(const ShapeMetadata& meta);
+  // virtual void setMeshRenderable(std::string_view model_fname,
+  //                                std::string_view cvx_dcmp_fname);
+  //
   void toggleVisibility();
   void makeVisible();
   void makeInvisible();
@@ -46,7 +51,8 @@ class DisplayObject {
   glm::mat4 getLocalTransform();
   glm::mat4 getGlobalTransform();
 
-  const Renderable& getRenderable();
+  const std::shared_ptr<Renderable> getRenderable() const;
+  std::shared_ptr<Renderable> getRenderable();
 
   bool isRenderable();
 
@@ -67,7 +73,7 @@ class DisplayObject {
   std::string id_;
   std::string type_ = "DisplayObject";
 
-  std::unique_ptr<Renderable> renderable_;
+  std::shared_ptr<Renderable> renderable_;
 };
 
 #endif

@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(volasim C CXX)
 
-add_compile_options(-std=c++17)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
@@ -11,6 +10,7 @@ add_subdirectory(third_party/SDL EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/JoltPhysics/Build EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/pugixml EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/cppzmq EXCLUDE_FROM_ALL)
+add_subdirectory(third_party/assimp EXCLUDE_FROM_ALL)
 
 add_subdirectory(include/volasim/comms/msgs)
 
@@ -26,6 +26,7 @@ include_directories(
   include/
   ${EIGEN3_INCLUDE_DIRS}
   ${cppzmq_INCLUDE_DIRS}
+  ${assimp_INCLUDE_DIRS}
 )
 
 add_executable(volasim 
@@ -33,6 +34,7 @@ add_executable(volasim
   src/glad/glad.c
   src/comms/zmq_server.cpp
   src/simulation/simulation.cpp
+  src/simulation/mesh_renderable.cpp
   src/simulation/xml_parser.cpp
   src/simulation/display_object.cpp
   src/simulation/display_object_container.cpp
@@ -53,5 +55,11 @@ target_link_libraries(volasim
   ${GLM_LIBRARIES}
   cppzmq
   myproto
+  assimp
 )
+target_compile_options(volasim PRIVATE -std=c++17)
 
+add_custom_target(copy_assets
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/definitions ${CMAKE_CURRENT_BINARY_DIR}/definitions
+)
+add_dependencies(volasim copy_assets)

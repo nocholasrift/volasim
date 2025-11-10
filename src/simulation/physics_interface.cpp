@@ -4,8 +4,11 @@
 #include <volasim/vehicles/drone.h>
 
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
+#include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
 #include <Jolt/Physics/Collision/Shape/CylinderShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
+#include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
+#include <memory>
 
 PhysicsInterface::PhysicsInterface() {
   JPH::RegisterDefaultAllocator();
@@ -192,27 +195,76 @@ void PhysicsInterface::handleEvent(Event* e) {
       JPH::BodyCreationSettings shape_settings;
       JPH::BodyInterface& body_interface = physics_system_->GetBodyInterface();
 
-      const ShapeRenderable& renderable =
-          static_cast<const ShapeRenderable&>(object->getRenderable());
+      const std::shared_ptr<Renderable> renderable = object->getRenderable();
 
       glm::vec3 pos = object->getTranslation();
       glm::quat ori = object->getRotation();
-      /*std::cout << "rotation dispobj: " << ori[0] << " " << ori[1] << " " << ori[2] << " " << ori[3] << "\n";*/
-      ShapeMetadata shape_meta = renderable.getShapeMeta();
-
+      //
       JPH::ObjectLayer obj_layer =
           binding.isDynamic() ? Layers::MOVING : Layers::NON_MOVING;
 
-      switch (renderable.getType()) {
+      switch (renderable->getType()) {
 
-        case ShapeType::kSphere:
+        case ShapeType::kSphere: {
+          const std::shared_ptr<ShapeRenderable> shape_render =
+              std::dynamic_pointer_cast<ShapeRenderable>(renderable);
+          ShapeMetadata shape_meta = shape_render->getShapeMeta();
+
           std::cout << "[physics interface] handling add sphere event"
                     << std::endl;
           break;
+        }
 
-        case ShapeType::kCube:
-          // std::cout << "[physics interface] handling add cube event"
-          //           << std::endl;
+        case ShapeType::kMesh: {
+          const std::shared_ptr<MeshRenderable> mesh_render =
+              std::dynamic_pointer_cast<MeshRenderable>(renderable);
+
+          const std::vector<Eigen::MatrixX3d>& meshes =
+              mesh_render->get_meshes();
+
+          JPH::StaticCompoundShapeSettings compound_settings;
+
+          for (const auto& verts : meshes) {
+
+            std::vector<JPH::Vec3> jph_verts;
+            jph_verts.reserve(verts.rows());
+            for (int i = 0; i < verts.rows(); ++i)
+              jph_verts.emplace_back(verts(i, 0), verts(i, 1), verts(i, 2));
+
+            // Use Jolt's reference-counted pointer
+            JPH::Ref<JPH::ConvexHullShapeSettings> hull_settings =
+                new JPH::ConvexHullShapeSettings(jph_verts.data(),
+                                                 jph_verts.size());
+
+            // Optional tuning:
+            // hull_settings->mMaxConvexRadius = 0.05f;   // makes it less spiky
+            // hull_settings->mShrinkByConvexRadius = true;
+
+            compound_settings.AddShape(
+                JPH::Vec3::sZero(),      // local position offset
+                JPH::Quat::sIdentity(),  // local rotation
+                hull_settings            // Ref keeps it alive
+            );
+          }
+
+          // Build compound shape
+          JPH::Shape::ShapeResult shape_result = compound_settings.Create();
+          if (shape_result.HasError())
+            throw std::runtime_error(shape_result.GetError().c_str());
+
+          JPH::RefConst<JPH::Shape> compound_shape = shape_result.Get();
+
+          shape_settings = JPH::BodyCreationSettings(
+              compound_shape, JPH::RVec3(pos[0], pos[1], pos[2]),
+              JPH::Quat(ori[0], ori[1], ori[2], ori[3]),
+              binding.getMotionType(), binding.getLayer());
+
+          break;
+        }
+        case ShapeType::kCube: {
+          const std::shared_ptr<ShapeRenderable> shape_render =
+              std::dynamic_pointer_cast<ShapeRenderable>(renderable);
+          ShapeMetadata shape_meta = shape_render->getShapeMeta();
 
           shape_settings = JPH::BodyCreationSettings(
               new JPH::BoxShape(JPH::Vec3(shape_meta.size / 2,
@@ -222,8 +274,13 @@ void PhysicsInterface::handleEvent(Event* e) {
               JPH::Quat(ori[0], ori[1], ori[2], ori[3]),
               binding.getMotionType(), binding.getLayer());
           break;
+        }
 
         case ShapeType::kCylinder: {
+          const std::shared_ptr<ShapeRenderable> shape_render =
+              std::dynamic_pointer_cast<ShapeRenderable>(renderable);
+          ShapeMetadata shape_meta = shape_render->getShapeMeta();
+
           JPH::Quat align_rot = JPH::Quat::sRotation(JPH::Vec3::sAxisX(), 90.f);
           JPH::Quat renderable_ori(ori[1], ori[2], ori[3], ori[0]);
           shape_settings = JPH::BodyCreationSettings(
@@ -237,6 +294,9 @@ void PhysicsInterface::handleEvent(Event* e) {
         }
 
         case ShapeType::kPlane: {
+          const std::shared_ptr<ShapeRenderable> shape_render =
+              std::dynamic_pointer_cast<ShapeRenderable>(renderable);
+          ShapeMetadata shape_meta = shape_render->getShapeMeta();
           // std::cout << "[physics interface] handling add plane event"
           //           << std::endl;
 
@@ -245,7 +305,7 @@ void PhysicsInterface::handleEvent(Event* e) {
           double half_height = fabs(shape_meta.y_max - shape_meta.y_min) / 2.;
 
           shape_settings = JPH::BodyCreationSettings(
-              new JPH::BoxShape(JPH::Vec3(half_width, half_height, .5)),
+              new JPH::BoxShape(JPH::Vec3(half_width, half_height, 0.5)),
               JPH::RVec3(pos[0], pos[1], pos[2] - 0.5),
               JPH::Quat(ori[1], ori[2], ori[3], ori[0]),
               binding.getMotionType(), binding.getLayer());

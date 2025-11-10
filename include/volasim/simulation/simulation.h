@@ -55,7 +55,7 @@ static const std::string mesh_fragment_shader =
 class Simulation {
 
  public:
-  // singleton patternsimulation.h
+  // singleton pattern
   static Simulation& getInstance() {
     static Simulation instance;
     return instance;

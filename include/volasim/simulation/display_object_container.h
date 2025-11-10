@@ -28,7 +28,6 @@ class DisplayObjectContainer : public DisplayObject {
                     Shader& shader) override;
 
   virtual void cleanUpDisplayTree() override;
-  virtual void setRenderable(const ShapeMetadata& meta) override;
 
   std::vector<DisplayObject*> children;
 
