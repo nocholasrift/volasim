@@ -135,10 +135,6 @@ void DisplayObjectContainer::draw(const glm::mat4& view_mat,
   }
 }
 
-void DisplayObjectContainer::setRenderable(const ShapeMetadata& meta) {
-  DisplayObject::setRenderable(meta);
-}
-
 void DisplayObjectContainer::cleanUpDisplayTree() {
   for (DisplayObject* child : children) {
     if (child) {

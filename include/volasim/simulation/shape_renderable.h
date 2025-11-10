@@ -3,7 +3,6 @@
 
 #include <volasim/simulation/renderable.h>
 
-/*#include <GL/glu.h>*/
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
@@ -43,6 +42,7 @@ struct ShapeMetadata {
 
 class ShapeRenderable : public Renderable {
  public:
+  ShapeRenderable() {}
   ShapeRenderable(const ShapeMetadata& meta);
   virtual ~ShapeRenderable();
 
@@ -51,7 +51,7 @@ class ShapeRenderable : public Renderable {
   virtual ShapeType getType() const override { return meta_.type; }
   ShapeMetadata getShapeMeta() const { return meta_; }
 
-  virtual void createBuffer();
+  virtual void buildFromXML(const pugi::xml_node& item) override;
 
  private:
   ShapeType type_;
@@ -67,6 +67,12 @@ class ShapeRenderable : public Renderable {
   GLuint vao_ = 0;
   GLuint vbo_ = 0;
   GLuint ebo_ = 0;
+
+  std::unordered_map<std::string_view, ShapeType> shape_map_ = {
+      {"sphere", ShapeType::kSphere},
+      {"cylinder", ShapeType::kCylinder},
+      {"cube", ShapeType::kCube},
+      {"plane", ShapeType::kPlane}};
 };
 
 #endif

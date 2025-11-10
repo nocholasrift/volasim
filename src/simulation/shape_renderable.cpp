@@ -57,7 +57,12 @@ glm::vec3 ShapeRenderable::hexToRGB(std::string_view hex_str) {
   return ret;
 }
 
-void ShapeRenderable::createBuffer() {
+void ShapeRenderable::buildFromXML(const pugi::xml_node& item) {
+
+  pugi::xml_node geometry_node = item.child("geometry");
+  meta_.type = shape_map_[geometry_node.attribute("type").as_string()];
+
+  meta_.color = item.child_value("color");
 
   if (meta_.color.length() != 7) {
     std::string err_str =
@@ -91,6 +96,9 @@ void ShapeRenderable::createBuffer() {
       break;
     case ShapeType::kCylinder: {
       float n_sectors = 32;
+
+      meta_.radius = std::stof(geometry_node.attribute("radius").as_string());
+      meta_.height = std::stof(geometry_node.attribute("length").as_string());
 
       // Cylinder cylinder(meta_.radius, meta_.radius, meta_.height, 32,
       //                   2);
@@ -228,6 +236,12 @@ void ShapeRenderable::createBuffer() {
       break;
     }  // end case kCylinder
     case ShapeType::kPlane: {
+      meta_.x_min = std::stof(geometry_node.attribute("x_min").as_string());
+      meta_.x_max = std::stof(geometry_node.attribute("x_max").as_string());
+      meta_.y_min = std::stof(geometry_node.attribute("y_min").as_string());
+      meta_.y_max = std::stof(geometry_node.attribute("y_max").as_string());
+      meta_.z = std::stof(geometry_node.attribute("z").as_string());
+      meta_.name = item.attribute("class").as_string();
 
       float ground_verts[] = {
           //positions
@@ -261,6 +275,7 @@ void ShapeRenderable::createBuffer() {
     }  // end case kPlane
     case ShapeType::kCube: {
       // meta_.x_mi
+      meta_.size = std::stof(geometry_node.attribute("size").as_string());
       float sz = meta_.size;
 
       float verts[] = {

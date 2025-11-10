@@ -37,8 +37,8 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
 
   glutInit(&argc, argv);
 
-  // XMLParser xml_parser("./definitions/worlds/world_250_world.xml");
-  XMLParser xml_parser("./definitions/worlds/one_cylinder.xml");
+  XMLParser xml_parser("./definitions/worlds/world_250_world.xml");
+  // XMLParser xml_parser("./definitions/worlds/one_cylinder.xml");
   CameraSettings cam_settings = xml_parser.getCameraSettings();
 
   window_width_ = cam_settings.window_sz[0];
@@ -114,75 +114,6 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
 
   glm::vec3 cam_pos = glm::vec3(-2.25, 1.5, 2);
 
-  DisplayObjectContainer* depth_sensor =
-      new DisplayObjectContainer("depth_sensor");
-  depth_sensor->setTranslation(cam_pos);
-  // depth_sensor->setRotation(glm::quat(.7071, -0.7071, 0., 0.));
-  // depth_sensor->setRotation(glm::quat(.7071, 0.7071, 0., 0.));
-
-  // {
-  //   ShapeMetadata settings;
-  //   settings.type = ShapeType::kCylinder;
-  //   settings.radius = 0.05;
-  //   settings.height = 0.2;
-  //   settings.name = "x_axis";
-  //   settings.color = "#FF0000";
-  //
-  //   DisplayObject* x_axis = new DisplayObject("x_axis");
-  //   x_axis->setRenderable(settings);
-  //   x_axis->setRotation(glm::vec3(0., 0., 0.));
-  //
-  //   x_axis->getRenderable().createBuffer();
-  //   depth_sensor->addChild(x_axis);
-  // }
-  //
-  // {
-  //   ShapeMetadata settings;
-  //   settings.type = ShapeType::kCylinder;
-  //   settings.radius = 0.05;
-  //   settings.height = 0.2;
-  //   settings.name = "y_axis";
-  //   settings.color = "#00FF00";
-  //
-  //   DisplayObject* y_axis = new DisplayObject("y_axis");
-  //   y_axis->setRenderable(settings);
-  //   y_axis->setRotation(glm::vec3(0., M_PI / 2., 0.));
-  //
-  //   y_axis->getRenderable().createBuffer();
-  //   depth_sensor->addChild(y_axis);
-  // }
-  //
-  // {
-  //   ShapeMetadata settings;
-  //   settings.type = ShapeType::kCylinder;
-  //   settings.radius = 0.05;
-  //   settings.height = 0.2;
-  //   settings.name = "z_axis";
-  //   settings.color = "#0000FF";
-  //
-  //   DisplayObject* z_axis = new DisplayObject("z_axis");
-  //   z_axis->setRenderable(settings);
-  //   z_axis->setRotation(glm::vec3(M_PI / 2., 0., 0.));
-  //
-  //   z_axis->getRenderable().createBuffer();
-  //   depth_sensor->addChild(z_axis);
-  // }
-  world_->addChild(depth_sensor);
-
-  DepthSensorSettings props;
-  props.width = 640;
-  props.height = 480;
-  props.fx = 550.0f;
-  props.fy = 550.0f;
-  props.cx = props.width / 2;
-  props.cy = props.height / 2;
-  props.z_near = 0.25f;
-  props.z_far = 10.0f;
-
-  depth_sensor_ = std::make_unique<GPUSensor>(props, depth_sensor);
-
-  depth_sensor_->init();
-
   {
     std::unique_lock<std::mutex> lock(running_mtx_);
     is_running_ = true;
@@ -229,32 +160,32 @@ SDL_AppResult Simulation::update(void* appstate) {
   if (duration > ms_per_frame_) {
     // physics_interface_.update(ms_per_frame_ / 1000.);
 
-    // glm::mat4 view_mat = camera_.getViewMatrix();
-    //
-    // glm::mat4 proj_mat = glm::perspective(
-    //     glm::radians(camera_.getFov()),                      // fov
-    //     static_cast<float>(window_width_) / window_height_,  // aspect ratio
-    //     0.1f, 100.0f);                                       // near & far plane
+    glm::mat4 view_mat = camera_.getViewMatrix();
 
-    glm::mat4 view_mat = depth_sensor_->getViewMat();
-    glm::mat4 proj_mat = depth_sensor_->getProjMat();
+    glm::mat4 proj_mat = glm::perspective(
+        glm::radians(camera_.getFov()),                      // fov
+        static_cast<float>(window_width_) / window_height_,  // aspect ratio
+        0.1f, 100.0f);                                       // near & far plane
+
+    // glm::mat4 view_mat = depth_sensor_->getViewMat();
+    // glm::mat4 proj_mat = depth_sensor_->getProjMat();
 
     // glUseProgram(shape_shader_.getID());
-    depth_sensor_->update(world_, shape_shader_);
+    // depth_sensor_->update(world_, shape_shader_);
     /**/
     /*depth_sensor_->draw(view_mat, proj_mat, shape_shader_);*/
 
-    // glEnable(GL_DEPTH_TEST);
-    // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // glUseProgram(shape_shader_.getID());
+    glUseProgram(shape_shader_.getID());
 
-    // shape_shader_.setUniformVec3("lightColor", glm::vec3(.8f, .8f, .8f));
-    // shape_shader_.setUniformVec3("lightPos", glm::vec3(0, 0, 5));
+    shape_shader_.setUniformVec3("lightColor", glm::vec3(.8f, .8f, .8f));
+    shape_shader_.setUniformVec3("lightPos", glm::vec3(0, 0, 5));
 
     // depth_sensor_->update(world_, shape_shader_);
 
-    // world_->draw(view_mat, proj_mat, shape_shader_);
+    world_->draw(view_mat, proj_mat, shape_shader_);
     // depth_sensor_->draw(view_mat, proj_mat, shape_shader_);
     // depth_sensor_->draw(depth_sensor_->getViewMat(),
     //                     depth_sensor_->getProjMat(), shape_shader_);
