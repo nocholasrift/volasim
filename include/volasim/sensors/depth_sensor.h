@@ -172,7 +172,7 @@ class GPUSensor {
     // }
     // std::cout << std::endl;
 
-    // glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
     glEnable(GL_DEPTH_TEST);
     // glDepthFunc(GL_GREATER);
     // glClearDepth(0.f);
@@ -188,7 +188,7 @@ class GPUSensor {
     glReadPixels(0, 0, settings_.width, settings_.height, GL_DEPTH_COMPONENT,
                  GL_FLOAT, depth_data_.data());
 
-    // glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // glDepthFunc(GL_LESS);
     // glClearDepth(1.f);

@@ -15,14 +15,10 @@
     <light_elevation_deg>75.0</light_elevation_deg>
   </lights>
 
-  <element class="ground_plane">
+	<element class="ground_plane">
 		<color>#FFFFFF</color>
-    <cull_face>BACK</cull_face>
-    <x_min>-20</x_min>
-    <x_max>20</x_max>
-    <y_min>-20</y_min>
-    <y_max>20</y_max>
-    <z>0.0</z>
+		<cull_face>BACK</cull_face>
+    <geometry type="plane" x_min="-20" x_max="20" y_min="-20" y_max="20" z="0.0"/>
   </element>
 
   <block:class name="cylinder_blue">

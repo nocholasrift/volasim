@@ -67,6 +67,10 @@ void LeeControlNode::odom_cb(const nav_msgs::msg::Odometry::SharedPtr msg) {
 
 void LeeControlNode::position_cb(
     const geometry_msgs::msg::Point::SharedPtr msg) {
+
+  if (!initialized_)
+    return;
+
   desired_state_.reset();
   desired_state_.pos = Eigen::Vector3d(msg->x, msg->y, msg->z);
   traj_ = generateTraj(state_, desired_state_, 2.0);

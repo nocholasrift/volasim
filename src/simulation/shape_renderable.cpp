@@ -124,7 +124,7 @@ void ShapeRenderable::buildFromXML(const pugi::xml_node& item) {
       }
 
       int base_center_idx = (int)vertices.size() / 3;
-      int top_center_idx = base_center_idx + n_sectors + 1;
+      int top_center_idx = base_center_idx + n_sectors + 2;
 
       for (int i = 0; i < 2; ++i) {
         float h = i * meta_.height;

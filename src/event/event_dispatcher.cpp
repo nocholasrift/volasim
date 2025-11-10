@@ -58,7 +58,11 @@ void EventDispatcher::removeEventListener(EventListener* l,
 bool EventDispatcher::hasEventListener(EventListener* l,
                                        std::string eventType) {
   auto it = listeners.find(eventType);
-  return it != listeners.end();
+  if (it == listeners.end())
+    return false;
+
+  const auto& vec = it->second;
+  return std::find(vec.begin(), vec.end(), l) != vec.end();
 }
 
 void EventDispatcher::dispatchEvent(Event* e) {

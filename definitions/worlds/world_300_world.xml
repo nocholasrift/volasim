@@ -14,14 +14,11 @@
     <light_azimuth_deg>60.0</light_azimuth_deg>
     <light_elevation_deg>75.0</light_elevation_deg>
   </lights>
+
 	<element class="ground_plane">
 		<color>#FFFFFF</color>
 		<cull_face>BACK</cull_face>
-		<x_min>-20</x_min>
-		<y_min>-20</y_min>
-		<x_max> 20</x_max>
-		<y_max> 20</y_max>
-		<z>0.0</z>
+    <geometry type="plane" x_min="-20" x_max="20" y_min="-20" y_max="20" z="0.0"/>
   </element>
 
   <block:class name="cylinder_blue">

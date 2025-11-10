@@ -216,10 +216,8 @@ void PhysicsInterface::handleEvent(Event* e) {
         }
 
         case ShapeType::kMesh: {
-          std::cout << "getting mesh rend\n";
           const std::shared_ptr<MeshRenderable> mesh_render =
               std::dynamic_pointer_cast<MeshRenderable>(renderable);
-          std::cout << "got mesh rend\n";
 
           const std::vector<Eigen::MatrixX3d>& meshes =
               mesh_render->get_meshes();
@@ -247,8 +245,6 @@ void PhysicsInterface::handleEvent(Event* e) {
                 JPH::Quat::sIdentity(),  // local rotation
                 hull_settings            // Ref keeps it alive
             );
-
-            std::cout << "finished adding shape for mesh\n";
           }
 
           // Build compound shape
