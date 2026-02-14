@@ -26,6 +26,8 @@ target_link_libraries(lee_controller
   PRIVATE 
   ${EIGEN3_LIBRARIES}
 )
+target_compile_options(lee_controller PRIVATE -std=c++17)
+
 
 if(ROS_VERSION EQUAL 1)
   message(STATUS "ROS1 installation detected")
@@ -48,6 +50,7 @@ if(ROS_VERSION EQUAL 1)
     cppzmq
     myproto
   )
+  target_compile_options(vola_ros_bridge PRIVATE -std=c++17)
 
   add_executable(lee_control_node
     src/lee_control_ros1.cpp
@@ -58,6 +61,7 @@ if(ROS_VERSION EQUAL 1)
     ${catkin_LIBRARIES}
     lee_controller
   )
+  target_compile_options(lee_control_node PRIVATE -std=c++17)
   
 elseif(ROS_VERSION EQUAL 2)
   message(STATUS "ROS2 installation detected")
@@ -97,6 +101,7 @@ elseif(ROS_VERSION EQUAL 2)
   install(TARGETS vola_ros_bridge
     DESTINATION ${PROJECT_SOURCE_DIR}/build
   )
+  target_compile_options(vola_ros_bridge PRIVATE -std=c++17)
 
   add_executable(lee_control_node
     src/lee_control_ros2.cpp
@@ -114,6 +119,7 @@ elseif(ROS_VERSION EQUAL 2)
   install(TARGETS lee_control_node
     DESTINATION ${PROJECT_SOURCE_DIR}/build
   )
+  target_compile_options(lee_control_node PRIVATE -std=c++17)
 
 else()
   message(WARNING "No ROS installation found, only building simulator exectuables")
