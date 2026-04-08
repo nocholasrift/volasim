@@ -2,8 +2,10 @@ find_package(Protobuf REQUIRED)
 
 
 set(PROTO_FILES
-  Odometry.proto
   Thrust.proto
+  Imu.proto
+  Odometry.proto
+  DroneState.proto
 )
 
 add_library(myproto STATIC ${PROTO_FILES})

@@ -2,6 +2,7 @@
 #define VOLASIM_NODE_LEE_CONTROLLER_ROS_H
 
 #include "lee_controller.h"
+#include "trajectory_msgs/JointTrajectoryPoint.h"
 
 #include <geometry_msgs/Point.h>
 #include <nav_msgs/Odometry.h>
@@ -18,8 +19,7 @@ class LeeControlNode {
   LeeControlNode(ros::NodeHandle& nh);
 
   void odom_cb(const nav_msgs::Odometry::ConstPtr& msg);
-
-  void position_cb(const geometry_msgs::Point::ConstPtr& msg);
+  void full_state_cb(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg);
 
   void spin();
 
@@ -33,13 +33,13 @@ class LeeControlNode {
   ros::Timer control_loop_timer_;
 
   ros::Subscriber odom_sub_;
-  ros::Subscriber desired_pos_sub_;
+  ros::Subscriber full_state_cmd_sub_;
 
   ros::Publisher cmd_pub_;
 
   ros::Time start_;
 
-  trajectory_msgs::JointTrajectory traj_;
+  trajectory_msgs::JointTrajectoryPoint full_state_cmd_;
 
   std::unordered_map<std::string_view, double> params_;
 

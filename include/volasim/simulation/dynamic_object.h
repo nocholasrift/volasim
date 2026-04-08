@@ -6,7 +6,7 @@
 #include <memory>
 #include <regex>
 
-#include <volasim/comms/msgs/Odometry.pb.h>
+#include <volasim/comms/msgs/DroneState.pb.h>
 #include <volasim/simulation/display_object.h>
 #include <volasim/solvers/runge_kutta.h>
 
@@ -54,7 +54,7 @@ class DynamicObject {
 
   virtual void buildFromXML(const pugi::xml_node& root) = 0;
 
-  virtual volasim_msgs::Odometry getSimState() = 0;
+  virtual volasim_msgs::DroneState getSimState() = 0;
 
   virtual glm::vec3 getTranslation() = 0;
   virtual glm::quat getRotation() = 0;

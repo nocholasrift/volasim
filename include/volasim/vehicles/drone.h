@@ -31,7 +31,7 @@ class Drone : public DynamicObject {
 
   virtual void buildFromXML(const pugi::xml_node& root) override;
 
-  virtual volasim_msgs::Odometry getSimState() override;
+  virtual volasim_msgs::DroneState getSimState() override;
   virtual glm::vec3 getTranslation() override;
   virtual glm::quat getRotation() override;
   virtual glm::vec3 getVelocity() override;

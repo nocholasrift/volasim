@@ -37,8 +37,8 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
 
   glutInit(&argc, argv);
 
-  XMLParser xml_parser("./definitions/worlds/world_250_world.xml");
-  // XMLParser xml_parser("./definitions/worlds/one_cylinder.xml");
+  /*XMLParser xml_parser("./definitions/worlds/world_250_world.xml");*/
+  XMLParser xml_parser("./definitions/worlds/demo_world.xml");
   CameraSettings cam_settings = xml_parser.getCameraSettings();
 
   window_width_ = cam_settings.window_sz[0];

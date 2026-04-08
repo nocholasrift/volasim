@@ -52,6 +52,7 @@ if(ROS_VERSION EQUAL 1)
   )
   target_compile_options(vola_ros_bridge PRIVATE -std=c++17)
 
+
   add_executable(lee_control_node
     src/lee_control_ros1.cpp
   )
@@ -62,6 +63,16 @@ if(ROS_VERSION EQUAL 1)
     lee_controller
   )
   target_compile_options(lee_control_node PRIVATE -std=c++17)
+
+  add_executable(position_command_node
+    src/position_commander_ros1.cpp
+    src/minjerk_generator.cpp
+  )
+  target_link_libraries(position_command_node
+    PRIVATE 
+    ${catkin_LIBRARIES}
+  )
+  target_compile_options(position_command_node PRIVATE -std=c++17)
   
 elseif(ROS_VERSION EQUAL 2)
   message(STATUS "ROS2 installation detected")

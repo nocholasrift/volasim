@@ -2,6 +2,7 @@
 #define VOLASIM_NODE_TYPES_H
 
 #include <Eigen/Dense>
+#include <vector>
 
 namespace vola {
 
@@ -15,6 +16,7 @@ struct state_t {
   Eigen::Vector3d w = Eigen::Vector3d::Zero();
   Eigen::Vector3d w_dot = Eigen::Vector3d::Zero();
   double yaw = 0.;
+  double time = 0.;
 
   void reset() {
     pos = Eigen::Vector3d::Zero();
@@ -26,6 +28,10 @@ struct state_t {
     w = Eigen::Vector3d::Zero();
     w_dot = Eigen::Vector3d::Zero();
   }
+};
+
+struct trajectory_t {
+  std::vector<state_t> states;
 };
 
 }  // namespace vola

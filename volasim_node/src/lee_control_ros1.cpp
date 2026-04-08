@@ -4,30 +4,23 @@
 
 LeeControlNode::LeeControlNode(ros::NodeHandle& nh) {
   odom_sub_ = nh.subscribe("odometry", 1, &LeeControlNode::odom_cb, this);
-
-  desired_pos_sub_ =
-      nh.subscribe("command_pos", 1, &LeeControlNode::position_cb, this);
+  full_state_cmd_sub_ = nh.subscribe("cmd_full_state", 1, &LeeControlNode::full_state_cb, this);
 
   cmd_pub_ = nh.advertise<std_msgs::Float32MultiArray>("command", 10);
 
   control_loop_timer_ =
-      nh.createTimer(ros::Duration(.01), &LeeControlNode::control_loop, this);
+      nh.createTimer(ros::Duration(.005), &LeeControlNode::control_loop, this);
 
   initialized_ = false;
   state_set_ = false;
 
   params_["kp"] = 69.44;
   params_["kv"] = 24.304;
-  // params_["kR"] = 30.0;
-  // params_["kR"] = 8.81;
-  // params_["kw"] = 2.54;
   params_["kR"] = 13.81;
   params_["kw"] = 2.54;
-
   params_["mass"] = 4.34;
   params_["length"] = 0.315;
   params_["c_torque"] = 8.004e-4;
-
   params_["j0"] = 0.0820;
   params_["j1"] = 0.0845;
   params_["j2"] = 0.1377;
@@ -76,35 +69,19 @@ void LeeControlNode::odom_cb(const nav_msgs::Odometry::ConstPtr& msg) {
   initialized_ = true;
 }
 
-void LeeControlNode::position_cb(const geometry_msgs::Point::ConstPtr& msg) {
-  desired_state_.reset();
-  desired_state_.pos = Eigen::Vector3d(msg->x, msg->y, msg->z);
-
-  traj_ = generateTraj(state_, desired_state_, 6.);
-
+void LeeControlNode::full_state_cb(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg){
+  full_state_cmd_ = *msg;
   state_set_ = true;
-  start_ = ros::Time::now();
 }
 
 void LeeControlNode::control_loop(const ros::TimerEvent&) {
   if (!initialized_ || !state_set_)
     return;
 
-  if (traj_.points.size() == 0)
-    return;
-
   double t = (ros::Time::now() - start_).toSec();
   int ind = 0;
 
-  for (const trajectory_msgs::JointTrajectoryPoint& pt : traj_.points) {
-    if (t < pt.time_from_start.toSec()) {
-      break;
-    }
-    ind++;
-  }
-  ind = std::min(static_cast<int>(traj_.points.size() - 1), ind);
-
-  trajectory_msgs::JointTrajectoryPoint pt = traj_.points[ind];
+  const auto& pt = full_state_cmd_;
 
   vola::state_t desired_s;
   desired_s.pos =

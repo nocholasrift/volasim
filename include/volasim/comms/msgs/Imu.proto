@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package volasim_msgs;
+
+message Imu {
+  message Orientation {
+    float x = 1;
+    float y = 2;
+    float z = 3;
+    float w = 4;
+  }
+
+  message AngVel {
+    float x = 1;
+    float y = 2;
+    float z = 3;
+  }
+
+  message LinAcc {
+    float x = 1;
+    float y = 2;
+    float z = 3;
+  }
+
+  Orientation orientation = 1;
+  AngVel angvel = 2;
+  LinAcc linacc = 3;
+}
+

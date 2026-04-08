@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package volasim_msgs;
+
+import "Imu.proto";
+import "Odometry.proto";
+
+message DroneState {
+  Imu imu = 1;
+  Odometry odom = 2;
+}

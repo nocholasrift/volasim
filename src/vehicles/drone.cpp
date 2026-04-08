@@ -167,28 +167,48 @@ glm::quat Drone::getRotation() {
   return glm::quat(x_[3], x_[4], x_[5], x_[6]);
 }
 
-volasim_msgs::Odometry Drone::getSimState() {
+volasim_msgs::DroneState Drone::getSimState() {
   static int count = 0;
-  volasim_msgs::Odometry odom_msg;
+  volasim_msgs::DroneState state;
 
-  odom_msg.mutable_position()->set_x(x_(0));
-  odom_msg.mutable_position()->set_y(x_(1));
-  odom_msg.mutable_position()->set_z(x_(2));
+  state.mutable_odom()->mutable_position()->set_x(x_(0));
+  state.mutable_odom()->mutable_position()->set_y(x_(1));
+  state.mutable_odom()->mutable_position()->set_z(x_(2));
 
-  odom_msg.mutable_orientation()->set_x(x_(4));
-  odom_msg.mutable_orientation()->set_y(x_(5));
-  odom_msg.mutable_orientation()->set_z(x_(6));
-  odom_msg.mutable_orientation()->set_w(x_(3));
+  state.mutable_odom()->mutable_orientation()->set_x(x_(4));
+  state.mutable_odom()->mutable_orientation()->set_y(x_(5));
+  state.mutable_odom()->mutable_orientation()->set_z(x_(6));
+  state.mutable_odom()->mutable_orientation()->set_w(x_(3));
 
-  odom_msg.mutable_linvel()->set_x(x_(7));
-  odom_msg.mutable_linvel()->set_y(x_(8));
-  odom_msg.mutable_linvel()->set_z(x_(9));
+  state.mutable_odom()->mutable_linvel()->set_x(x_(7));
+  state.mutable_odom()->mutable_linvel()->set_y(x_(8));
+  state.mutable_odom()->mutable_linvel()->set_z(x_(9));
 
-  odom_msg.mutable_angvel()->set_x(x_(10));
-  odom_msg.mutable_angvel()->set_y(x_(11));
-  odom_msg.mutable_angvel()->set_z(x_(12));
+  state.mutable_odom()->mutable_angvel()->set_x(x_(10));
+  state.mutable_odom()->mutable_angvel()->set_y(x_(11));
+  state.mutable_odom()->mutable_angvel()->set_z(x_(12));
 
-  return odom_msg;
+  state.mutable_imu()->mutable_orientation()->set_x(x_(4));
+  state.mutable_imu()->mutable_orientation()->set_y(x_(5));
+  state.mutable_imu()->mutable_orientation()->set_z(x_(6));
+  state.mutable_imu()->mutable_orientation()->set_w(x_(3));
+
+  state.mutable_imu()->mutable_angvel()->set_x(x_(10));
+  state.mutable_imu()->mutable_angvel()->set_y(x_(11));
+  state.mutable_imu()->mutable_angvel()->set_z(x_(12));
+
+  Eigen::Vector3d force, torque;
+  getForceAndTorque(force, torque);
+  
+  Eigen::Vector3d acceleration = force / mass_;
+  state.mutable_imu()->mutable_linacc()->set_x(acceleration(0));
+  state.mutable_imu()->mutable_linacc()->set_y(acceleration(1));
+  state.mutable_imu()->mutable_linacc()->set_z(acceleration(2));
+
+  /*(*state.mutable_odom()) = odom_msg;*/
+  /*(*state.mutable_imu()) = imu_msg;*/
+
+  return state;
 }
 
 Eigen::VectorXd Drone::dynamics(const Eigen::VectorXd& x,
