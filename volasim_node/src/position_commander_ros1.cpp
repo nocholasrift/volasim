@@ -15,6 +15,16 @@ public:
   void spin();
 
 private:
+  struct Axis{
+    enum Index : size_t {
+      X = 0,
+      Y = 1,
+      Z = 2,
+    };
+
+    static constexpr size_t DIMS = 3;
+  };
+
   void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
   void commandCallback(
       const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg);
@@ -76,14 +86,26 @@ void PositionCommander::odomCallback(
 void PositionCommander::commandCallback(
     const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg) {
 
-  if (!has_odom_ || mode_ == Mode::EXECUTING)
+  if (!has_odom_ || mode_ == Mode::EXECUTING){
     return;   // ignore if busy or no odom
+  }
 
-  goal_pos_ << msg->positions[0],
-          msg->positions[1],
-          msg->positions[2];
+  if (msg->positions.size() != Axis::DIMS){
+    ROS_WARN("Ignoring /command_pos without 3 entries for pos.");
+    return;
+  }
 
   double duration = msg->time_from_start.toSec();
+
+  if (duration <= 0){
+    ROS_WARN("Ignoring /command_pos with non-positive duration %.3f", duration);
+    return;
+  }
+
+  goal_pos_ << msg->positions[Axis::X],
+               msg->positions[Axis::Y],
+               msg->positions[Axis::Z];
+
 
   active_traj_ = generateTrajectory(current_pos_, goal_pos_, duration, dt_);
 
@@ -116,10 +138,10 @@ void PositionCommander::timerCallback(
 
   trajectory_msgs::JointTrajectoryPoint msg;
 
-  msg.positions     = {state.pos[0], state.pos[1], state.pos[2]};
-  msg.velocities    = {state.vel[0], state.vel[1], state.vel[2]};
-  msg.accelerations = {state.acc[0], state.acc[1], state.acc[2]};
-  msg.effort        = {state.jerk[0], state.jerk[1], state.jerk[2]};
+  msg.positions     = {state.pos[Axis::X], state.pos[Axis::Y], state.pos[Axis::Z]};
+  msg.velocities    = {state.vel[Axis::X], state.vel[Axis::Y], state.vel[Axis::Z]};
+  msg.accelerations = {state.acc[Axis::X], state.acc[Axis::Y], state.acc[Axis::Z]};
+  msg.effort        = {state.jerk[Axis::X], state.jerk[Axis::Y], state.jerk[Axis::Z]};
   msg.time_from_start = ros::Duration(traj_index_ * dt_);
 
   traj_pub_.publish(msg);

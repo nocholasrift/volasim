@@ -28,7 +28,7 @@
 
   <block:class name="hummingbird">
     <color>#FFFFFF</color>
-    <geometry type="mesh" model_file="./build/definitions/meshes/hummingbird.obj" decomp_file="./build/definitions/meshes/hummingbird_cd.obj"/>
+    <geometry type="mesh" model_file="./definitions/meshes/hummingbird.obj" decomp_file="./definitions/meshes/hummingbird_cd.obj"/>
   </block:class>
 
    <vehicle name="drone1" class="hummingbird">

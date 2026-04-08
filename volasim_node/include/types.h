@@ -27,6 +27,9 @@ struct state_t {
 
     w = Eigen::Vector3d::Zero();
     w_dot = Eigen::Vector3d::Zero();
+
+    time = 0;
+    yaw = 0;
   }
 };
 

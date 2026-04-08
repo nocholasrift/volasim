@@ -23,7 +23,8 @@ echo "[INFO] Launching position commander..."
 ./build/Release/position_command_node &
 CTRL_PID=$!
 
-sleep 5
+# sleep 5
+timeout 30s rostopic echo -n1 /odometry >/dev/null
 rosservice call /takeoff "{}"
 
 # === CLEANUP HANDLER ===

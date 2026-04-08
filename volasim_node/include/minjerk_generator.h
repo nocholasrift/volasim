@@ -2,7 +2,7 @@
 #define VOLASIM_NODE_MINJERK_GENERATOR_H
 
 #include <types.h>
-#include "Eigen/src/Core/Matrix.h"
+#include <Eigen/Core>
 
 class MinJerkGenerator{
 public:

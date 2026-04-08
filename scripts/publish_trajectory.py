@@ -19,6 +19,15 @@ class CSVTrajectoryPublisher:
         # Load data
         self.load_csv()
 
+        self.current_pos = None
+        self.odom_received = False
+
+        self.index = 0
+        self.shift = None
+        self.start_time = None
+
+        self.msg = JointTrajectoryPoint()
+
         self.pub = rospy.Publisher(
             "/cmd_full_state", JointTrajectoryPoint, queue_size=10
         )
@@ -29,15 +38,6 @@ class CSVTrajectoryPublisher:
         )
 
         self.odom_sub = rospy.Subscriber("/odometry", Odometry, self.odom_callback)
-
-        self.current_pos = None
-        self.odom_received = False
-
-        self.index = 0
-        self.shift = None
-        self.start_time = None
-
-        self.msg = JointTrajectoryPoint()
 
         # Start high-rate timer
         self.timer = rospy.Timer(rospy.Duration(self.dt), self.timer_callback)
@@ -82,15 +82,16 @@ class CSVTrajectoryPublisher:
         path.header.frame_id = "odom"
         path.header.stamp = rospy.Time.now()
 
-        shift = self.current_pos - self.p[0, :]
+        self.shift = self.current_pos - self.p[0, :]
+        rospy.loginfo(f"Applying shift: {self.shift}")
 
         for i in range(len(self.p)):
             pose = PoseStamped()
             pose.header.frame_id = "odom"
             pose.header.stamp = path.header.stamp
-            pose.pose.position.x = self.p[i, 0] + shift[0]
-            pose.pose.position.y = self.p[i, 1] + shift[1]
-            pose.pose.position.z = self.p[i, 2] + shift[2]
+            pose.pose.position.x = self.p[i, 0] + self.shift[0]
+            pose.pose.position.y = self.p[i, 1] + self.shift[1]
+            pose.pose.position.z = self.p[i, 2] + self.shift[2]
             pose.pose.orientation.w = 1.0
             path.poses.append(pose)
 
@@ -114,12 +115,12 @@ class CSVTrajectoryPublisher:
         elapsed = (now - self.start_time).to_sec()
 
         # Advance index based on elapsed time
-        while self.index < len(self.t) - 1 and elapsed >= self.t[self.index]:
+        while self.index < len(self.t) - 1 and elapsed >= self.t[self.index] + 1:
             self.index += 1
 
         if self.shift is None:
-            self.shift = self.current_pos - self.p[0]
-            rospy.loginfo(f"Applying shift: {self.shift}")
+            # self.shift = self.current_pos - self.p[0]
+            return
 
         pos = self.p[self.index] + self.shift
         vel = self.v[self.index]
