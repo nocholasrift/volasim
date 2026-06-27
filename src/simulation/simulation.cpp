@@ -3,8 +3,13 @@
 #include <volasim/simulation/simulation.h>
 #include <volasim/vehicles/drone.h>
 
+#ifdef USE_APPLE_OPENGL_HEADERS
+#include <GLUT/glut.h>
+#include <OpenGL/glu.h>
+#else
 #include <GL/glu.h>
-#include <GL/glut.h>  // for glutSolidSphere
+#include <GL/glut.h>
+#endif
 #include <math.h>
 #include <chrono>
 #include <glm/ext/matrix_clip_space.hpp>
@@ -45,13 +50,17 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
   window_height_ = cam_settings.window_sz[1];
   frames_per_sec_ = cam_settings.fps;
 
-  window_ = SDL_CreateWindow("Floating Sphere", window_width_, window_height_,
+  window_ = SDL_CreateWindow("Volasim", window_width_, window_height_,
                              SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
   camera_ = Camera(cam_settings);
 
   // SDL_SetWindowRelativeMouseMode(window_, true);
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
   gl_ctx_ = SDL_GL_CreateContext(window_);
   SDL_GL_MakeCurrent(window_, gl_ctx_);
@@ -154,7 +163,7 @@ SDL_AppResult Simulation::SDLEvent(void* appstate, SDL_Event* event) {
 }
 
 SDL_AppResult Simulation::update(void* appstate) {
-  static std::chrono::system_clock::time_point last_time;
+  static std::chrono::steady_clock::time_point last_time;
 
   Uint64 duration = SDL_GetTicks() - frame_start_;
   if (duration > ms_per_frame_) {

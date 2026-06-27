@@ -1,4 +1,4 @@
-find_package(Protobuf REQUIRED)
+find_package(protobuf CONFIG REQUIRED)
 
 
 set(PROTO_FILES
@@ -10,6 +10,7 @@ set(PROTO_FILES
 
 add_library(myproto STATIC ${PROTO_FILES})
 target_include_directories(myproto INTERFACE ${CMAKE_CURRENT_BINARY_DIR})
+set_target_properties(myproto PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
 
 target_link_libraries(myproto
   PUBLIC protobuf::libprotobuf

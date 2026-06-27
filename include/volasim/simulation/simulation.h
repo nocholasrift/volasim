@@ -99,7 +99,7 @@ class Simulation {
   Uint64 frame_start_;
   Uint64 last_step_;
 
-  std::chrono::system_clock::time_point precise_time_;
+  std::chrono::steady_clock::time_point precise_time_;
 
   SDL_Window* window_;
   SDL_GLContext gl_ctx_;

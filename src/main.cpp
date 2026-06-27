@@ -11,8 +11,13 @@
 #include <volasim/comms/zmq_server.h>
 #include <volasim/simulation/simulation.h>
 
+#ifdef USE_APPLE_OPENGL_HEADERS
+#include <OpenGL/glu.h>
+#include <GLUT/glut.h>
+#else
 #include <GL/glu.h>
-#include <GL/glut.h>  // for glutSolidSphere
+#include <GL/glut.h>
+#endif
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_opengl.h>

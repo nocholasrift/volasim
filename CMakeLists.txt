@@ -14,17 +14,17 @@ add_subdirectory(third_party/assimp EXCLUDE_FROM_ALL)
 
 add_subdirectory(include/volasim/comms/msgs)
 
+find_package(absl REQUIRED CONFIG)
 find_package(OpenGL REQUIRED)
 find_package(glm REQUIRED)
 find_package(GLUT REQUIRED)
-find_package(Eigen3 REQUIRED system)
+find_package(Eigen3 REQUIRED)
 
 add_subdirectory(volasim_node)
 
 
 include_directories(
   include/
-  ${EIGEN3_INCLUDE_DIRS}
   ${cppzmq_INCLUDE_DIRS}
   ${assimp_INCLUDE_DIRS}
 )
@@ -51,13 +51,18 @@ target_link_libraries(volasim
   pugixml
   ${OPENGL_LIBRARIES}
   ${GLUT_LIBRARIES}
-  ${EIGEN3_LIBRARIES}
+  Eigen3::Eigen
   ${GLM_LIBRARIES}
   cppzmq
   myproto
   assimp
 )
-target_compile_options(volasim PRIVATE -std=c++17)
+set_target_properties(volasim PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+target_compile_definitions(volasim PRIVATE GLM_ENABLE_EXPERIMENTAL GL_SILENCE_DEPRECATION GLUT_SILENCE_DEPRECATION)
+
+if(APPLE)
+  target_compile_definitions(volasim PRIVATE USE_APPLE_OPENGL_HEADERS)
+endif()
 
 add_custom_target(copy_assets
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/definitions ${CMAKE_CURRENT_BINARY_DIR}/definitions

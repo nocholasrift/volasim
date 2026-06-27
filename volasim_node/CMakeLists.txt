@@ -14,7 +14,7 @@ endif()
 include_directories(
   include/
   ${CMAKE_SOURCE_DIR}/include
-  ${EIGEN3_INCLUDE_DIRS}
+  # ${EIGEN3_INCLUDE_DIRS}
   ${cppzmq_INCLUDE_DIRS}
 )
 
@@ -24,7 +24,8 @@ add_library(lee_controller
 )
 target_link_libraries(lee_controller
   PRIVATE 
-  ${EIGEN3_LIBRARIES}
+  # ${EIGEN3_LIBRARIES}
+  Eigen3::Eigen
 )
 target_compile_options(lee_controller PRIVATE -std=c++17)
 
