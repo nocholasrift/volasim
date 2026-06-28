@@ -64,7 +64,6 @@ class Shader {
   }
 
   ~Shader() {
-    std::cout << "being destructed" << std::endl;
     if (id_)
       glDeleteProgram(id_);
   }
@@ -97,6 +96,16 @@ class Shader {
   void setUniformVec3(const std::string& attr, const glm::vec3& vec) {
     GLuint loc = glGetUniformLocation(id_, attr.c_str());
     glUniform3fv(loc, 1, &vec[0]);
+  }
+
+  void setUniformVec2(const std::string& attr, const glm::vec2& vec) {
+    GLuint loc = glGetUniformLocation(id_, attr.c_str());
+    glUniform2fv(loc, 1, &vec[0]);
+  }
+
+  void setUniformInt(const std::string& attr, int val) {
+    GLuint loc = glGetUniformLocation(id_, attr.c_str());
+    glUniform1i(loc, val);
   }
 
  private:

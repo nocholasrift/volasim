@@ -42,8 +42,8 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
 
   glutInit(&argc, argv);
 
-  /*XMLParser xml_parser("./definitions/worlds/world_250_world.xml");*/
-  XMLParser xml_parser("./definitions/worlds/demo_world.xml");
+  XMLParser xml_parser("./definitions/worlds/world_250_world.xml");
+  // XMLParser xml_parser("./definitions/worlds/demo_world.xml");
   CameraSettings cam_settings = xml_parser.getCameraSettings();
 
   window_width_ = cam_settings.window_sz[0];
@@ -74,6 +74,7 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
   glEnable(GL_LIGHTING);
   glEnable(GL_LIGHT0);
   glEnable(GL_LIGHT1);  // Additional light
+  glEnable(GL_PROGRAM_POINT_SIZE);
 
   // Brighter directional light
   GLfloat light0_pos[] = {1.0f, 2.0f, 3.0f, 0.0f};  // directional light
@@ -106,6 +107,17 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
 
   ms_per_frame_ = 1000 / frames_per_sec_;
 
+  DepthSensorSettings ds_settings;
+  ds_settings.width = 320;
+  ds_settings.height = 240;
+  ds_settings.fx = 160.f;
+  ds_settings.fy = 160.f;
+  ds_settings.cx = 160.f;
+  ds_settings.cy = 120.f;
+  ds_settings.z_near = 0.1f;
+  ds_settings.z_far = 20.f;
+  ds_settings.type = DepthSensorType::kDepthCamera;
+
   shape_shader_ = Shader(mesh_vertex_shader, mesh_fragment_shader);
 
   // XMLParser parser("./definitions/worlds/demo_world.xml");
@@ -118,6 +130,9 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
   // if no dynamic object, default to origin for focus
   if (dyna_objs.size() > 0)
     camera_.setTarget(dyna_objs[0]);
+
+  depth_sensor_ = std::make_unique<GPUSensor>(ds_settings, dyna_objs[0]);
+  depth_sensor_->init();
 
   setSimState();
 
@@ -180,12 +195,12 @@ SDL_AppResult Simulation::update(void* appstate) {
     // glm::mat4 proj_mat = depth_sensor_->getProjMat();
 
     // glUseProgram(shape_shader_.getID());
-    // depth_sensor_->update(world_, shape_shader_);
     /**/
-    /*depth_sensor_->draw(view_mat, proj_mat, shape_shader_);*/
 
     glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    depth_sensor_->update(world_, shape_shader_);
 
     glUseProgram(shape_shader_.getID());
 
@@ -195,6 +210,7 @@ SDL_AppResult Simulation::update(void* appstate) {
     // depth_sensor_->update(world_, shape_shader_);
 
     world_->draw(view_mat, proj_mat, shape_shader_);
+    depth_sensor_->draw(view_mat, proj_mat, shape_shader_);
     // depth_sensor_->draw(view_mat, proj_mat, shape_shader_);
     // depth_sensor_->draw(depth_sensor_->getViewMat(),
     //                     depth_sensor_->getProjMat(), shape_shader_);
@@ -275,7 +291,9 @@ void Simulation::setSimState() {
       if (!dyna_obj) {
         std::cerr << "[Simulation] null dynamic object detected in interface\n";
       }
-      dyna_obj->getSimState().SerializeToString(&sim_state_.state);
+      if (!dyna_obj->getSimState().SerializeToString(&sim_state_.state)) {
+        std::cerr << "[Simulation] Failed to serialize state\n";
+      }
       break;
     }
   }
