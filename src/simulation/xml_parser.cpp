@@ -22,8 +22,7 @@ XMLParser::XMLParser(const std::string& fname) {
   type_map_.insert({"block:class", XMLTags::kBlockDefinition});
 }
 
-CameraSettings XMLParser::getCameraSettings() {
-  CameraSettings ret;
+Camera XMLParser::loadCamera() {
 
   pugi::xml_node curr_node = doc_.child("volasim_world");
   pugi::xml_node camera_xml = curr_node.child("gui");
@@ -32,24 +31,7 @@ CameraSettings XMLParser::getCameraSettings() {
     throw std::runtime_error("[XMLParser] Missing 'gui' node in world XML");
   }
 
-  try {
-    ret.yaw = std::stof(camera_xml.child_value("cam_yaw"));
-    ret.pitch = std::stof(camera_xml.child_value("cam_pitch"));
-    ret.radius = std::stof(camera_xml.child_value("cam_distance"));
-    ret.fov = std::stof(camera_xml.child_value("fov_deg"));
-    ret.fps = std::stof(camera_xml.child_value("fps"));
-  } catch (const std::exception& e) {
-    throw std::runtime_error("[XMLParser] Invalid camera settings in XML: " +
-                             std::string(e.what()));
-  }
-
-  float width = std::stof(camera_xml.child_value("window_width"));
-  float height = std::stof(camera_xml.child_value("window_height"));
-  ret.window_sz = glm::ivec2(width, height);
-
-  ret.target = nullptr;
-
-  return ret;
+  return Camera::fromXML(camera_xml);
 }
 
 void XMLParser::loadWorldFromXML(DisplayObjectContainer* world) {

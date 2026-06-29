@@ -5,6 +5,7 @@
 #include <volasim/simulation/dynamic_object.h>
 
 #include <glm/glm.hpp>
+#include <pugixml.hpp>
 
 // Defines several possible options for camera movement. Used as abstraction to stay away from window-system specific input methods
 enum Camera_Movement { FORWARD, BACKWARD, LEFT, RIGHT };
@@ -26,22 +27,35 @@ struct CameraSettings {
 class Camera {
  public:
   // camera Attributes
+  struct Dimensions {
+    int width{0};
+    int height{0};
+  };
 
   Camera() = default;
 
   Camera(const CameraSettings& settings);
 
   Camera(const glm::ivec2& window_sz, double yaw, double pitch, double radius,
-         double fov = 60.f,
+         double fov = 60.f, double fps = 60.f,
          const glm::vec3& world_up = glm::vec3(0.f, 0.f, 1.f),
          DynamicObject* target_obj = nullptr);
+
+  static Camera fromXML(const pugi::xml_node& camera_xml);
 
   // returns the view matrix calculated using Euler Angles and the LookAt Matrix
   glm::mat4 getViewMatrix();
 
   float getFov() { return fov_; }
 
+  float getFPS() { return fps_; }
+
+  Dimensions getDimensions() { return dimensions_; }
+
   void setTarget(DynamicObject* target_obj) { target_obj_ = target_obj; }
+
+  void setID(uint8_t id) { id = id; }
+  uint8_t getID() { return id_; }
 
   void enableOrbitAndPan() { enable_orbit_and_pan_ = true; }
 
@@ -75,16 +89,21 @@ class Camera {
   glm::vec3 right_;
   glm::vec3 world_up_ = glm::vec3(0.f, 0.f, 1.f);
 
+  uint8_t id_{0};
+
   // camera options
   float movement_speed_;
 
   float fov_ = 90.f;
+  float fps_ = 60.f;
   float radius_ = 1.f;
   float yaw_ = 0.f;
   float pitch_ = 0.f;
 
-  float lastx_;
-  float lasty_;
+  float lastx_{0.};
+  float lasty_{0.};
+
+  Dimensions dimensions_;
 
   bool enable_orbit_and_pan_ = false;
 

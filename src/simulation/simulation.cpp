@@ -31,7 +31,7 @@ Simulation::~Simulation() {
   delete world_;
 }
 
-SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
+SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[], const Args& args) {
   if (!SDL_Init(SDL_INIT_VIDEO)) {
     SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
     return SDL_APP_FAILURE;
@@ -42,18 +42,21 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
 
   glutInit(&argc, argv);
 
-  XMLParser xml_parser("./definitions/worlds/world_250_world.xml");
-  // XMLParser xml_parser("./definitions/worlds/demo_world.xml");
-  CameraSettings cam_settings = xml_parser.getCameraSettings();
+  XMLParser xml_parser(args.world_path);
+  // CameraSettings cam_settings = xml_parser.getCameraSettings();
+  cameras_.push_back(xml_parser.loadCamera());
+  cameras_.back().setID(cameras_.size() - 1);
 
-  window_width_ = cam_settings.window_sz[0];
-  window_height_ = cam_settings.window_sz[1];
-  frames_per_sec_ = cam_settings.fps;
+  Camera::Dimensions camera_dims = camera().getDimensions();
+
+  window_width_ = camera_dims.width;
+  window_height_ = camera_dims.height;
+  frames_per_sec_ = camera().getFPS();
 
   window_ = SDL_CreateWindow("Volasim", window_width_, window_height_,
                              SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
-  camera_ = Camera(cam_settings);
+  // camera_ = Camera(cam_settings);
 
   // SDL_SetWindowRelativeMouseMode(window_, true);
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -129,7 +132,7 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
   // default to first dynamic object registered as target
   // if no dynamic object, default to origin for focus
   if (dyna_objs.size() > 0)
-    camera_.setTarget(dyna_objs[0]);
+    camera().setTarget(dyna_objs[0]);
 
   depth_sensor_ = std::make_unique<GPUSensor>(ds_settings, dyna_objs[0]);
   depth_sensor_->init();
@@ -154,18 +157,18 @@ SDL_AppResult Simulation::SDLEvent(void* appstate, SDL_Event* event) {
     case SDL_EVENT_MOUSE_MOTION:
       input_manager_.mouseX = event->motion.xrel;
       input_manager_.mouseY = event->motion.yrel;
-      camera_.processMouseMovement(input_manager_.mouseX,
-                                   input_manager_.mouseY);
+      camera().processMouseMovement(input_manager_.mouseX,
+                                    input_manager_.mouseY);
       break;
     case SDL_EVENT_MOUSE_WHEEL:
-      camera_.processMouseScroll(event->wheel.y);
+      camera().processMouseScroll(event->wheel.y);
       break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
       if (event->button.button == kMouseRightClick)
-        camera_.enableOrbitAndPan();
+        camera().enableOrbitAndPan();
       break;
     case SDL_EVENT_MOUSE_BUTTON_UP:
-      camera_.disableOrbitAndPan();
+      camera().disableOrbitAndPan();
       break;
     case SDL_EVENT_KEY_DOWN:
       if (event->key.key == SDLK_Q)
@@ -184,10 +187,10 @@ SDL_AppResult Simulation::update(void* appstate) {
   if (duration > ms_per_frame_) {
     // physics_interface_.update(ms_per_frame_ / 1000.);
 
-    glm::mat4 view_mat = camera_.getViewMatrix();
+    glm::mat4 view_mat = camera().getViewMatrix();
 
     glm::mat4 proj_mat = glm::perspective(
-        glm::radians(camera_.getFov()),                      // fov
+        glm::radians(camera().getFov()),                     // fov
         static_cast<float>(window_width_) / window_height_,  // aspect ratio
         0.1f, 100.0f);                                       // near & far plane
 

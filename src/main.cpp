@@ -8,6 +8,7 @@
 
 #include <thread>
 #define SDL_MAIN_USE_CALLBACKS 1 /* use the callbacks instead of main() */
+#include <volasim/args.h>
 #include <volasim/comms/zmq_server.h>
 #include <volasim/simulation/simulation.h>
 
@@ -34,6 +35,7 @@ ZMQServer& server = ZMQServer::getInstance();
 
 /* This function runs once at startup. */
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
+  Args args = parseArgs(argc, argv);
   t1 = std::thread([&]() {
     // blocking call to getSimState before loop.
     // ensured sim is running before going to loop
@@ -51,7 +53,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
       }
     }
   });
-  return sim.initSDL(appstate, argc, argv);
+  return sim.initSDL(appstate, argc, argv, args);
 }
 
 /* This function runs when a new event (mouse input, keypresses, etc) occurs. */

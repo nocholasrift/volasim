@@ -27,7 +27,7 @@ class XMLParser {
 
   void loadWorldFromXML(DisplayObjectContainer* world);
 
-  CameraSettings getCameraSettings();
+  Camera loadCamera();
 
  private:
   void throwError(std::string_view fname, const pugi::xml_parse_result& result);

@@ -1,6 +1,7 @@
 #ifndef SIMULATION_H
 #define SIMULATION_H
 
+#include <volasim/args.h>
 #include <volasim/event/event_dispatcher.h>
 #include <volasim/sensors/depth_sensor.h>
 #include <volasim/simulation/camera.h>
@@ -66,13 +67,16 @@ class Simulation {
   SDL_AppResult update(void* appstate);
   SDL_AppResult SDLEvent(void* appstate, SDL_Event* event);
 
-  SDL_AppResult initSDL(void** appstate, int argc, char* argv[]);
+  SDL_AppResult initSDL(void** appstate, int argc, char* argv[], const Args& args);
   void quitSDL(void* appstate, SDL_AppResult result);
 
   bool isRunning() { return is_running_.load(); }
 
   void setSimState();
   void setInputs(const std::string& buffer);
+
+  const Camera& camera() const { return cameras_[active_camera]; }
+  Camera& camera() { return cameras_[active_camera]; }
 
   const std::string getSimState();
   EventDispatcher& getHandler() { return event_handler_; }
@@ -110,7 +114,8 @@ class Simulation {
   EventDispatcher& event_handler_;
   PhysicsInterface& physics_interface_;
 
-  Camera camera_;
+  std::vector<Camera> cameras_;
+  uint8_t active_camera{0};
 
   InputManager input_manager_;
 
