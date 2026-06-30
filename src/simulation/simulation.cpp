@@ -31,7 +31,8 @@ Simulation::~Simulation() {
   delete world_;
 }
 
-SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[], const Args& args) {
+SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
+                                  const Args& args) {
   if (!SDL_Init(SDL_INIT_VIDEO)) {
     SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
     return SDL_APP_FAILURE;
@@ -131,11 +132,11 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[], const
 
   // default to first dynamic object registered as target
   // if no dynamic object, default to origin for focus
-  if (dyna_objs.size() > 0)
+  if (dyna_objs.size() > 0) {
     camera().setTarget(dyna_objs[0]);
-
-  depth_sensor_ = std::make_unique<GPUSensor>(ds_settings, dyna_objs[0]);
-  depth_sensor_->init();
+    depth_sensor_ = std::make_unique<GPUSensor>(ds_settings, dyna_objs[0]);
+    depth_sensor_->init();
+  }
 
   setSimState();
 

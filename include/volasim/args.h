@@ -1,5 +1,5 @@
-#ifndef ARGS_H
-#define ARGS_H
+#ifndef VOLASIM_ARGS_H
+#define VOLASIM_ARGS_H
 
 #include <stdexcept>
 #include <string>
