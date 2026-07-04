@@ -222,6 +222,12 @@ void PhysicsInterface::handleEvent(Event* e) {
           const std::vector<Eigen::MatrixX3d>& meshes =
               mesh_render->get_meshes();
 
+          // No convex decomposition (e.g. purely visual meshes like sensors)
+          // means no collision body at all.
+          if (meshes.empty()) {
+            return;
+          }
+
           JPH::StaticCompoundShapeSettings compound_settings;
 
           for (const auto& verts : meshes) {

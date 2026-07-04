@@ -31,7 +31,8 @@ Simulation::~Simulation() {
   delete world_;
 }
 
-SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
+SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
+                                  const Args& args) {
   if (!SDL_Init(SDL_INIT_VIDEO)) {
     SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
     return SDL_APP_FAILURE;
@@ -42,18 +43,20 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
 
   glutInit(&argc, argv);
 
-  /*XMLParser xml_parser("./definitions/worlds/world_250_world.xml");*/
-  XMLParser xml_parser("./definitions/worlds/demo_world.xml");
-  CameraSettings cam_settings = xml_parser.getCameraSettings();
+  XMLParser xml_parser(args.world_path);
+  cameras_.push_back(xml_parser.loadCamera());
+  cameras_.back().setID(cameras_.size() - 1);
 
-  window_width_ = cam_settings.window_sz[0];
-  window_height_ = cam_settings.window_sz[1];
-  frames_per_sec_ = cam_settings.fps;
+  Camera::Dimensions camera_dims = camera().getDimensions();
+
+  window_width_ = camera_dims.width;
+  window_height_ = camera_dims.height;
+  frames_per_sec_ = camera().getFPS();
 
   window_ = SDL_CreateWindow("Volasim", window_width_, window_height_,
                              SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
-  camera_ = Camera(cam_settings);
+  // camera_ = Camera(cam_settings);
 
   // SDL_SetWindowRelativeMouseMode(window_, true);
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -74,6 +77,7 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
   glEnable(GL_LIGHTING);
   glEnable(GL_LIGHT0);
   glEnable(GL_LIGHT1);  // Additional light
+  glEnable(GL_PROGRAM_POINT_SIZE);
 
   // Brighter directional light
   GLfloat light0_pos[] = {1.0f, 2.0f, 3.0f, 0.0f};  // directional light
@@ -108,8 +112,19 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
 
   shape_shader_ = Shader(mesh_vertex_shader, mesh_fragment_shader);
 
-  // XMLParser parser("./definitions/worlds/demo_world.xml");
-  xml_parser.loadWorldFromXML(world_);
+  // parser populates the scene graph under world_ and returns any depth sensors
+  auto t_start = std::chrono::steady_clock::now();
+  gpu_sensors_ = xml_parser.loadWorldFromXML(world_);
+  auto elapsed = std::chrono::steady_clock::now() - t_start;
+  std::cout
+      << "elapsed time: "
+      << std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count() /
+             1e9
+      << "\n";
+
+  // sensors are constructed during parsing; init() needs the live GL context
+  for (GPUSensor& sensor : gpu_sensors_)
+    sensor.init();
 
   std::vector<DynamicObject*> dyna_objs =
       physics_interface_.getDynamicObjects();
@@ -117,7 +132,7 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[]) {
   // default to first dynamic object registered as target
   // if no dynamic object, default to origin for focus
   if (dyna_objs.size() > 0)
-    camera_.setTarget(dyna_objs[0]);
+    camera().setTarget(dyna_objs[0]);
 
   setSimState();
 
@@ -139,18 +154,18 @@ SDL_AppResult Simulation::SDLEvent(void* appstate, SDL_Event* event) {
     case SDL_EVENT_MOUSE_MOTION:
       input_manager_.mouseX = event->motion.xrel;
       input_manager_.mouseY = event->motion.yrel;
-      camera_.processMouseMovement(input_manager_.mouseX,
-                                   input_manager_.mouseY);
+      camera().processMouseMovement(input_manager_.mouseX,
+                                    input_manager_.mouseY);
       break;
     case SDL_EVENT_MOUSE_WHEEL:
-      camera_.processMouseScroll(event->wheel.y);
+      camera().processMouseScroll(event->wheel.y);
       break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
       if (event->button.button == kMouseRightClick)
-        camera_.enableOrbitAndPan();
+        camera().enableOrbitAndPan();
       break;
     case SDL_EVENT_MOUSE_BUTTON_UP:
-      camera_.disableOrbitAndPan();
+      camera().disableOrbitAndPan();
       break;
     case SDL_EVENT_KEY_DOWN:
       if (event->key.key == SDLK_Q)
@@ -169,10 +184,10 @@ SDL_AppResult Simulation::update(void* appstate) {
   if (duration > ms_per_frame_) {
     // physics_interface_.update(ms_per_frame_ / 1000.);
 
-    glm::mat4 view_mat = camera_.getViewMatrix();
+    glm::mat4 view_mat = camera().getViewMatrix();
 
     glm::mat4 proj_mat = glm::perspective(
-        glm::radians(camera_.getFov()),                      // fov
+        glm::radians(camera().getFov()),                     // fov
         static_cast<float>(window_width_) / window_height_,  // aspect ratio
         0.1f, 100.0f);                                       // near & far plane
 
@@ -180,24 +195,24 @@ SDL_AppResult Simulation::update(void* appstate) {
     // glm::mat4 proj_mat = depth_sensor_->getProjMat();
 
     // glUseProgram(shape_shader_.getID());
-    // depth_sensor_->update(world_, shape_shader_);
     /**/
-    /*depth_sensor_->draw(view_mat, proj_mat, shape_shader_);*/
 
     glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    for (GPUSensor& sensor : gpu_sensors_) {
+      sensor.update(world_, shape_shader_);
+    }
 
     glUseProgram(shape_shader_.getID());
 
     shape_shader_.setUniformVec3("lightColor", glm::vec3(.8f, .8f, .8f));
     shape_shader_.setUniformVec3("lightPos", glm::vec3(0, 0, 5));
 
-    // depth_sensor_->update(world_, shape_shader_);
-
     world_->draw(view_mat, proj_mat, shape_shader_);
-    // depth_sensor_->draw(view_mat, proj_mat, shape_shader_);
-    // depth_sensor_->draw(depth_sensor_->getViewMat(),
-    //                     depth_sensor_->getProjMat(), shape_shader_);
+    for (GPUSensor& sensor : gpu_sensors_) {
+      sensor.draw(view_mat, proj_mat, shape_shader_);
+    }
 
     SDL_GL_SwapWindow(window_);
 
@@ -275,7 +290,9 @@ void Simulation::setSimState() {
       if (!dyna_obj) {
         std::cerr << "[Simulation] null dynamic object detected in interface\n";
       }
-      dyna_obj->getSimState().SerializeToString(&sim_state_.state);
+      if (!dyna_obj->getSimState().SerializeToString(&sim_state_.state)) {
+        std::cerr << "[Simulation] Failed to serialize state\n";
+      }
       break;
     }
   }

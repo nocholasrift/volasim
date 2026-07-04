@@ -1,7 +1,4 @@
 <volasim_world version="1.0">
-  <simul_timestep>0</simul_timestep>
-  <joystick_enabled>true</joystick_enabled>
-  <collision_threshold>0.1</collision_threshold>
 
   <gui>
     <fps>120</fps>
@@ -14,11 +11,11 @@
     <window_height>960</window_height>
   </gui>
 
-  <lights>
-    <enable_shadows>true</enable_shadows>
-    <light_azimuth_deg>60.0</light_azimuth_deg>
-    <light_elevation_deg>75.0</light_elevation_deg>
-  </lights>
+  <!-- <lights> -->
+  <!--   <enable_shadows>true</enable_shadows> -->
+  <!--   <light_azimuth_deg>60.0</light_azimuth_deg> -->
+  <!--   <light_elevation_deg>75.0</light_elevation_deg> -->
+  <!-- </lights> -->
 
 	<element class="ground_plane">
 		<color>#FFFFFF</color>
@@ -26,16 +23,19 @@
     <geometry type="plane" x_min="-20" x_max="20" y_min="-20" y_max="20" z="0.0"/>
 	 </element>
 
-  <block:class name="hummingbird">
-    <color>#FFFFFF</color>
-    <geometry type="mesh" model_file="./definitions/meshes/hummingbird.obj" decomp_file="./definitions/meshes/hummingbird_cd.obj"/>
-  </block:class>
+  <!-- <block:class name="hummingbird"> -->
+  <!--   <color>#FFFFFF</color> -->
+  <!--   <geometry type="mesh" model_file="./definitions/meshes/hummingbird.obj" decomp_file="./definitions/meshes/hummingbird_cd.obj"/> -->
+  <!-- </block:class> -->
+
+   <include file="./definitions/vehicles/hummingbird.xml" />
 
    <vehicle name="drone1" class="hummingbird">
-     <inertia_matrix>0.0820 0. 0. 0. 0.0845 0. 0. 0. .1377</inertia_matrix>
-     <mass>4.34</mass>
-     <length>0.315</length>
-     <c_torque>8.004e-4</c_torque>
+     <include file="./definitions/sensors/realsense.xml" x="0.025" y="0.025" z="0.01" yaw="45" />
+     <!-- <inertia_matrix>0.0820 0. 0. 0. 0.0845 0. 0. 0. .1377</inertia_matrix> -->
+     <!-- <mass>4.34</mass> -->
+     <!-- <length>0.315</length> -->
+     <!-- <c_torque>8.004e-4</c_torque> -->
      <init_pose>-2.25 2.5 0.5</init_pose>
    </vehicle>
 

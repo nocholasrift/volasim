@@ -7,17 +7,13 @@
 #include <sstream>
 #include <stdexcept>
 
-Drone::Drone(const pugi::xml_node& root, double dt) : DynamicObject(dt) {
-  buildFromXML(root);
+Drone::Drone(double dt) : DynamicObject(dt) {
 
   x_ = Eigen::Matrix<double, Drone::N, 1>::Zero();
   u_ = Eigen::Matrix<double, Drone::M, 1>::Zero();
 
   // unit quaternion
   x_(3) = 1.0;
-
-  // sporty drone, thrust to weight ratio of 3:1
-  max_thrust_ = 3 * mass_ * 9.81;
 
   solver_ = std::make_unique<amrl::RungeKutta<Drone::N, Drone::M>>(
       [this](const X_t& x, const U_t& u) { return this->dynamics(x, u); });
@@ -34,10 +30,8 @@ Drone::Drone(const Eigen::Matrix3d& J_mat, double torque_const,
 
   setMass(mass);
   setInertia(J_mat);
-
-  torque_const_ = torque_const;
-
-  boom_length_ = boom_length;
+  setBoomLength(boom_length);
+  setTorqueConstant(torque_const);
 
   // sporty drone, thrust to weight ratio of 3:1
   max_thrust_ = 3 * mass_ * 9.81;
@@ -124,10 +118,7 @@ void Drone::getForceAndTorque(Eigen::Vector3d& force, Eigen::Vector3d& torque) {
   torque = quat * u_.tail(3);
 }
 
-void Drone::buildFromXML(const pugi::xml_node& root) {
-  setMass(std::stof(root.child_value("mass")));
-  boom_length_ = std::stof(root.child_value("length"));
-  torque_const_ = std::stof(root.child_value("c_torque"));
+Drone* Drone::fromXML(const pugi::xml_node& root) {
 
   std::string mat_str = root.child_value("inertia_matrix");
   std::stringstream ss(mat_str);
@@ -148,7 +139,9 @@ void Drone::buildFromXML(const pugi::xml_node& root) {
         "[Drone] Inertia matrix must have exactly 9 entries, found " +
         std::to_string(i));
 
-  setInertia(J_mat);
+  return new Drone(J_mat, std::stof(root.child_value("c_torque")),
+                   std::stof(root.child_value("length")),
+                   std::stof(root.child_value("mass")), kSimulDT);
 }
 
 glm::vec3 Drone::getVelocity() {
@@ -199,7 +192,7 @@ volasim_msgs::DroneState Drone::getSimState() {
 
   Eigen::Vector3d force, torque;
   getForceAndTorque(force, torque);
-  
+
   Eigen::Vector3d acceleration = force / mass_;
   state.mutable_imu()->mutable_linacc()->set_x(acceleration(0));
   state.mutable_imu()->mutable_linacc()->set_y(acceleration(1));
