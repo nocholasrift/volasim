@@ -54,7 +54,7 @@ class Camera {
 
   void setTarget(DynamicObject* target_obj) { target_obj_ = target_obj; }
 
-  void setID(uint8_t id) { id = id; }
+  void setID(uint8_t id) { id_ = id; }
   uint8_t getID() { return id_; }
 
   void enableOrbitAndPan() { enable_orbit_and_pan_ = true; }

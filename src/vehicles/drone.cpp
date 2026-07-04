@@ -30,8 +30,8 @@ Drone::Drone(const Eigen::Matrix3d& J_mat, double torque_const,
 
   setMass(mass);
   setInertia(J_mat);
-  setBoomLength(boom_length_);
-  setTorqueConstant(torque_const_);
+  setBoomLength(boom_length);
+  setTorqueConstant(torque_const);
 
   // sporty drone, thrust to weight ratio of 3:1
   max_thrust_ = 3 * mass_ * 9.81;

@@ -39,15 +39,17 @@ static const std::string point_vertex_shader =
     "void main() {\n"
     "  int j = gl_VertexID % int(sensor_size.x);\n"
     "  int row = gl_VertexID / int(sensor_size.x);\n"  // row 0 = bottom (OpenGL convention)
-    "  vec2 uv = vec2(float(j) / sensor_size.x, float(row) / sensor_size.y);\n"
+    "  float px = float(j) + 0.5;\n"    // sample/reconstruct at pixel center
+    "  float py = float(row) + 0.5;\n"
+    "  vec2 uv = vec2(px / sensor_size.x, py / sensor_size.y);\n"
     "  float d = texture(depth_tex, uv).r;\n"
     "  if (d >= 1.0) {\n"
     "    gl_Position = vec4(0.0, 0.0, 2.0, 1.0);\n"  // behind far plane — clipped
     "    gl_PointSize = 0.0;\n"
     "    return;\n"
     "  }\n"
-    "  float x_ndc = 2.0 * float(j) / sensor_size.x - 1.0;\n"
-    "  float y_ndc = 2.0 * float(row) / sensor_size.y - 1.0;\n"
+    "  float x_ndc = 2.0 * px / sensor_size.x - 1.0;\n"
+    "  float y_ndc = 2.0 * py / sensor_size.y - 1.0;\n"
     "  float z_ndc = 2.0 * d - 1.0;\n"
     "  vec4 world_pos = sensor_inv_vp * vec4(x_ndc, y_ndc, z_ndc, 1.0);\n"
     "  world_pos /= world_pos.w;\n"

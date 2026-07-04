@@ -42,21 +42,21 @@ Camera Camera::fromXML(const pugi::xml_node& camera_xml) {
   CameraSettings settings;
 
   try {
+    float width = std::stof(camera_xml.child_value("window_width"));
+    float height = std::stof(camera_xml.child_value("window_height"));
+
+    settings.window_sz = glm::ivec2(width, height);
     settings.yaw = std::stof(camera_xml.child_value("cam_yaw"));
     settings.pitch = std::stof(camera_xml.child_value("cam_pitch"));
     settings.radius = std::stof(camera_xml.child_value("cam_distance"));
     settings.fov = std::stof(camera_xml.child_value("fov_deg"));
     settings.fps = std::stof(camera_xml.child_value("fps"));
+
+    settings.target = nullptr;
   } catch (const std::exception& e) {
     throw std::runtime_error("[XMLParser] Invalid camera settings in XML: " +
                              std::string(e.what()));
   }
-
-  float width = std::stof(camera_xml.child_value("window_width"));
-  float height = std::stof(camera_xml.child_value("window_height"));
-
-  settings.window_sz = glm::ivec2(width, height);
-  settings.target = nullptr;
 
   return Camera(settings);
 }

@@ -70,14 +70,21 @@ void MeshRenderable::buildFromXML(const pugi::xml_node& item) {
   correction_ = glm::mat3(1.0f);
   std::string correction_rpy_deg =
       geometry_node.attribute("correction_rpy").as_string();
+
   if (!correction_rpy_deg.empty()) {
     glm::vec3 rpy_deg(0.f);
     std::stringstream ss(correction_rpy_deg);
     std::string tok;
+
     int i = 0;
     while (ss >> tok && i < 3) {
-      rpy_deg[i++] = std::stof(tok);
+      try {
+        rpy_deg[i++] = std::stof(tok);
+      } catch (const std::exception& e) {
+        throw std::invalid_argument("invalid rpy in <correction_rpy>");
+      }
     }
+
     glm::vec3 rpy = glm::radians(rpy_deg);
     glm::mat4 r = glm::rotate(glm::mat4(1.0f), rpy.z, glm::vec3(0, 0, 1)) *
                   glm::rotate(glm::mat4(1.0f), rpy.y, glm::vec3(0, 1, 0)) *
@@ -114,10 +121,10 @@ void MeshRenderable::buildFromXML(const pugi::xml_node& item) {
     glm::vec3 normal_corrected =
         correction_ * glm::vec3(normal.x, normal.y, normal.z);
 
-    vertices.insert(vertices.end(),
-                    {pos_corrected.x, pos_corrected.y, pos_corrected.z,
-                     normal_corrected.x, normal_corrected.y, normal_corrected.z,
-                     uv.x, uv.y});
+    vertices.insert(
+        vertices.end(),
+        {pos_corrected.x, pos_corrected.y, pos_corrected.z, normal_corrected.x,
+         normal_corrected.y, normal_corrected.z, uv.x, uv.y});
   }
 
   // Extract indices

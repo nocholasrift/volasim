@@ -20,9 +20,9 @@ void ShapeRenderable::draw(Shader& shader) {
 
 glm::vec3 ShapeRenderable::hexToRGB(std::string_view hex_str) {
   if (hex_str[0] != '#' || hex_str.length() != 7) {
-    std::string err_str =
-        "[ShapeRenderable] Invalid color string! " + std::string(hex_str) +
-        "\nShould be formatted as 6 hex digits preceeded by #";
+    std::string err_str = "[ShapeRenderable] Invalid color string! " +
+                          std::string(hex_str) +
+                          "\nShould be formatted as 6 hex digits preceded by #";
     throw std::invalid_argument(err_str);
   }
 
@@ -67,7 +67,7 @@ void ShapeRenderable::buildFromXML(const pugi::xml_node& item) {
   if (meta_.color.length() != 7) {
     std::string err_str =
         "Invalid color string: '" + meta_.color +
-        "'\nShould be formatted as 6 hex digits preceeded by #";
+        "'\nShould be formatted as 6 hex digits preceded by #";
     throw std::invalid_argument(err_str);
   }
 
@@ -76,7 +76,7 @@ void ShapeRenderable::buildFromXML(const pugi::xml_node& item) {
   }
 
   for (size_t i = 1; i < meta_.color.length(); ++i) {
-    if (!std::isxdigit(meta_.color[i])) {
+    if (!std::isxdigit(static_cast<unsigned char>(meta_.color[i]))) {
       throw std::invalid_argument("Invalid hex digit in color: " + meta_.color);
     }
   }

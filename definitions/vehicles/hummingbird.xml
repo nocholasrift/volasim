@@ -1,9 +1,13 @@
 <vehicle:class name="hummingbird">
   <dynamics class="drone">
-     <inertia_matrix>0.0820 0. 0. 0. 0.0845 0. 0. 0. .1377</inertia_matrix>
-    <mass>4.34</mass>
-    <length>0.315</length>
-    <c_torque>8.004e-4</c_torque>
+    <inertia_matrix>0.007 0. 0. 0. 0.007 0. 0. 0. 0.012</inertia_matrix>
+    <mass>0.68</mass>
+    <length>0.17</length>
+    <c_torque>0.016</c_torque>
+    <!-- <inertia_matrix>0.0820 0. 0. 0. 0.0845 0. 0. 0. .1377</inertia_matrix> -->
+    <!-- <mass>4.34</mass> -->
+    <!-- <length>0.315</length> -->
+    <!-- <c_torque>8.004e-4</c_torque> -->
   </dynamics>
 
   <color>#FFFFFF</color>
