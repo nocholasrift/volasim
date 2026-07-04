@@ -8,9 +8,11 @@
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <array>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 
 MeshRenderable::MeshRenderable(std::string_view model_fname,
@@ -50,7 +52,9 @@ void MeshRenderable::readConvexDecomp() {
     // std::cout << i << " -- verts: " << model->mNumVertices << "\n";
     for (size_t j = 0; j < model->mNumVertices; ++j) {
       aiVector3D aiv = model->mVertices[j];
-      verts.row(j) = Eigen::Vector3d(aiv.x, aiv.y, aiv.z);
+      glm::vec3 pos_corrected = correction_ * glm::vec3(aiv.x, aiv.y, aiv.z);
+      verts.row(j) =
+          Eigen::Vector3d(pos_corrected.x, pos_corrected.y, pos_corrected.z);
     }
   }
 }
@@ -61,11 +65,31 @@ void MeshRenderable::buildFromXML(const pugi::xml_node& item) {
   model_fname_ = geometry_node.attribute("model_file").as_string();
   cvx_decomp_fname_ = geometry_node.attribute("decomp_file").as_string();
 
+  // Baked into the asset so it never moves the depth camera, which tracks the
+  // owning DisplayObject's frame rather than the mesh.
+  correction_ = glm::mat3(1.0f);
+  std::string correction_rpy_deg =
+      geometry_node.attribute("correction_rpy").as_string();
+  if (!correction_rpy_deg.empty()) {
+    glm::vec3 rpy_deg(0.f);
+    std::stringstream ss(correction_rpy_deg);
+    std::string tok;
+    int i = 0;
+    while (ss >> tok && i < 3) {
+      rpy_deg[i++] = std::stof(tok);
+    }
+    glm::vec3 rpy = glm::radians(rpy_deg);
+    glm::mat4 r = glm::rotate(glm::mat4(1.0f), rpy.z, glm::vec3(0, 0, 1)) *
+                  glm::rotate(glm::mat4(1.0f), rpy.y, glm::vec3(0, 1, 0)) *
+                  glm::rotate(glm::mat4(1.0f), rpy.x, glm::vec3(1, 0, 0));
+    correction_ = glm::mat3(r);
+  }
+
   Assimp::Importer importer;
   const aiScene* scene = importer.ReadFile(
       std::string(model_fname_).c_str(),
       aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
-          aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace |
+          // aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace |  // expensive; unused by current shaders
           aiProcess_PreTransformVertices);
 
   if (!scene || !scene->HasMeshes()) {
@@ -86,8 +110,14 @@ void MeshRenderable::buildFromXML(const pugi::xml_node& item) {
                                ? model->mTextureCoords[0][i]
                                : aiVector3D(0.f, 0.f, 0.f);
 
-    vertices.insert(vertices.end(), {pos.x, pos.y, pos.z, normal.x, normal.y,
-                                     normal.z, uv.x, uv.y});
+    glm::vec3 pos_corrected = correction_ * glm::vec3(pos.x, pos.y, pos.z);
+    glm::vec3 normal_corrected =
+        correction_ * glm::vec3(normal.x, normal.y, normal.z);
+
+    vertices.insert(vertices.end(),
+                    {pos_corrected.x, pos_corrected.y, pos_corrected.z,
+                     normal_corrected.x, normal_corrected.y, normal_corrected.z,
+                     uv.x, uv.y});
   }
 
   // Extract indices
@@ -135,5 +165,9 @@ void MeshRenderable::buildFromXML(const pugi::xml_node& item) {
 
   index_count_ = indices.size();
 
-  readConvexDecomp();
+  // A decomposition is optional: purely visual meshes (e.g. sensors) omit it,
+  // which leaves convex_meshes_ empty and produces no physics collision body.
+  if (!cvx_decomp_fname_.empty()) {
+    readConvexDecomp();
+  }
 }

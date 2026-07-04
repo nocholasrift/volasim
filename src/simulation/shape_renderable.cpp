@@ -66,19 +66,18 @@ void ShapeRenderable::buildFromXML(const pugi::xml_node& item) {
 
   if (meta_.color.length() != 7) {
     std::string err_str =
-        "[XMLParser] Invalid color string! " + meta_.color +
-        "\nShould be formatted as 6 hex digits preceeded by #";
+        "Invalid color string: '" + meta_.color +
+        "'\nShould be formatted as 6 hex digits preceeded by #";
     throw std::invalid_argument(err_str);
   }
 
   if (meta_.color[0] != '#') {
-    throw std::invalid_argument("[XMLParser] Color must start with #");
+    throw std::invalid_argument("Color must start with #");
   }
 
   for (size_t i = 1; i < meta_.color.length(); ++i) {
     if (!std::isxdigit(meta_.color[i])) {
-      throw std::invalid_argument("[XMLParser] Invalid hex digit in color: " +
-                                  meta_.color);
+      throw std::invalid_argument("Invalid hex digit in color: " + meta_.color);
     }
   }
 

@@ -12,9 +12,11 @@ class Drone : public DynamicObject {
   using X_t = Eigen::Matrix<double, N, 1>;
   using U_t = Eigen::Matrix<double, M, 1>;
 
-  Drone(const pugi::xml_node& root, double dt);
+  Drone(double dt);
   Drone(const Eigen::Matrix3d& J_mat, double torque_const, double boom_length,
         double mass, double dt);
+
+  static Drone* fromXML(const pugi::xml_node& node);
 
   virtual ~Drone() override;
 
@@ -29,7 +31,8 @@ class Drone : public DynamicObject {
   virtual void setInput(const Eigen::VectorXd& u) override;
   virtual void setInput(const std::string& buffer) override;
 
-  virtual void buildFromXML(const pugi::xml_node& root) override;
+  void setBoomLength(double length) { boom_length_ = length; }
+  void setTorqueConstant(double torque) { torque_const_ = torque; }
 
   virtual volasim_msgs::DroneState getSimState() override;
   virtual glm::vec3 getTranslation() override;
@@ -46,10 +49,12 @@ class Drone : public DynamicObject {
   virtual Eigen::VectorXd dynamics(const Eigen::VectorXd& x,
                                    const Eigen::VectorXd& u) override;
 
-  double boom_length_;
-  double torque_const_;
+  double boom_length_{0.75};
+  double torque_const_{0.1};
 
-  double max_thrust_;
+  double max_thrust_{1.0};
+
+  static constexpr float kSimulDT = 1. / 60.;
 
   X_t x_;
   U_t u_;

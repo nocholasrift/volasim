@@ -1,14 +1,16 @@
 #ifndef DEPTHSENSOR_H
 #define DEPTHSENSOR_H
 
-#include <volasim/simulation/display_object.h>
+#include <volasim/simulation/display_object_container.h>
 #include <volasim/simulation/dynamic_object.h>
+#include <volasim/simulation/gl_resource.h>
 #include <volasim/simulation/shader.h>
 
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <pugixml.hpp>
 
 #include <memory>
 #include <stdexcept>
@@ -70,18 +72,15 @@ struct DepthSensorSettings {
   float z_near, z_far;
 
   DepthSensorType type;
-
-  glm::vec3 pos = glm::vec3(0, 0, 0);
-  glm::quat rot = glm::quat(1., 0., 0., 0.);
 };
 
 class GPUSensor {
  public:
-  GPUSensor(const DepthSensorSettings& settings, DynamicObject* parent) {
-    if (parent == nullptr)
-      throw std::runtime_error("[Depth Sensor] Parent is null!");
+  GPUSensor(const DepthSensorSettings& settings, DisplayObject* parent)
+      : settings_(settings), parent_(parent) {
 
     settings_ = settings;
+    parent_ = parent;
 
     if (settings_.width == 0 || settings_.height == 0)
       throw std::invalid_argument(
@@ -92,30 +91,37 @@ class GPUSensor {
       throw std::invalid_argument(
           "[DepthSensorSettings] z_near > 0 and z_far > z_near");
 
-    parent_ = parent;
     num_points_ = settings_.width * settings_.height;
     setProjectionMatrix();
   }
 
-  ~GPUSensor() {
-    if (fbo_) {
-      glDeleteFramebuffers(1, &fbo_);
-    }
+  static GPUSensor fromXML(const pugi::xml_node& root, DisplayObject* parent) {
+    auto get_value = [&root](const std::string& key) {
+      return std::stof(root.child_value(key.c_str()));
+    };
 
-    if (depth_tex_) {
-      glDeleteTextures(1, &depth_tex_);
-    }
-    if (vao_) {
-      glDeleteVertexArrays(1, &vao_);
-    }
+    float hfov_rad = (M_PI / 180.) * get_value("hfov_deg");
+    float vfov_rad = (M_PI / 180.) * get_value("vfov_deg");
+
+    DepthSensorSettings settings;
+    settings.width = get_value("width");
+    settings.height = get_value("height");
+    settings.fx = (settings.width / 2.) / tan(hfov_rad / 2.);
+    settings.fy = (settings.height / 2.) / tan(vfov_rad / 2.);
+    settings.cx = settings.width / 2.;
+    settings.cy = settings.height / 2.;
+    settings.z_near = get_value("z_near");
+    settings.z_far = get_value("z_far");
+
+    return GPUSensor(settings, parent);
   }
 
   void init() {
-    glGenFramebuffers(1, &fbo_);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
+    glGenFramebuffers(1, fbo_.addr());
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo_.get());
 
-    glGenTextures(1, &depth_tex_);
-    glBindTexture(GL_TEXTURE_2D, depth_tex_);
+    glGenTextures(1, depth_tex_.addr());
+    glBindTexture(GL_TEXTURE_2D, depth_tex_.get());
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, settings_.width,
                  settings_.height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -123,7 +129,7 @@ class GPUSensor {
     glBindTexture(GL_TEXTURE_2D, 0);
 
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
-                           depth_tex_, 0);
+                           depth_tex_.get(), 0);
     glDrawBuffer(GL_NONE);
     glReadBuffer(GL_NONE);
 
@@ -134,7 +140,7 @@ class GPUSensor {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // empty VAO — point shader uses gl_VertexID, no vertex attributes needed
-    glGenVertexArrays(1, &vao_);
+    glGenVertexArrays(1, vao_.addr());
 
     point_shader_ =
         std::make_unique<Shader>(point_vertex_shader, point_fragment_shader);
@@ -152,7 +158,7 @@ class GPUSensor {
     GLint viewport[4];
     glGetIntegerv(GL_VIEWPORT, viewport);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo_.get());
     glViewport(0, 0, settings_.width, settings_.height);
     glEnable(GL_DEPTH_TEST);
     glClear(GL_DEPTH_BUFFER_BIT);
@@ -170,7 +176,7 @@ class GPUSensor {
     glUseProgram(point_shader_->getID());
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, depth_tex_);
+    glBindTexture(GL_TEXTURE_2D, depth_tex_.get());
     point_shader_->setUniformInt("depth_tex", 0);
     point_shader_->setUniformMat4("sensor_inv_vp",
                                   glm::inverse(proj_mat_ * sensor_view_mat_));
@@ -181,7 +187,7 @@ class GPUSensor {
     glDepthFunc(GL_LEQUAL);
     glEnable(GL_POLYGON_OFFSET_POINT);
     glPolygonOffset(-1.0f, -1.0f);
-    glBindVertexArray(vao_);
+    glBindVertexArray(vao_.get());
     glDrawArrays(GL_POINTS, 0, num_points_);
     glBindVertexArray(0);
     glDisable(GL_POLYGON_OFFSET_POINT);
@@ -191,10 +197,12 @@ class GPUSensor {
   }
 
   glm::mat4 getViewMat() {
-    glm::quat rot = parent_->getRotation();
-    glm::vec3 pos = parent_->getTranslation();
-    glm::vec3 forward = rot * glm::vec3(1, 0, 0);  // sensor looks down drone +X
-    glm::vec3 up = rot * glm::vec3(0, 0, 1);       // drone +Z is up
+    // lookAt needs a position and two basis vectors, which are just columns of
+    // the global transform (glm is column-major) — no decomposition needed.
+    glm::mat4 tf = parent_->getGlobalTransform();
+    glm::vec3 pos = glm::vec3(tf[3]);                     // translation column
+    glm::vec3 forward = glm::normalize(glm::vec3(tf[0]));  // local +X in world
+    glm::vec3 up = glm::normalize(glm::vec3(tf[2]));       // local +Z in world
     return glm::lookAt(pos, pos + forward, up);
   }
 
@@ -217,12 +225,14 @@ class GPUSensor {
  private:
   DepthSensorSettings settings_;
 
-  GLuint fbo_ = 0;
-  GLuint depth_tex_ = 0;
-  GLuint vao_ = 0;
+  GLResource<FboDeleter> fbo_;
+  GLResource<TexDeleter> depth_tex_;
+  GLResource<VaoDeleter> vao_;
 
-  DynamicObject* parent_;
-  glm::mat4 proj_mat_;
+  DisplayObject* parent_;
+  // zero-initialized: setProjectionMatrix() only writes the nonzero cells and
+  // relies on the rest being 0 (GLM's default ctor leaves them uninitialized).
+  glm::mat4 proj_mat_ = glm::mat4(0.0f);
   glm::mat4 sensor_view_mat_;
 
   std::unique_ptr<Shader> point_shader_;

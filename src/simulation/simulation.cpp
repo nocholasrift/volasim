@@ -44,7 +44,6 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
   glutInit(&argc, argv);
 
   XMLParser xml_parser(args.world_path);
-  // CameraSettings cam_settings = xml_parser.getCameraSettings();
   cameras_.push_back(xml_parser.loadCamera());
   cameras_.back().setID(cameras_.size() - 1);
 
@@ -111,32 +110,29 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
 
   ms_per_frame_ = 1000 / frames_per_sec_;
 
-  DepthSensorSettings ds_settings;
-  ds_settings.width = 320;
-  ds_settings.height = 240;
-  ds_settings.fx = 160.f;
-  ds_settings.fy = 160.f;
-  ds_settings.cx = 160.f;
-  ds_settings.cy = 120.f;
-  ds_settings.z_near = 0.1f;
-  ds_settings.z_far = 20.f;
-  ds_settings.type = DepthSensorType::kDepthCamera;
-
   shape_shader_ = Shader(mesh_vertex_shader, mesh_fragment_shader);
 
-  // XMLParser parser("./definitions/worlds/demo_world.xml");
-  xml_parser.loadWorldFromXML(world_);
+  // parser populates the scene graph under world_ and returns any depth sensors
+  auto t_start = std::chrono::steady_clock::now();
+  gpu_sensors_ = xml_parser.loadWorldFromXML(world_);
+  auto elapsed = std::chrono::steady_clock::now() - t_start;
+  std::cout
+      << "elapsed time: "
+      << std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count() /
+             1e9
+      << "\n";
+
+  // sensors are constructed during parsing; init() needs the live GL context
+  for (GPUSensor& sensor : gpu_sensors_)
+    sensor.init();
 
   std::vector<DynamicObject*> dyna_objs =
       physics_interface_.getDynamicObjects();
 
   // default to first dynamic object registered as target
   // if no dynamic object, default to origin for focus
-  if (dyna_objs.size() > 0) {
+  if (dyna_objs.size() > 0)
     camera().setTarget(dyna_objs[0]);
-    depth_sensor_ = std::make_unique<GPUSensor>(ds_settings, dyna_objs[0]);
-    depth_sensor_->init();
-  }
 
   setSimState();
 
@@ -204,20 +200,19 @@ SDL_AppResult Simulation::update(void* appstate) {
     glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    depth_sensor_->update(world_, shape_shader_);
+    for (GPUSensor& sensor : gpu_sensors_) {
+      sensor.update(world_, shape_shader_);
+    }
 
     glUseProgram(shape_shader_.getID());
 
     shape_shader_.setUniformVec3("lightColor", glm::vec3(.8f, .8f, .8f));
     shape_shader_.setUniformVec3("lightPos", glm::vec3(0, 0, 5));
 
-    // depth_sensor_->update(world_, shape_shader_);
-
     world_->draw(view_mat, proj_mat, shape_shader_);
-    depth_sensor_->draw(view_mat, proj_mat, shape_shader_);
-    // depth_sensor_->draw(view_mat, proj_mat, shape_shader_);
-    // depth_sensor_->draw(depth_sensor_->getViewMat(),
-    //                     depth_sensor_->getProjMat(), shape_shader_);
+    for (GPUSensor& sensor : gpu_sensors_) {
+      sensor.draw(view_mat, proj_mat, shape_shader_);
+    }
 
     SDL_GL_SwapWindow(window_);
 

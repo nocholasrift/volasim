@@ -1,0 +1,13 @@
+<sensor type="depth_camera" name="${sensor_name|realsense}">
+  <pose>${x|0} ${y|0} ${z|0} ${roll|0} ${pitch|0} ${yaw|0}</pose>
+
+  <width>${width|320}</width>
+  <height>${height|240}</height>
+  <hfov_deg>${hfov_deg|87}</hfov_deg>
+  <vfov_deg>${vfov_deg|58}</vfov_deg>
+  <z_near>${z_near|0.105}</z_near>
+  <z_far>${z_far|10}</z_far>
+
+  <color>#FFFFFF</color>
+  <geometry type="mesh" model_file="./definitions/meshes/realsense_d435i.obj" correction_rpy="90 0 -90"/>
+</sensor>

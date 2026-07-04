@@ -3,6 +3,8 @@
 
 #include <volasim/simulation/renderable.h>
 
+#include <glm/glm.hpp>
+
 #include <string>
 #include <string_view>
 
@@ -27,6 +29,10 @@ class MeshRenderable : public Renderable {
  private:
   std::string model_fname_;
   std::string cvx_decomp_fname_;
+
+  // Corrective rotation aligning the authored asset to the +X-forward/+Z-up
+  // convention. Distinct from a mounting offset, which lives on the owner.
+  glm::mat3 correction_{1.0f};
 
   std::vector<Eigen::MatrixX3d> convex_meshes_;
   GLuint vao_ = 0;

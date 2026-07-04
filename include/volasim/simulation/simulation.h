@@ -18,6 +18,7 @@
 
 #include <chrono>
 #include <condition_variable>
+#include <list>
 #include <string_view>
 #include <thread>
 
@@ -67,7 +68,8 @@ class Simulation {
   SDL_AppResult update(void* appstate);
   SDL_AppResult SDLEvent(void* appstate, SDL_Event* event);
 
-  SDL_AppResult initSDL(void** appstate, int argc, char* argv[], const Args& args);
+  SDL_AppResult initSDL(void** appstate, int argc, char* argv[],
+                        const Args& args);
   void quitSDL(void* appstate, SDL_AppResult result);
 
   bool isRunning() { return is_running_.load(); }
@@ -119,8 +121,7 @@ class Simulation {
 
   InputManager input_manager_;
 
-  std::unique_ptr<GPUSensor> depth_sensor_;
-  // std::unique_ptr<XMLParser> xml_parser_;
+  std::list<GPUSensor> gpu_sensors_;
 
   Shader shape_shader_;
 

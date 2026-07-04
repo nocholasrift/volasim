@@ -52,8 +52,6 @@ class DynamicObject {
     std::cout << J_mat_;
   }
 
-  virtual void buildFromXML(const pugi::xml_node& root) = 0;
-
   virtual volasim_msgs::DroneState getSimState() = 0;
 
   virtual glm::vec3 getTranslation() = 0;
