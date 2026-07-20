@@ -1,7 +1,12 @@
 build/
+bags/
 .cache/
 *.pb.h
 *.pb.cc
+<<<<<<< Updated upstream
 .DS_Store
 .claude/
 CLAUDE.md
+=======
+*.DS_Store
+>>>>>>> Stashed changes

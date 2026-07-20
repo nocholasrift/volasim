@@ -39,7 +39,7 @@ static const std::string point_vertex_shader =
     "void main() {\n"
     "  int j = gl_VertexID % int(sensor_size.x);\n"
     "  int row = gl_VertexID / int(sensor_size.x);\n"  // row 0 = bottom (OpenGL convention)
-    "  float px = float(j) + 0.5;\n"    // sample/reconstruct at pixel center
+    "  float px = float(j) + 0.5;\n"  // sample/reconstruct at pixel center
     "  float py = float(row) + 0.5;\n"
     "  vec2 uv = vec2(px / sensor_size.x, py / sensor_size.y);\n"
     "  float d = texture(depth_tex, uv).r;\n"
@@ -64,34 +64,32 @@ static const std::string point_fragment_shader =
     "  FragColor = vec4(0.0, 0.0, 1.0, 1.0);\n"
     "}\n";
 
-enum class DepthSensorType { kLidar = 0, kDepthCamera };
-
-struct DepthSensorSettings {
-  float width;
-  float height;
-  float fx, fy;
-  float cx, cy;
-  float z_near, z_far;
-
-  DepthSensorType type;
-};
-
 class GPUSensor {
  public:
-  GPUSensor(const DepthSensorSettings& settings, DisplayObject* parent)
+  enum class Type { kLidar = 0, kDepthCamera };
+
+  struct Settings {
+    float width;
+    float height;
+    float fx, fy;
+    float cx, cy;
+    float z_near, z_far;
+
+    GPUSensor::Type type;
+  };
+
+  GPUSensor(const Settings& settings, DisplayObject* parent)
       : settings_(settings), parent_(parent) {
 
     settings_ = settings;
     parent_ = parent;
 
     if (settings_.width == 0 || settings_.height == 0)
-      throw std::invalid_argument(
-          "[DepthSensorSettings] width/height must be > 0");
+      throw std::invalid_argument("[GPUSensor] width/height must be > 0");
     if (settings_.fx <= 0 || settings_.fy <= 0)
-      throw std::invalid_argument("[DepthSensorSettings] fx/fy must be > 0");
+      throw std::invalid_argument("[Settings] fx/fy must be > 0");
     if (settings_.z_near <= 0 || settings_.z_far <= settings_.z_near)
-      throw std::invalid_argument(
-          "[DepthSensorSettings] z_near > 0 and z_far > z_near");
+      throw std::invalid_argument("[GPUSensor] z_near > 0 and z_far > z_near");
 
     num_points_ = settings_.width * settings_.height;
     setProjectionMatrix();
@@ -105,7 +103,7 @@ class GPUSensor {
     float hfov_rad = (M_PI / 180.) * get_value("hfov_deg");
     float vfov_rad = (M_PI / 180.) * get_value("vfov_deg");
 
-    DepthSensorSettings settings;
+    Settings settings;
     settings.width = get_value("width");
     settings.height = get_value("height");
     settings.fx = (settings.width / 2.) / tan(hfov_rad / 2.);
@@ -114,6 +112,9 @@ class GPUSensor {
     settings.cy = settings.height / 2.;
     settings.z_near = get_value("z_near");
     settings.z_far = get_value("z_far");
+
+    // TODO: just use depth camera for now, eventually implement lidar
+    settings.type = GPUSensor::Type::kDepthCamera;
 
     return GPUSensor(settings, parent);
   }
@@ -137,7 +138,7 @@ class GPUSensor {
 
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
       throw std::runtime_error(
-          "[Depth Sensor] Framebuffer initialization failed!");
+          "[GPU Sensor] Framebuffer initialization failed!");
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -202,7 +203,7 @@ class GPUSensor {
     // lookAt needs a position and two basis vectors, which are just columns of
     // the global transform (glm is column-major) — no decomposition needed.
     glm::mat4 tf = parent_->getGlobalTransform();
-    glm::vec3 pos = glm::vec3(tf[3]);                     // translation column
+    glm::vec3 pos = glm::vec3(tf[3]);                      // translation column
     glm::vec3 forward = glm::normalize(glm::vec3(tf[0]));  // local +X in world
     glm::vec3 up = glm::normalize(glm::vec3(tf[2]));       // local +Z in world
     return glm::lookAt(pos, pos + forward, up);
@@ -225,7 +226,7 @@ class GPUSensor {
   }
 
  private:
-  DepthSensorSettings settings_;
+  Settings settings_;
 
   GLResource<FboDeleter> fbo_;
   GLResource<TexDeleter> depth_tex_;

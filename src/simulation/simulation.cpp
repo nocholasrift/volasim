@@ -117,14 +117,15 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
   gpu_sensors_ = xml_parser.loadWorldFromXML(world_);
   auto elapsed = std::chrono::steady_clock::now() - t_start;
   std::cout
-      << "elapsed time: "
+      << "World load time: "
       << std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count() /
              1e9
       << "\n";
 
   // sensors are constructed during parsing; init() needs the live GL context
-  for (GPUSensor& sensor : gpu_sensors_)
+  for (GPUSensor& sensor : gpu_sensors_) {
     sensor.init();
+  }
 
   std::vector<DynamicObject*> dyna_objs =
       physics_interface_.getDynamicObjects();

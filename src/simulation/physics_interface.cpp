@@ -104,19 +104,7 @@ void PhysicsInterface::update(double dt) {
       // binding.dynamic_obj->update(dt);
 
       JPH::RVec3 jolt_p = body_interface.GetPosition(binding.body_id);
-      // JPH::Quat jolt_r;
-      // body_interface.GetPositionAndRotation(binding.body_id, jolt_p, jolt_r);
 
-      // std::cout << "setting rotation in interface as: " << jolt_r.GetX() << " "
-      //           << jolt_r.GetY() << " " << jolt_r.GetZ() << " " << jolt_r.GetW()
-      //           << std::endl;
-
-      // glm::vec3 vel = binding.dynamic_obj->getVelocity();
-      // glm::vec3 rot = binding.dynamic_obj->getBodyRates();
-      // JPH::RVec3 jolt_v(vel[0], vel[1], vel[2]);
-      // JPH::RVec3 jolt_w(rot[0], rot[1], rot[2]);
-      // body_interface.SetLinearAndAngularVelocity(binding.body_id, jolt_v,
-      //                                            jolt_w);
       Eigen::Vector3d force, rpy;
       binding.dynamic_obj->getForceAndTorque(force, rpy);
 

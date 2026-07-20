@@ -1,3 +1,4 @@
+#include <volasim/comms/msgs/DroneState.pb.h>
 #include <volasim/comms/msgs/Odometry.pb.h>
 #include <volasim/comms/msgs/Thrust.pb.h>
 
@@ -9,10 +10,19 @@
 #include <zmq.hpp>
 
 #include <array>
+#include <cstdlib>
 #include <iostream>
 #include <queue>
+#include <string>
 
 enum class Action { kTakeoff, kLand, kFlying, kIdle };
+
+// Host the sim publishes state on. Defaults to localhost for native runs; set
+// VOLASIM_SIM_HOST=host.docker.internal when the bridge runs in a container.
+static std::string sim_state_endpoint() {
+  const char* host = std::getenv("VOLASIM_SIM_HOST");
+  return "tcp://" + std::string(host ? host : "localhost") + ":5556";
+}
 
 class VolasimROS2Wrapper : public rclcpp::Node {
  public:
@@ -44,7 +54,7 @@ class VolasimROS2Wrapper : public rclcpp::Node {
 
     // ZMQ setup
     zmq_subscriber_ = zmq::socket_t(zmq_context_, zmq::socket_type::sub);
-    zmq_subscriber_.connect("tcp://localhost:5556");
+    zmq_subscriber_.connect(sim_state_endpoint());
     zmq_subscriber_.set(zmq::sockopt::subscribe, "");
     zmq_subscriber_.set(zmq::sockopt::rcvhwm, 1);
 
@@ -98,18 +108,21 @@ class VolasimROS2Wrapper : public rclcpp::Node {
       input_ = {0, 0, 0, 0};
     }
 
-    volasim_msgs::Odometry odom;
-
     zmq::message_t update;
     auto result = zmq_subscriber_.recv(update, zmq::recv_flags::dontwait);
     if (!result.has_value())
       return;
 
-    if (!odom.ParseFromArray(update.data(), update.size())) {
+    // The sim publishes a DroneState (imu + odom); parse the wrapper and pull
+    // out the odom sub-message rather than parsing the bytes as a bare
+    // Odometry, whose fields do not line up with DroneState's.
+    volasim_msgs::DroneState state;
+    if (!state.ParseFromArray(update.data(), update.size())) {
       RCLCPP_WARN(this->get_logger(),
-                  "[VolasimROS2Wrapper] Failed to parse odometry message");
+                  "[VolasimROS2Wrapper] Failed to parse drone state message");
       return;
     }
+    const volasim_msgs::Odometry& odom = state.odom();
 
     nav_msgs::msg::Odometry msg;
     msg.pose.pose.position.x = odom.position().x();

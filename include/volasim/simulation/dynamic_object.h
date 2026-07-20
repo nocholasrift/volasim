@@ -17,10 +17,10 @@ class DynamicObject {
   virtual ~DynamicObject() {}
 
   // dynamics function
-  virtual void update(double dt) = 0;
+  // virtual void update(double dt) = 0;
 
-  virtual Eigen::VectorXd dynamics(const Eigen::VectorXd& x,
-                                   const Eigen::VectorXd& u) = 0;
+  // virtual Eigen::VectorXd dynamics(const Eigen::VectorXd& x,
+  //                                  const Eigen::VectorXd& u) = 0;
 
   virtual void setTranslation(const glm::vec3& tran) = 0;
   virtual void setRotation(const glm::quat& rot) = 0;
@@ -49,7 +49,7 @@ class DynamicObject {
     J_mat_ = sym;
     J_mat_inv_ = llt.solve(Eigen::Matrix3d::Identity());
 
-    std::cout << J_mat_;
+    // std::cout << J_mat_;
   }
 
   virtual volasim_msgs::DroneState getSimState() = 0;

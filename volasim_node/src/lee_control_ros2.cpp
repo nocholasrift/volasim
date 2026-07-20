@@ -22,16 +22,26 @@ LeeControlNode::LeeControlNode() : Node("lee_controller") {
   initialized_ = false;
   state_set_ = false;
 
-  params_["kp"] = 69.44;
-  params_["kv"] = 24.304;
-  params_["kR"] = 13.81;
-  params_["kw"] = 2.54;
-  params_["mass"] = 4.34;
-  params_["length"] = 0.315;
-  params_["c_torque"] = 8.004e-4;
-  params_["j0"] = 0.0820;
-  params_["j1"] = 0.0845;
-  params_["j2"] = 0.1377;
+  // params_["kp"] = 69.44;
+  // params_["kv"] = 24.304;
+  // params_["kR"] = 13.81;
+  // params_["kw"] = 2.54;
+  params_["kp"] = 3.5;
+  params_["kv"] = 2.1;
+  params_["kR"] = 1.0;
+  params_["kw"] = 0.1;
+  params_["mass"] = 0.68;
+  params_["length"] = 0.17;
+  params_["c_torque"] = 0.016;
+  params_["j0"] = 0.007;
+  params_["j1"] = 0.007;
+  params_["j2"] = 0.012;
+  // params_["mass"] = 4.34;
+  // params_["length"] = 0.315;
+  // params_["c_torque"] = 8.004e-4;
+  // params_["j0"] = 0.0820;
+  // params_["j1"] = 0.0845;
+  // params_["j2"] = 0.1377;
 
   controller_.loadParams(params_);
 
@@ -62,14 +72,17 @@ void LeeControlNode::odom_cb(const nav_msgs::msg::Odometry::SharedPtr msg) {
       msg->pose.pose.orientation.w, msg->pose.pose.orientation.x,
       msg->pose.pose.orientation.y, msg->pose.pose.orientation.z);
   state_.rot = quat.toRotationMatrix();
+  // std::cout << state_.pos.transpose() << std::endl;
+
   initialized_ = true;
 }
 
 void LeeControlNode::position_cb(
     const geometry_msgs::msg::Point::SharedPtr msg) {
 
-  // if (!initialized_)
+  // if (!initialized_) {
   //   return;
+  // }
 
   desired_state_.reset();
   desired_state_.pos = Eigen::Vector3d(msg->x, msg->y, msg->z);
@@ -107,6 +120,9 @@ void LeeControlNode::control_loop() {
   desired_s.jerk = Eigen::Vector3d(pt.effort[0], pt.effort[1], pt.effort[2]);
 
   Eigen::Vector4d cmd = controller_.computeControls(state_, desired_s);
+
+  std::cout << "cmd: " << cmd.transpose() << std::endl;
+  std::cout << "desired acc: " << desired_s.acc.transpose() << std::endl;
 
   std_msgs::msg::Float32MultiArray msg;
   msg.data = {static_cast<float>(cmd[0]), static_cast<float>(cmd[1]),

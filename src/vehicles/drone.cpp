@@ -15,8 +15,8 @@ Drone::Drone(double dt) : DynamicObject(dt) {
   // unit quaternion
   x_(3) = 1.0;
 
-  solver_ = std::make_unique<amrl::RungeKutta<Drone::N, Drone::M>>(
-      [this](const X_t& x, const U_t& u) { return this->dynamics(x, u); });
+  // sporty drone, thrust to weight ratio of 3:1
+  max_thrust_ = 3 * mass_ * 9.81;
 }
 
 Drone::Drone(const Eigen::Matrix3d& J_mat, double torque_const,
@@ -35,32 +35,11 @@ Drone::Drone(const Eigen::Matrix3d& J_mat, double torque_const,
 
   // sporty drone, thrust to weight ratio of 3:1
   max_thrust_ = 3 * mass_ * 9.81;
-
-  solver_ = std::make_unique<amrl::RungeKutta<Drone::N, Drone::M>>(
-      [this](const X_t& x, const U_t& u) { return this->dynamics(x, u); });
 }
 
 // Drone::Drone(std::string id) {}
 
 Drone::~Drone() {}
-
-void Drone::update(double dt) {
-  x_ = solver_->step(x_, u_, dt);
-
-  // Re-normalize quaternion (w, x, y, z) to avoid drift
-  glm::quat q(x_[3], x_[4], x_[5], x_[6]);
-  q = glm::normalize(q);
-
-  // just in case any nans pop up
-  if (glm::any(glm::isnan(glm::vec4(q.x, q.y, q.z, q.w)))) {
-    q = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-  }
-
-  x_(3) = q.w;
-  x_(4) = q.x;
-  x_(5) = q.y;
-  x_(6) = q.z;
-}
 
 void Drone::setTranslation(const glm::vec3& tran) {
   x_(0) = tran[0];
@@ -202,45 +181,6 @@ volasim_msgs::DroneState Drone::getSimState() {
   /*(*state.mutable_imu()) = imu_msg;*/
 
   return state;
-}
-
-Eigen::VectorXd Drone::dynamics(const Eigen::VectorXd& x,
-                                const Eigen::VectorXd& u) {
-
-  glm::vec3 p(x(0), x(1), x(2));
-  glm::vec3 v(x(7), x(8), x(9));
-  glm::vec3 w(x(10), x(11), x(12));
-
-  glm::quat q(x(3), x(4), x(5), x(6));
-  glm::mat3 R = glm::mat3_cast(q);
-
-  glm::quat omega_q(0, w[0], w[1], w[2]);
-  glm::quat q_dot = 0.5f * q * omega_q;
-
-  glm::vec4 f(u(0), u(1), u(2), u(3));
-  glm::vec3 thrust_vec(0, 0, (u(0) + u(1) + u(2) + u(3)) / mass_);
-
-  glm::vec3 v_dot = glm::vec3(0, 0, -9.81) + R * thrust_vec;
-
-  glm::vec3 R_thrust = R * thrust_vec;
-
-  // rigid body dynamics for w_dot
-  Eigen::Vector3d w_eig(x(10), x(11), x(12));
-  Eigen::Vector3d torque(boom_length_ * (u[0] + u[1] - u[2] - u[3]) / sqrt(2),
-                         boom_length_ * (-u[0] + u[1] + u[2] - u[3]) / sqrt(2),
-                         torque_const_ * (u[0] - u[1] + u[2] - u[3]));
-  Eigen::Vector3d w_dot = J_mat_inv_ * (torque - w_eig.cross(J_mat_ * w_eig));
-
-  X_t x_dot;
-  x_dot(0) = v[0],      // pos X
-      x_dot(1) = v[1],  // pos Y
-      x_dot(2) = v[2],  // pos Z
-      x_dot(3) = q_dot[3], x_dot(4) = q_dot[0], x_dot(5) = q_dot[1],
-  x_dot(6) = q_dot[2], x_dot(7) = v_dot[0], x_dot(8) = v_dot[1],
-  x_dot(9) = v_dot[2], x_dot(10) = w_dot[0], x_dot(11) = w_dot[1],
-  x_dot(12) = w_dot[2];
-
-  return x_dot;
 }
 
 // void Drone::draw() {}

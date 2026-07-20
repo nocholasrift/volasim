@@ -20,8 +20,6 @@ class Drone : public DynamicObject {
 
   virtual ~Drone() override;
 
-  virtual void update(double dt) override;
-
   virtual void setTranslation(const glm::vec3& tran) override;
   virtual void setRotation(const glm::quat& rot) override;
 
@@ -44,11 +42,6 @@ class Drone : public DynamicObject {
                                  Eigen::Vector3d& torque) override;
 
  private:
-  std::unique_ptr<amrl::RungeKutta<N, M>> solver_;
-
-  virtual Eigen::VectorXd dynamics(const Eigen::VectorXd& x,
-                                   const Eigen::VectorXd& u) override;
-
   double boom_length_{0.75};
   double torque_const_{0.1};
 
