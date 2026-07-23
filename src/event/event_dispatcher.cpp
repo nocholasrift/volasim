@@ -4,26 +4,27 @@
 #include <tuple>
 #include <utility>
 
-EventDispatcher::EventDispatcher() {}
+#include <volasim/event/event.h>
+#include <volasim/event/event_listener.h>
 
 EventDispatcher::~EventDispatcher() {
   //TODO: Find out if map destructor automatically frees container memory.
-  for (auto it = listeners.begin(); it != listeners.end(); ++it) {
-    std::vector<EventListener*> l = it->second;
+  for (auto& it : listeners) {
+    std::vector<EventListener*> l = it.second;
 
     for (EventListener* listener : l) {
       // cerr << "addr of stuff: " << it->first << " " << listener << endl;
       if (listener) {
         //delete listener;
-        listener = NULL;
+        listener = nullptr;
       }
     }
     l.clear();
   }
 }
 
-void EventDispatcher::addEventListener(EventListener* l,
-                                       std::string eventType) {
+void EventDispatcher::addEventListener(EventListener*     l,
+                                       const std::string& eventType) {
   // if(!(*listeners)[eventType])
   // 	(*listeners)[eventType] = new std::vector<EventListener*>;
   if (listeners.find(eventType) == listeners.end()) {
@@ -33,19 +34,19 @@ void EventDispatcher::addEventListener(EventListener* l,
   }
 
   auto vec = listeners[eventType];
-  auto it = vec.begin();
+  auto it  = vec.begin();
   if ((it = find(vec.begin(), vec.end(), l)) == vec.end())
     listeners[eventType].push_back(l);
 }
 
-void EventDispatcher::removeEventListener(EventListener* l,
-                                          std::string eventType) {
+void EventDispatcher::removeEventListener(EventListener*     l,
+                                          const std::string& eventType) {
   if (listeners.find(eventType) != listeners.end()) {
     std::vector<EventListener*>& vec = listeners[eventType];
     for (auto it = vec.begin(); it != vec.end(); ++it) {
       if (*it == l) {
         // delete *it;
-        auto loc = *it;
+        auto* loc = *it;
         vec.erase(it);
         if (find(vec.begin(), vec.end(), loc) != listeners[eventType].end())
           std::cerr << "LISTER WAS NOT PROPERLY REMOVED FROM EVENTLIST\n";
@@ -55,8 +56,8 @@ void EventDispatcher::removeEventListener(EventListener* l,
   }
 }
 
-bool EventDispatcher::hasEventListener(EventListener* l,
-                                       std::string eventType) {
+bool EventDispatcher::hasEventListener(EventListener*     l,
+                                       const std::string& eventType) {
   auto it = listeners.find(eventType);
   if (it == listeners.end())
     return false;

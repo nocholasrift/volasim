@@ -1,8 +1,8 @@
 #ifndef DEPTHSENSOR_H
 #define DEPTHSENSOR_H
 
-#include <volasim/simulation/display_object_container.h>
 #include <volasim/simulation/dynamic_object.h>
+#include <volasim/simulation/entity.h>
 #include <volasim/simulation/gl_resource.h>
 #include <volasim/simulation/shader.h>
 
@@ -78,11 +78,8 @@ class GPUSensor {
     GPUSensor::Type type;
   };
 
-  GPUSensor(const Settings& settings, DisplayObject* parent)
+  GPUSensor(const Settings& settings, Entity* parent)
       : settings_(settings), parent_(parent) {
-
-    settings_ = settings;
-    parent_ = parent;
 
     if (settings_.width == 0 || settings_.height == 0)
       throw std::invalid_argument("[GPUSensor] width/height must be > 0");
@@ -95,23 +92,23 @@ class GPUSensor {
     setProjectionMatrix();
   }
 
-  static GPUSensor fromXML(const pugi::xml_node& root, DisplayObject* parent) {
+  static GPUSensor fromXML(const pugi::xml_node& root, Entity* parent) {
     auto get_value = [&root](const std::string& key) {
       return std::stof(root.child_value(key.c_str()));
     };
 
-    float hfov_rad = (M_PI / 180.) * get_value("hfov_deg");
-    float vfov_rad = (M_PI / 180.) * get_value("vfov_deg");
+    float hfov_rad = (M_PI / 180.F) * get_value("hfov_deg");
+    float vfov_rad = (M_PI / 180.F) * get_value("vfov_deg");
 
     Settings settings;
-    settings.width = get_value("width");
+    settings.width  = get_value("width");
     settings.height = get_value("height");
-    settings.fx = (settings.width / 2.) / tan(hfov_rad / 2.);
-    settings.fy = (settings.height / 2.) / tan(vfov_rad / 2.);
-    settings.cx = settings.width / 2.;
-    settings.cy = settings.height / 2.;
+    settings.fx     = (settings.width / 2.F) / tan(hfov_rad / 2.F);
+    settings.fy     = (settings.height / 2.F) / tan(vfov_rad / 2.F);
+    settings.cx     = settings.width / 2.F;
+    settings.cy     = settings.height / 2.F;
     settings.z_near = get_value("z_near");
-    settings.z_far = get_value("z_far");
+    settings.z_far  = get_value("z_far");
 
     // TODO: just use depth camera for now, eventually implement lidar
     settings.type = GPUSensor::Type::kDepthCamera;
@@ -152,9 +149,10 @@ class GPUSensor {
   }
 
   // Renders the scene into the sensor's depth FBO. Call once per frame before draw().
-  void update(DisplayObject* world, Shader& shader) {
-    if (world == nullptr)
+  void update(Entity* world, Shader& shader) {
+    if (world == nullptr) {
       throw std::invalid_argument("[GPU Sensor] world is null");
+    }
 
     sensor_view_mat_ = getViewMat();
 
@@ -189,7 +187,7 @@ class GPUSensor {
 
     glDepthFunc(GL_LEQUAL);
     glEnable(GL_POLYGON_OFFSET_POINT);
-    glPolygonOffset(-1.0f, -1.0f);
+    glPolygonOffset(-1.0F, -1.0F);
     glBindVertexArray(vao_.get());
     glDrawArrays(GL_POINTS, 0, num_points_);
     glBindVertexArray(0);
@@ -202,10 +200,10 @@ class GPUSensor {
   glm::mat4 getViewMat() {
     // lookAt needs a position and two basis vectors, which are just columns of
     // the global transform (glm is column-major) — no decomposition needed.
-    glm::mat4 tf = parent_->getGlobalTransform();
-    glm::vec3 pos = glm::vec3(tf[3]);                      // translation column
+    glm::mat4 tf      = parent_->getGlobalTransform();
+    auto      pos     = glm::vec3(tf[3]);                  // translation column
     glm::vec3 forward = glm::normalize(glm::vec3(tf[0]));  // local +X in world
-    glm::vec3 up = glm::normalize(glm::vec3(tf[2]));       // local +Z in world
+    glm::vec3 up      = glm::normalize(glm::vec3(tf[2]));  // local +Z in world
     return glm::lookAt(pos, pos + forward, up);
   }
 
@@ -214,15 +212,15 @@ class GPUSensor {
  private:
   void setProjectionMatrix() {
     proj_mat_[0][0] = 2 * settings_.fx / settings_.width;
-    proj_mat_[2][0] = 1 - 2 * settings_.cx / settings_.width;
+    proj_mat_[2][0] = 1 - (2 * settings_.cx / settings_.width);
     proj_mat_[1][1] = 2 * settings_.fy / settings_.height;
-    proj_mat_[2][1] = 2 * settings_.cy / settings_.height - 1;
+    proj_mat_[2][1] = (2 * settings_.cy / settings_.height) - 1;
     proj_mat_[2][2] = -(settings_.z_far + settings_.z_near) /
                       (settings_.z_far - settings_.z_near);
-    proj_mat_[2][3] = -1;
+    proj_mat_[2][3] = -1.F;
     proj_mat_[3][2] = -2 * settings_.z_far * settings_.z_near /
                       (settings_.z_far - settings_.z_near);
-    proj_mat_[3][3] = 0.f;
+    proj_mat_[3][3] = 0.F;
   }
 
  private:
@@ -232,10 +230,10 @@ class GPUSensor {
   GLResource<TexDeleter> depth_tex_;
   GLResource<VaoDeleter> vao_;
 
-  DisplayObject* parent_;
+  Entity* parent_;
   // zero-initialized: setProjectionMatrix() only writes the nonzero cells and
   // relies on the rest being 0 (GLM's default ctor leaves them uninitialized).
-  glm::mat4 proj_mat_ = glm::mat4(0.0f);
+  glm::mat4 proj_mat_ = glm::mat4(0.0F);
   glm::mat4 sensor_view_mat_;
 
   std::unique_ptr<Shader> point_shader_;

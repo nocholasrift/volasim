@@ -29,18 +29,18 @@ class GLResource {
   GLResource& operator=(GLResource&& other) noexcept {
     if (this != &other) {
       reset();
-      id_ = other.id_;
+      id_       = other.id_;
       other.id_ = 0;
     }
     return *this;
   }
 
-  GLResource(const GLResource&) = delete;
+  GLResource(const GLResource&)            = delete;
   GLResource& operator=(const GLResource&) = delete;
 
-  GLuint get() const { return id_; }
+  GLuint  get() const { return id_; }
   GLuint* addr() { return &id_; }  // for glGen*(1, x.addr())
-  void reset() {
+  void    reset() {
     if (id_) {
       Deleter{}(id_);
       id_ = 0;

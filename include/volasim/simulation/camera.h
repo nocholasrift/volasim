@@ -11,12 +11,12 @@
 enum Camera_Movement { FORWARD, BACKWARD, LEFT, RIGHT };
 
 struct CameraSettings {
-  float yaw = 0.f;
-  float pitch = 0.f;
-  float radius = 1.f;
-  float fov = 60.f;
+  float yaw    = 0.F;
+  float pitch  = 0.F;
+  float radius = 1.F;
+  float fov    = 60.F;
 
-  float fps = 60.f;
+  float fps = 60.F;
 
   glm::ivec2 window_sz = glm::ivec2(640, 480);
 
@@ -37,25 +37,25 @@ class Camera {
   Camera(const CameraSettings& settings);
 
   Camera(const glm::ivec2& window_sz, double yaw, double pitch, double radius,
-         double fov = 60.f, double fps = 60.f,
-         const glm::vec3& world_up = glm::vec3(0.f, 0.f, 1.f),
-         DynamicObject* target_obj = nullptr);
+         double fov = 60.F, double fps = 60.F,
+         const glm::vec3& world_up   = glm::vec3(0.F, 0.F, 1.F),
+         DynamicObject*   target_obj = nullptr);
 
   static Camera fromXML(const pugi::xml_node& camera_xml);
 
   // returns the view matrix calculated using Euler Angles and the LookAt Matrix
   glm::mat4 getViewMatrix();
 
-  float getFov() { return fov_; }
+  [[nodiscard]] float getFov() const { return fov_; }
 
-  float getFPS() { return fps_; }
+  [[nodiscard]] unsigned int getFPS() const { return fps_; }
 
   Dimensions getDimensions() { return dimensions_; }
 
   void setTarget(DynamicObject* target_obj) { target_obj_ = target_obj; }
 
-  void setID(uint8_t id) { id_ = id; }
-  uint8_t getID() { return id_; }
+  void                  setID(uint8_t id) { id_ = id; }
+  [[nodiscard]] uint8_t getID() const { return id_; }
 
   void enableOrbitAndPan() { enable_orbit_and_pan_ = true; }
 
@@ -75,33 +75,34 @@ class Camera {
   void updateCameraVectors();
 
  private:
-  static constexpr float kPitchClipMargin = 0.01f;
+  static constexpr float kPitchClipMargin = 0.01F;
 
-  static constexpr float kMinRadius = 0.1f;
-  static constexpr float kMaxRadius = 100.f;
+  static constexpr float kMinRadius = 0.1F;
+  static constexpr float kMaxRadius = 100.F;
 
-  static constexpr float kMouseSense = .005f;
-  static constexpr float kMouseWheelSense = .5f;
+  static constexpr float kMouseSense      = .005F;
+  static constexpr float kMouseWheelSense = .5F;
 
   glm::vec3 position_;
   glm::vec3 direction_;
   glm::vec3 up_;
   glm::vec3 right_;
-  glm::vec3 world_up_ = glm::vec3(0.f, 0.f, 1.f);
+  glm::vec3 world_up_ = glm::vec3(0.F, 0.F, 1.F);
 
   uint8_t id_{0};
 
   // camera options
   float movement_speed_;
 
-  float fov_ = 90.f;
-  float fps_ = 60.f;
-  float radius_ = 1.f;
-  float yaw_ = 0.f;
-  float pitch_ = 0.f;
+  float fov_    = 90.F;
+  float radius_ = 1.F;
+  float yaw_    = 0.F;
+  float pitch_  = 0.F;
 
   float lastx_{0.};
   float lasty_{0.};
+
+  unsigned int fps_ = 60;
 
   Dimensions dimensions_;
 

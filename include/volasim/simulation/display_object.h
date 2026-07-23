@@ -46,18 +46,18 @@ class DisplayObject {
   void setTranslation(const glm::vec3& p);
 
   std::string getID();
-  glm::quat getRotation();
-  glm::vec3 getTranslation();
-  glm::mat4 getLocalTransform();
-  glm::mat4 getGlobalTransform();
+  glm::quat   getRotation();
+  glm::vec3   getTranslation();
+  glm::mat4   getLocalTransform();
+  glm::mat4   getGlobalTransform();
 
   const std::shared_ptr<Renderable> getRenderable() const;
-  std::shared_ptr<Renderable> getRenderable();
+  std::shared_ptr<Renderable>       getRenderable();
 
   bool isRenderable();
 
-  DisplayObject* parent_ = NULL;
-  bool isCollided_ = false;
+  DisplayObject* parent_     = NULL;
+  bool           isCollided_ = false;
 
   SDL_FlipMode flip_ = SDL_FLIP_NONE;
 
@@ -67,7 +67,7 @@ class DisplayObject {
   glm::quat quaternion_;
   glm::mat4 local_transform_;
 
-  bool is_visible_ = true;
+  bool is_visible_    = true;
   bool is_renderable_ = false;
 
   std::string id_;

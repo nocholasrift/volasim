@@ -13,8 +13,8 @@
 #include <volasim/simulation/simulation.h>
 
 #ifdef USE_APPLE_OPENGL_HEADERS
-#include <OpenGL/glu.h>
 #include <GLUT/glut.h>
+#include <OpenGL/glu.h>
 #else
 #include <GL/glu.h>
 #include <GL/glut.h>
@@ -30,13 +30,13 @@
 // removes the global variable here...
 std::thread t1;
 
-Simulation& sim = Simulation::getInstance();
-ZMQServer& server = ZMQServer::getInstance();
+Simulation& sim    = Simulation::getInstance();
+ZMQServer&  server = ZMQServer::getInstance();
 
 /* This function runs once at startup. */
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
   Args args = parseArgs(argc, argv);
-  t1 = std::thread([&]() {
+  t1        = std::thread([&]() {
     // blocking call to getSimState before loop.
     // ensured sim is running before going to loop
     sim.getSimState();

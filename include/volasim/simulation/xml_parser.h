@@ -5,7 +5,7 @@
 
 #include <volasim/sensors/depth_sensor.h>
 #include <volasim/simulation/camera.h>
-#include <volasim/simulation/display_object_container.h>
+#include <volasim/simulation/entity.h>
 #include <volasim/simulation/shape_renderable.h>
 
 #include <list>
@@ -32,8 +32,8 @@ class XMLParser {
   XMLParser() = delete;
   XMLParser(const std::string& fname);
 
-  Camera loadCamera();
-  std::list<GPUSensor> loadWorldFromXML(DisplayObjectContainer* root);
+  Camera                  loadCamera();
+  std::unique_ptr<Entity> loadWorldFromXML(std::list<GPUSensor>& sensors);
 
  private:
   void loadDoc(pugi::xml_document& doc, const std::string& fname);
@@ -44,36 +44,34 @@ class XMLParser {
 
   void throwError(std::string_view fname, const pugi::xml_parse_result& result);
 
-  void parseChildren(const pugi::xml_node& parent, DisplayObjectContainer* root,
+  void parseChildren(const pugi::xml_node& parent, Entity& root,
                      std::list<GPUSensor>& sensors, const std::string& source);
 
-  void handleSensor(const pugi::xml_node& item, DisplayObjectContainer* root,
+  void handleSensor(const pugi::xml_node& item, Entity& root,
                     std::list<GPUSensor>& sensors);
 
-  void handleVehicle(const pugi::xml_node& item, DisplayObjectContainer* world,
-                     DisplayObjectContainer*& object);
+  Entity& handleVehicle(const pugi::xml_node& vehicle_node, Entity& world);
 
-  void handleElement(const pugi::xml_node& item, DisplayObjectContainer* world);
+  void handleElement(const pugi::xml_node& item, Entity& world);
 
   void handleBlockDefinition(const pugi::xml_node& item);
 
   void handleVehicleDefinition(const pugi::xml_node& item);
 
-  void handleBlock(const pugi::xml_node& item, DisplayObjectContainer* world);
+  void handleBlock(const pugi::xml_node& item, Entity& world);
 
-  void createAndAddRenderable(const std::string& name,
-                              const std::shared_ptr<Renderable> renderable,
-                              const glm::vec3& pos,
-                              DisplayObjectContainer* world);
+  void createAndAddRenderable(const std::string&                 name,
+                              const std::shared_ptr<Renderable>& renderable,
+                              const glm::vec3& pos, Entity& world);
 
  private:
   struct VehicleClassDef {
     std::shared_ptr<Renderable> renderable;
-    std::string dynamics_type;
-    pugi::xml_node xml_node;
+    std::string                 dynamics_type;
+    pugi::xml_node              xml_node;
   };
 
-  std::string fname_;
+  std::string        fname_;
   pugi::xml_document doc_;
 
   // Parsed include docs are kept alive here because definitions taken from them
@@ -82,7 +80,7 @@ class XMLParser {
   // Raw file text keyed by path; unsubstituted so it can be reused per include.
   std::unordered_map<std::string, std::string> file_cache_;
 
-  std::unordered_map<std::string, int> defined_class_count_;
+  std::unordered_map<std::string, int>           defined_class_count_;
   std::unordered_map<std::string, ShapeMetadata> class_settings_;
 
   std::unordered_map<std::string, std::shared_ptr<Renderable>> renderables_;
@@ -98,6 +96,8 @@ class XMLParser {
        {"vehicle:class", XMLTags::kVehicleDefinition},
        {"sensor", XMLTags::kSensor},
        {"include", XMLTags::kInclude}}};
+
+  EntityFactory entity_factory_;
 
   // vehicle registries
   std::unordered_map<std::string,

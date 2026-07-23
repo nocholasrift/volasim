@@ -7,22 +7,22 @@
 DisplayObject::DisplayObject() {
   id_ = "DEFAULT_ID";
 
-  position_ = glm::vec3(0.f, 0.f, 0.f);
+  position_   = glm::vec3(0.f, 0.f, 0.f);
   quaternion_ = glm::quat(1.f, 0.f, 0.f, 0.f);
-  scale_ = glm::vec3(1.f, 1.f, 1.f);
+  scale_      = glm::vec3(1.f, 1.f, 1.f);
 }
 
 DisplayObject::DisplayObject(std::string id) {
   id_ = id;
 
-  position_ = glm::vec3(0.f, 0.f, 0.f);
+  position_   = glm::vec3(0.f, 0.f, 0.f);
   quaternion_ = glm::quat(1.f, 0.f, 0.f, 0.f);
-  scale_ = glm::vec3(1.f, 1.f, 1.f);
+  scale_      = glm::vec3(1.f, 1.f, 1.f);
 }
 
 void DisplayObject::setRenderable(
     const std::shared_ptr<Renderable> renderable) {
-  renderable_ = renderable;
+  renderable_    = renderable;
   is_renderable_ = true;
 }
 
@@ -90,7 +90,7 @@ void DisplayObject::setTranslation(const glm::vec3& p) {
 
 glm::mat4 DisplayObject::getLocalTransform() {
   glm::mat4 trans_mat = glm::translate(glm::mat4(1.0f), position_);
-  glm::mat4 rot_mat = glm::mat4_cast(quaternion_);
+  glm::mat4 rot_mat   = glm::mat4_cast(quaternion_);
   glm::mat4 scale_mat = glm::scale(glm::mat4(1.0f), scale_);
 
   local_transform_ = trans_mat * rot_mat * scale_mat;

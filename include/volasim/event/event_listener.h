@@ -8,12 +8,10 @@ class EventDispatcher;
 
 class EventListener {
 
-public:
+ public:
+  virtual void handleEvent(Event* e) = 0;
 
-	virtual void handleEvent(Event* e) = 0;
-
-private:	
+ private:
 };
 
 #endif
-

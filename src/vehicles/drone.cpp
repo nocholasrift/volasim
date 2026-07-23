@@ -93,15 +93,15 @@ void Drone::getForceAndTorque(Eigen::Vector3d& force, Eigen::Vector3d& torque) {
 
   Eigen::Quaterniond quat(x_[3], x_[4], x_[5], x_[6]);
 
-  force = quat * Eigen::Vector3d(0, 0, u_[0]);
+  force  = quat * Eigen::Vector3d(0, 0, u_[0]);
   torque = quat * u_.tail(3);
 }
 
 Drone* Drone::fromXML(const pugi::xml_node& root) {
 
-  std::string mat_str = root.child_value("inertia_matrix");
+  std::string       mat_str = root.child_value("inertia_matrix");
   std::stringstream ss(mat_str);
-  std::string value;
+  std::string       value;
 
   Eigen::Matrix3d J_mat;
 
@@ -140,7 +140,7 @@ glm::quat Drone::getRotation() {
 }
 
 volasim_msgs::DroneState Drone::getSimState() {
-  static int count = 0;
+  static int               count = 0;
   volasim_msgs::DroneState state;
 
   state.mutable_odom()->mutable_position()->set_x(x_(0));

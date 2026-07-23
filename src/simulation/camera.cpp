@@ -5,15 +5,15 @@ Camera::Camera(const glm::ivec2& window_sz, double yaw, double pitch,
                DynamicObject* target_obj)
     : radius_(radius), world_up_(world_up), target_obj_(target_obj) {
 
-  yaw_ = yaw;
+  yaw_   = yaw;
   pitch_ = pitch;
-  fov_ = fov;
-  fps_ = fps;
+  fov_   = fov;
+  fps_   = fps;
 
   lastx_ = static_cast<float>(window_sz[0]) / 2.;
   lasty_ = static_cast<float>(window_sz[1]) / 2.;
 
-  dimensions_.width = window_sz[0];
+  dimensions_.width  = window_sz[0];
   dimensions_.height = window_sz[1];
 
   updateCameraVectors();
@@ -21,10 +21,10 @@ Camera::Camera(const glm::ivec2& window_sz, double yaw, double pitch,
 
 Camera::Camera(const CameraSettings& settings) {
 
-  yaw_ = settings.yaw;
-  pitch_ = settings.pitch;
-  fov_ = settings.fov;
-  fps_ = settings.fps;
+  yaw_    = settings.yaw;
+  pitch_  = settings.pitch;
+  fov_    = settings.fov;
+  fps_    = settings.fps;
   radius_ = settings.radius;
 
   target_obj_ = settings.target;
@@ -32,7 +32,7 @@ Camera::Camera(const CameraSettings& settings) {
   lastx_ = static_cast<float>(settings.window_sz[0]) / 2.;
   lasty_ = static_cast<float>(settings.window_sz[1]) / 2.;
 
-  dimensions_.width = settings.window_sz[0];
+  dimensions_.width  = settings.window_sz[0];
   dimensions_.height = settings.window_sz[1];
 
   updateCameraVectors();
@@ -42,15 +42,15 @@ Camera Camera::fromXML(const pugi::xml_node& camera_xml) {
   CameraSettings settings;
 
   try {
-    float width = std::stof(camera_xml.child_value("window_width"));
+    float width  = std::stof(camera_xml.child_value("window_width"));
     float height = std::stof(camera_xml.child_value("window_height"));
 
     settings.window_sz = glm::ivec2(width, height);
-    settings.yaw = std::stof(camera_xml.child_value("cam_yaw"));
-    settings.pitch = std::stof(camera_xml.child_value("cam_pitch"));
-    settings.radius = std::stof(camera_xml.child_value("cam_distance"));
-    settings.fov = std::stof(camera_xml.child_value("fov_deg"));
-    settings.fps = std::stof(camera_xml.child_value("fps"));
+    settings.yaw       = std::stof(camera_xml.child_value("cam_yaw"));
+    settings.pitch     = std::stof(camera_xml.child_value("cam_pitch"));
+    settings.radius    = std::stof(camera_xml.child_value("cam_distance"));
+    settings.fov       = std::stof(camera_xml.child_value("fov_deg"));
+    settings.fps       = std::stof(camera_xml.child_value("fps"));
 
     settings.target = nullptr;
   } catch (const std::exception& e) {
@@ -77,7 +77,7 @@ void Camera::processMouseMovement(float xoffset, float yoffset) {
     return;
   }
 
-  yaw_ -= (xoffset * kMouseSense);
+  yaw_   -= (xoffset * kMouseSense);
   pitch_ += (yoffset * kMouseSense);
 
   if (pitch_ > M_PI / 2 - kPitchClipMargin)
@@ -108,7 +108,7 @@ void Camera::updateCameraVectors() {
   position_[2] = radius_ * sin(pitch_);
 
   direction_ = glm::normalize(position_);
-  right_ = glm::normalize(glm::cross(world_up_, direction_));
+  right_     = glm::normalize(glm::cross(world_up_, direction_));
 
   up_ = glm::cross(direction_, right_);
 }

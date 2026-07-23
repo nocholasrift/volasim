@@ -23,7 +23,7 @@ void DisplayObjectContainer::addChild(DisplayObject* child) {
 }
 
 void DisplayObjectContainer::removeChild(DisplayObject* child,
-                                         bool should_delete) {
+                                         bool           should_delete) {
 
   for (std::vector<DisplayObject*>::iterator it = children.begin();
        it != children.end(); it++) {

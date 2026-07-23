@@ -32,11 +32,11 @@ struct ShapeMetadata {
   float y_min = -1.;
   float x_max = 1.;
   float y_max = 1.;
-  float z = 0.;
+  float z     = 0.;
 
-  GLuint vao = 0;
-  GLuint vbo = 0;
-  GLuint ebo = 0;
+  GLuint  vao         = 0;
+  GLuint  vbo         = 0;
+  GLuint  ebo         = 0;
   GLsizei index_count = 0;
 };
 
@@ -49,7 +49,7 @@ class ShapeRenderable : public Renderable {
   void draw(Shader& shader) override;
 
   virtual ShapeType getType() const override { return meta_.type; }
-  ShapeMetadata getShapeMeta() const { return meta_; }
+  ShapeMetadata     getShapeMeta() const { return meta_; }
 
   virtual void buildFromXML(const pugi::xml_node& item) override;
 
