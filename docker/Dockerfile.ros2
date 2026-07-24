@@ -1,0 +1,39 @@
+# ROS2 (Humble) side of volasim: bridge + controller. Sim stays on the host.
+FROM ros:humble-ros-base
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential \
+      cmake \
+      pkg-config \
+      libzmq3-dev \
+      libeigen3-dev \
+      protobuf-compiler \
+      libprotobuf-dev \
+      ros-humble-nav-msgs \
+      ros-humble-geometry-msgs \
+      ros-humble-trajectory-msgs \
+      ros-humble-std-srvs \
+      ros-humble-rosbag2-storage-mcap \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /ws
+
+# Mirror the repo layout so volasim_node's relative paths resolve unchanged.
+# Build context is the repo root (see docker-compose.yml).
+COPY docker/CMakeLists.txt ./CMakeLists.txt
+COPY include/volasim/comms/msgs/ ./include/volasim/comms/msgs/
+COPY volasim_node/ ./volasim_node/
+COPY third_party/cppzmq/zmq.hpp third_party/cppzmq/zmq_addon.hpp ./third_party/cppzmq/
+
+# Drop host-generated *.pb.* (protobuf 5.x) so protoc here regenerates them.
+RUN . "/opt/ros/${ROS_DISTRO}/setup.sh" \
+    && rm -f include/volasim/comms/msgs/*.pb.cc include/volasim/comms/msgs/*.pb.h \
+    && cmake -B build -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build build -j"$(nproc)"
+
+COPY docker/entrypoint.sh /entrypoint.sh
+COPY docker/run_ros2_stack.sh /ws/run_ros2_stack.sh
+RUN chmod +x /entrypoint.sh /ws/run_ros2_stack.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/ws/run_ros2_stack.sh"]
