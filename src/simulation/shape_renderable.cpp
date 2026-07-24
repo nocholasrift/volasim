@@ -26,7 +26,7 @@ glm::vec3 ShapeRenderable::hexToRGB(std::string_view hex_str) {
     throw std::invalid_argument(err_str);
   }
 
-  glm::vec3 ret;
+  glm::vec3        ret;
   std::string_view str_r = hex_str.substr(1, 2);
   std::string_view str_g = hex_str.substr(3, 2);
   std::string_view str_b = hex_str.substr(5, 2);
@@ -49,8 +49,8 @@ glm::vec3 ShapeRenderable::hexToRGB(std::string_view hex_str) {
   // keep simple impl for now
   int i = 0;
   for (std::string_view hex_str : strs) {
-    char h0 = hexToInt(hex_str[0]);
-    char h1 = hexToInt(hex_str[1]);
+    char h0  = hexToInt(hex_str[0]);
+    char h1  = hexToInt(hex_str[1]);
     ret[i++] = static_cast<float>(h0 * 16 + h1) / 255.;
   }
 
@@ -94,7 +94,7 @@ void ShapeRenderable::buildFromXML(const pugi::xml_node& item) {
     case ShapeType::kSphere:
       break;
     case ShapeType::kCylinder: {
-      float n_sectors = 32;
+      constexpr int n_sectors = 32;
 
       meta_.radius = std::stof(geometry_node.attribute("radius").as_string());
       meta_.height = std::stof(geometry_node.attribute("length").as_string());
@@ -109,8 +109,8 @@ void ShapeRenderable::buildFromXML(const pugi::xml_node& item) {
         float sector_angle;
         for (int j = 0; j <= n_sectors; ++j) {
           sector_angle = j * 2 * M_PI / n_sectors;
-          float vx = meta_.radius * cos(sector_angle);
-          float vy = meta_.radius * sin(sector_angle);
+          float vx     = meta_.radius * cos(sector_angle);
+          float vy     = meta_.radius * sin(sector_angle);
 
           vertices.push_back(vx);
           vertices.push_back(vy);
@@ -123,10 +123,10 @@ void ShapeRenderable::buildFromXML(const pugi::xml_node& item) {
       }
 
       int base_center_idx = (int)vertices.size() / 3;
-      int top_center_idx = base_center_idx + n_sectors + 2;
+      int top_center_idx  = base_center_idx + n_sectors + 2;
 
       for (int i = 0; i < 2; ++i) {
-        float h = i * meta_.height;
+        float h  = i * meta_.height;
         float nz = 2 * i - 1;
 
         vertices.push_back(0);
@@ -170,8 +170,8 @@ void ShapeRenderable::buildFromXML(const pugi::xml_node& item) {
       // int top_center_idx = base_center_idx + n_sectors + 1;
 
       std::vector<int> indices;
-      int k1 = 0;
-      int k2 = n_sectors + 1;
+      int              k1 = 0;
+      int              k2 = n_sectors + 1;
 
       // indices for side surface
       for (int i = 0; i < n_sectors; ++i, ++k1, ++k2) {
@@ -239,8 +239,8 @@ void ShapeRenderable::buildFromXML(const pugi::xml_node& item) {
       meta_.x_max = std::stof(geometry_node.attribute("x_max").as_string());
       meta_.y_min = std::stof(geometry_node.attribute("y_min").as_string());
       meta_.y_max = std::stof(geometry_node.attribute("y_max").as_string());
-      meta_.z = std::stof(geometry_node.attribute("z").as_string());
-      meta_.name = item.attribute("class").as_string();
+      meta_.z     = std::stof(geometry_node.attribute("z").as_string());
+      meta_.name  = item.attribute("class").as_string();
 
       float ground_verts[] = {
           //positions
@@ -275,7 +275,7 @@ void ShapeRenderable::buildFromXML(const pugi::xml_node& item) {
     case ShapeType::kCube: {
       // meta_.x_mi
       meta_.size = std::stof(geometry_node.attribute("size").as_string());
-      float sz = meta_.size;
+      float sz   = meta_.size;
 
       float verts[] = {
           // left face

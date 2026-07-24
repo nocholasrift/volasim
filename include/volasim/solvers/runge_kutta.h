@@ -91,7 +91,7 @@ template <int N, int M>
 RungeKutta<N, M>::RungeKutta(
     std::function<RungeKutta<N, M>::X_t(const RungeKutta<N, M>::X_t&,
                                         const U_t&)>&& ode,
-    const RungeKutta<N, M>::SolverType type)
+    const RungeKutta<N, M>::SolverType                 type)
     : _ode_func(std::move(ode)) {
   switch (type) {
     case SolverType::kThirdOrder:
@@ -101,7 +101,7 @@ RungeKutta<N, M>::RungeKutta(
       _b(1) = 2.0 / 3.0;
       _b(2) = 1.0 / 6.0;
 
-      _a = Eigen::MatrixXd::Zero(3, 2);
+      _a       = Eigen::MatrixXd::Zero(3, 2);
       _a(1, 0) = 0.5;
       _a(2, 0) = -1.0;
       _a(2, 1) = 2.0;
@@ -114,7 +114,7 @@ RungeKutta<N, M>::RungeKutta(
       _b(2) = 1.0 / 3.0;
       _b(3) = 1.0 / 6.0;
 
-      _a = Eigen::MatrixXd::Zero(4, 3);
+      _a       = Eigen::MatrixXd::Zero(4, 3);
       _a(1, 0) = 0.5;
       _a(2, 1) = 0.5;
       _a(3, 2) = 1.0;
@@ -127,7 +127,7 @@ RungeKutta<N, M>::RungeKutta(
       _b(2) = 1.20553560;
       _b(3) = 0.17118478;
 
-      _a = Eigen::MatrixXd::Zero(4, 3);
+      _a       = Eigen::MatrixXd::Zero(4, 3);
       _a(1, 0) = 0.4;
       _a(2, 0) = 0.29697761;
       _a(2, 1) = 0.15875964;
@@ -139,8 +139,8 @@ RungeKutta<N, M>::RungeKutta(
 }
 
 template <int N, int M>
-typename RungeKutta<N, M>::X_t RungeKutta<N, M>::step(const X_t& x0,
-                                                      const U_t& u,
+typename RungeKutta<N, M>::X_t RungeKutta<N, M>::step(const X_t&   x0,
+                                                      const U_t&   u,
                                                       const double dt) const {
   std::vector<X_t>
       func_evals;         // Store evaluation of x' function evaluations f_j

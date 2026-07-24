@@ -5,7 +5,7 @@
 #include <volasim/event/event_dispatcher.h>
 #include <volasim/sensors/depth_sensor.h>
 #include <volasim/simulation/camera.h>
-#include <volasim/simulation/display_object_container.h>
+#include <volasim/simulation/entity.h>
 #include <volasim/simulation/input_manager.h>
 #include <volasim/simulation/physics_interface.h>
 #include <volasim/simulation/shader.h>
@@ -63,14 +63,14 @@ class Simulation {
     return instance;
   }
 
-  ~Simulation();
+  // ~Simulation();
 
   SDL_AppResult update(void* appstate);
   SDL_AppResult SDLEvent(void* appstate, SDL_Event* event);
 
   SDL_AppResult initSDL(void** appstate, int argc, char* argv[],
                         const Args& args);
-  void quitSDL(void* appstate, SDL_AppResult result);
+  void          quitSDL(void* appstate, SDL_AppResult result);
 
   bool isRunning() { return is_running_.load(); }
 
@@ -78,28 +78,29 @@ class Simulation {
   void setInputs(const std::string& buffer);
 
   const Camera& camera() const { return cameras_[active_camera]; }
-  Camera& camera() { return cameras_[active_camera]; }
+  Camera&       camera() { return cameras_[active_camera]; }
 
   const std::string getSimState();
-  EventDispatcher& getHandler() { return event_handler_; }
+  EventDispatcher&  getHandler() { return event_handler_; }
   PhysicsInterface& getPhysicsInterface() { return physics_interface_; }
 
  private:
   Simulation();
 
-  static constexpr uint8_t kMouseRightClick = 1;
+  static constexpr uint8_t kMouseRightClick  = 1;
   static constexpr uint8_t kMouseMiddleClick = 2;
-  static constexpr uint8_t kMouseLeftClick = 3;
+  static constexpr uint8_t kMouseLeftClick   = 3;
 
   int window_width_;
   int window_height_;
-  int frames_per_sec_;
+
+  unsigned int frames_per_sec_;
 
   double time_;
 
-  std::atomic<bool> is_running_ = false;
+  std::atomic<bool>       is_running_ = false;
   std::condition_variable running_cv_;
-  std::mutex running_mtx_;
+  std::mutex              running_mtx_;
 
   Uint64 ms_per_frame_;
   Uint64 frame_start_;
@@ -107,17 +108,16 @@ class Simulation {
 
   std::chrono::steady_clock::time_point precise_time_;
 
-  SDL_Window* window_;
+  SDL_Window*   window_;
   SDL_GLContext gl_ctx_;
 
-  // std::unique_ptr<DisplayObjectContainer> world_;
-  DisplayObjectContainer* world_;
+  std::unique_ptr<Entity> world_;
 
-  EventDispatcher& event_handler_;
+  EventDispatcher&  event_handler_;
   PhysicsInterface& physics_interface_;
 
   std::vector<Camera> cameras_;
-  uint8_t active_camera{0};
+  uint8_t             active_camera{0};
 
   InputManager input_manager_;
 

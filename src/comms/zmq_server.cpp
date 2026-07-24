@@ -2,8 +2,8 @@
 #include <zmq.hpp>
 
 ZMQServer::ZMQServer() {
-  context_ = zmq::context_t(1);
-  publisher_ = zmq::socket_t(context_, zmq::socket_type::pub);
+  context_    = zmq::context_t(1);
+  publisher_  = zmq::socket_t(context_, zmq::socket_type::pub);
   subscriber_ = zmq::socket_t(context_, zmq::socket_type::sub);
 
   try {
@@ -24,7 +24,7 @@ void ZMQServer::publishInfo(const std::string& sim_state) {
 
 bool ZMQServer::receiveInfo(std::string& input_buffer) {
   zmq::message_t msg;
-  auto result = subscriber_.recv(msg, zmq::recv_flags::dontwait);
+  auto           result = subscriber_.recv(msg, zmq::recv_flags::dontwait);
   if (result) {
     input_buffer.assign(static_cast<char*>(msg.data()), msg.size());
     return true;

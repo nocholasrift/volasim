@@ -20,7 +20,7 @@ class MeshRenderable : public Renderable {
   virtual ShapeType getType() const override { return ShapeType::kMesh; }
 
   virtual void buildFromXML(const pugi::xml_node& item) override;
-  void readConvexDecomp();
+  void         readConvexDecomp();
 
   const std::vector<Eigen::MatrixX3d>& get_meshes() const {
     return convex_meshes_;
@@ -35,9 +35,9 @@ class MeshRenderable : public Renderable {
   glm::mat3 correction_{1.0f};
 
   std::vector<Eigen::MatrixX3d> convex_meshes_;
-  GLuint vao_ = 0;
-  GLuint vbo_ = 0;
-  GLuint ebo_ = 0;
+  GLuint                        vao_ = 0;
+  GLuint                        vbo_ = 0;
+  GLuint                        ebo_ = 0;
 
   unsigned int index_count_ = 0;
 };

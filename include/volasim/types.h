@@ -6,7 +6,7 @@
 
 struct SimState {
   std::string state;
-  std::mutex mutex;
+  std::mutex  mutex;
 };
 
 #endif

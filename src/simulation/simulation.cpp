@@ -2,6 +2,7 @@
 
 #include <volasim/simulation/simulation.h>
 #include <volasim/vehicles/drone.h>
+#include "SDL3/SDL_video.h"
 
 #ifdef USE_APPLE_OPENGL_HEADERS
 #include <GLUT/glut.h>
@@ -10,8 +11,8 @@
 #include <GL/glu.h>
 #include <GL/glut.h>
 #endif
-#include <math.h>
 #include <chrono>
+#include <cmath>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -23,13 +24,11 @@ Simulation::Simulation()
 
   event_handler_.addEventListener(&PhysicsInterface::getInstance(), "OBJ_ADD");
   event_handler_.addEventListener(&PhysicsInterface::getInstance(), "OBJ_RM");
-
-  world_ = new DisplayObjectContainer("world");
 }
 
-Simulation::~Simulation() {
-  delete world_;
-}
+// Simulation::~Simulation() {
+//   delete world_;
+// }
 
 SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
                                   const Args& args) {
@@ -49,8 +48,8 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
 
   Camera::Dimensions camera_dims = camera().getDimensions();
 
-  window_width_ = camera_dims.width;
-  window_height_ = camera_dims.height;
+  window_width_   = camera_dims.width;
+  window_height_  = camera_dims.height;
   frames_per_sec_ = camera().getFPS();
 
   window_ = SDL_CreateWindow("Volasim", window_width_, window_height_,
@@ -80,14 +79,14 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
   glEnable(GL_PROGRAM_POINT_SIZE);
 
   // Brighter directional light
-  GLfloat light0_pos[] = {1.0f, 2.0f, 3.0f, 0.0f};  // directional light
-  GLfloat light0_diffuse[] = {0.8f, 0.8f, 0.8f, 1.0f};
+  GLfloat light0_pos[]     = {1.0F, 2.0F, 3.0F, 0.0F};  // directional light
+  GLfloat light0_diffuse[] = {0.8F, 0.8F, 0.8F, 1.0F};
   glLightfv(GL_LIGHT0, GL_POSITION, light0_pos);
   glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_diffuse);
 
   // Ambient fill light
-  GLfloat light1_pos[] = {-1.0f, -1.0f, 0.5f, 0.0f};  // another directional
-  GLfloat light1_diffuse[] = {0.3f, 0.3f, 0.3f, 1.0f};
+  GLfloat light1_pos[]     = {-1.0F, -1.0F, 0.5F, 0.0F};  // another directional
+  GLfloat light1_diffuse[] = {0.3F, 0.3F, 0.3F, 1.0F};
   glLightfv(GL_LIGHT1, GL_POSITION, light1_pos);
   glLightfv(GL_LIGHT1, GL_DIFFUSE, light1_diffuse);
 
@@ -96,25 +95,30 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
 
   glShadeModel(GL_SMOOTH);  // for better lighting transitions
 
-  glClearColor(0.25f, 0.25f, 0.25f, 1.0f);  // lighter background
+  glClearColor(0.25F, 0.25F, 0.25F, 1.0F);  // lighter background
 
-  int major = 0, minor = 0;
+  int major = 0;
+  int minor = 0;
+
   glGetIntegerv(GL_MAJOR_VERSION, &major);
   glGetIntegerv(GL_MINOR_VERSION, &minor);
 
-  std::cout << "OpenGL version: " << major << "." << minor << std::endl;
+  std::cout << "OpenGL version: " << major << "." << minor << '\n';
 
-  time_ = 0.;
+  time_        = 0.;
   frame_start_ = -1000000;
-  last_step_ = 0;
+  last_step_   = 0;
 
   ms_per_frame_ = 1000 / frames_per_sec_;
 
   shape_shader_ = Shader(mesh_vertex_shader, mesh_fragment_shader);
 
-  // parser populates the scene graph under world_ and returns any depth sensors
+  // parser populates the scene graph under world_ and returns any depth sensors.
+  // world_ lives for the whole program; if it is ever reset/reloaded, dispatch
+  // OBJ_RM for the old subtree (children-first) before destroying it, otherwise
+  // physics bodies outlive their entities. removeChild() already does this per node.
   auto t_start = std::chrono::steady_clock::now();
-  gpu_sensors_ = xml_parser.loadWorldFromXML(world_);
+  world_       = xml_parser.loadWorldFromXML(gpu_sensors_);
   auto elapsed = std::chrono::steady_clock::now() - t_start;
   std::cout
       << "World load time: "
@@ -127,13 +131,12 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
     sensor.init();
   }
 
-  std::vector<DynamicObject*> dyna_objs =
-      physics_interface_.getDynamicObjects();
+  const std::vector<SimBody>& sim_bodies = physics_interface_.dynamicBodies();
 
-  // default to first dynamic object registered as target
-  // if no dynamic object, default to origin for focus
-  if (dyna_objs.size() > 0)
-    camera().setTarget(dyna_objs[0]);
+  // default camera target to the first dynamic object; else focus the origin
+  if (!sim_bodies.empty()) {
+    camera().setTarget(&sim_bodies.front().entity->getDynamics());
+  }
 
   setSimState();
 
@@ -190,7 +193,7 @@ SDL_AppResult Simulation::update(void* appstate) {
     glm::mat4 proj_mat = glm::perspective(
         glm::radians(camera().getFov()),                     // fov
         static_cast<float>(window_width_) / window_height_,  // aspect ratio
-        0.1f, 100.0f);                                       // near & far plane
+        0.1F, 100.0f);                                       // near & far plane
 
     // glm::mat4 view_mat = depth_sensor_->getViewMat();
     // glm::mat4 proj_mat = depth_sensor_->getProjMat();
@@ -202,12 +205,12 @@ SDL_AppResult Simulation::update(void* appstate) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     for (GPUSensor& sensor : gpu_sensors_) {
-      sensor.update(world_, shape_shader_);
+      sensor.update(world_.get(), shape_shader_);
     }
 
     glUseProgram(shape_shader_.getID());
 
-    shape_shader_.setUniformVec3("lightColor", glm::vec3(.8f, .8f, .8f));
+    shape_shader_.setUniformVec3("lightColor", glm::vec3(.8F, .8F, .8F));
     shape_shader_.setUniformVec3("lightPos", glm::vec3(0, 0, 5));
 
     world_->draw(view_mat, proj_mat, shape_shader_);
@@ -221,13 +224,13 @@ SDL_AppResult Simulation::update(void* appstate) {
   }
 
   if (last_step_ == 0) {
-    last_time = std::chrono::high_resolution_clock::now();
+    last_time     = std::chrono::high_resolution_clock::now();
     precise_time_ = std::chrono::high_resolution_clock::now();
-    last_step_ = SDL_GetTicks();
+    last_step_    = SDL_GetTicks();
     return SDL_APP_CONTINUE;
   }
 
-  auto t_elapsed = std::chrono::high_resolution_clock::now() - precise_time_;
+  auto   t_elapsed = std::chrono::high_resolution_clock::now() - precise_time_;
   double dt =
       std::chrono::duration_cast<std::chrono::nanoseconds>(t_elapsed).count() /
       1e9;
@@ -256,49 +259,38 @@ void Simulation::quitSDL(void* appstate, SDL_AppResult result) {
 }
 
 void Simulation::setInputs(const std::string& buffer) {
-  std::vector<DynamicObject*> dyna_objs =
-      physics_interface_.getDynamicObjects();
+  const std::vector<SimBody>& sim_bodies = physics_interface_.dynamicBodies();
 
-  if (dyna_objs.empty())
+  if (sim_bodies.empty()) {
     return;
+  }
 
   {
     std::lock_guard<std::mutex> lock(sim_state_.mutex);
-    for (DynamicObject* dyna_obj : dyna_objs) {
-      if (!dyna_obj) {
-        std::cerr << "[Simulation] null dynamic object detected in interface\n";
-      }
-      dyna_obj->setInput(buffer);
+    for (const SimBody& sb : sim_bodies) {
+      sb.entity->getDynamics().setInput(buffer);
       break;
     }
   }
 }
 
 void Simulation::setSimState() {
-  /*std::cout << "trying to get dynamic objects\n";*/
-  std::vector<DynamicObject*> dyna_objs =
-      physics_interface_.getDynamicObjects();
-  /*std::cout << "checking if list empty\n";*/
+  const std::vector<SimBody>& sim_bodies = physics_interface_.dynamicBodies();
 
-  if (dyna_objs.empty())
+  if (sim_bodies.empty()) {
     return;
-
-  /*std::string buffer;*/
+  }
 
   {
     std::lock_guard<std::mutex> lock(sim_state_.mutex);
-    for (DynamicObject* dyna_obj : dyna_objs) {
-      if (!dyna_obj) {
-        std::cerr << "[Simulation] null dynamic object detected in interface\n";
-      }
-      if (!dyna_obj->getSimState().SerializeToString(&sim_state_.state)) {
+    for (const SimBody& sb : sim_bodies) {
+      if (!sb.entity->getDynamics().getSimState().SerializeToString(
+              &sim_state_.state)) {
         std::cerr << "[Simulation] Failed to serialize state\n";
       }
       break;
     }
   }
-
-  /*sim_state_.state = buffer;*/
 }
 
 const std::string Simulation::getSimState() {
@@ -308,7 +300,7 @@ const std::string Simulation::getSimState() {
   }
 
   std::lock_guard<std::mutex> lock(sim_state_.mutex);
-  std::string state = sim_state_.state;
+  std::string                 state = sim_state_.state;
 
   return state;
 }

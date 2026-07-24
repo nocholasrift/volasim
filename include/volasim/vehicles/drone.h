@@ -33,10 +33,10 @@ class Drone : public DynamicObject {
   void setTorqueConstant(double torque) { torque_const_ = torque; }
 
   virtual volasim_msgs::DroneState getSimState() override;
-  virtual glm::vec3 getTranslation() override;
-  virtual glm::quat getRotation() override;
-  virtual glm::vec3 getVelocity() override;
-  virtual glm::vec3 getBodyRates() override;
+  virtual glm::vec3                getTranslation() override;
+  virtual glm::quat                getRotation() override;
+  virtual glm::vec3                getVelocity() override;
+  virtual glm::vec3                getBodyRates() override;
 
   virtual void getForceAndTorque(Eigen::Vector3d& force,
                                  Eigen::Vector3d& torque) override;

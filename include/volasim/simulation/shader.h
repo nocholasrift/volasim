@@ -19,10 +19,10 @@ class Shader {
   Shader(const std::string& vertex_shader, const std::string& fragment_shader) {
 
     unsigned int vertex, fragment;
-    int success;
-    char infoLog[512];
+    int          success;
+    char         infoLog[512];
 
-    vertex = glCreateShader(GL_VERTEX_SHADER);
+    vertex                    = glCreateShader(GL_VERTEX_SHADER);
     const char* vertex_source = vertex_shader.c_str();
     glShaderSource(vertex, 1, &vertex_source, NULL);
     glCompileShader(vertex);
@@ -34,7 +34,7 @@ class Shader {
       throw std::runtime_error(infoLog);
     }
 
-    fragment = glCreateShader(GL_FRAGMENT_SHADER);
+    fragment                    = glCreateShader(GL_FRAGMENT_SHADER);
     const char* fragment_source = fragment_shader.c_str();
     glShaderSource(fragment, 1, &fragment_source, NULL);
     glCompileShader(fragment);
@@ -73,14 +73,14 @@ class Shader {
       if (id_ != 0) {
         glDeleteProgram(id_);
       }
-      id_ = other.id_;
+      id_       = other.id_;
       other.id_ = 0;
     }
     return *this;
   }
 
   // Delete copy operations
-  Shader(const Shader&) = delete;
+  Shader(const Shader&)            = delete;
   Shader& operator=(const Shader&) = delete;
 
   // Move operations

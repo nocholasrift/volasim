@@ -1,4 +1,5 @@
 #include <volasim/simulation/dynamic_object.h>
+#include <volasim/simulation/mesh_renderable.h>
 #include <volasim/simulation/physics_interface.h>
 #include <volasim/simulation/shape_renderable.h>
 #include <volasim/vehicles/drone.h>
@@ -8,6 +9,8 @@
 #include <Jolt/Physics/Collision/Shape/CylinderShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
+
+#include <algorithm>
 #include <memory>
 
 PhysicsInterface::PhysicsInterface() {
@@ -80,12 +83,9 @@ PhysicsInterface::PhysicsInterface() {
 }
 
 PhysicsInterface::~PhysicsInterface() {
-
+  // Entities own their DynamicObjects now; we only own the Jolt factory.
   delete JPH::Factory::sInstance;
   JPH::Factory::sInstance = nullptr;
-
-  for (const auto& [disp_obj, binding] : disp_to_dyna_)
-    delete binding.dynamic_obj;
 }
 
 void PhysicsInterface::update(double dt) {
@@ -93,72 +93,47 @@ void PhysicsInterface::update(double dt) {
 
   // std::cout << "applying update at " << dt << " seconds\n";
 
-  // 1. Apply movement to non-static objects
-  for (const auto& [disp_obj, binding] : disp_to_dyna_) {
+  // 1. Apply each dynamic body's force/torque before stepping.
+  for (const SimBody& sb : sim_bodies_) {
+    JPH::RVec3 jolt_p = body_interface.GetPosition(sb.body);
 
-    if (binding.getMotionType() != JPH::EMotionType::Static) {
-      /*Eigen::Vector4d u =*/
-      /*    Eigen::Vector4d(1.0, 1.0, 1.01, 1.01) * 4.34 * 9.81 / 4.;*/
+    Eigen::Vector3d force, rpy;
+    sb.entity->getDynamics().getForceAndTorque(force, rpy);
 
-      /*binding.dynamic_obj->setInput(u);*/
-      // binding.dynamic_obj->update(dt);
-
-      JPH::RVec3 jolt_p = body_interface.GetPosition(binding.body_id);
-
-      Eigen::Vector3d force, rpy;
-      binding.dynamic_obj->getForceAndTorque(force, rpy);
-
-      JPH::Vec3 j_rpy(rpy[0], rpy[1], rpy[2]);
-      JPH::Vec3 j_force(force[0], force[1], force[2]);
-      body_interface.AddTorque(binding.body_id, j_rpy);
-      body_interface.AddForce(binding.body_id, j_force, jolt_p);
-    }
+    JPH::Vec3 j_rpy(rpy[0], rpy[1], rpy[2]);
+    JPH::Vec3 j_force(force[0], force[1], force[2]);
+    body_interface.AddTorque(sb.body, j_rpy);
+    body_interface.AddForce(sb.body, j_force, jolt_p);
   }
 
   // 2. Step the physics system
   physics_system_->Update(dt, 1, temp_allocator_.get(), job_system_.get());
 
-  // 3. Update DOs with the true physical system positions (in case of collision)
-  for (const auto& [disp_obj, binding] : disp_to_dyna_) {
+  // 3. Write the true physical state back to entity + dynamics (post-collision).
+  for (const SimBody& sb : sim_bodies_) {
+    JPH::RVec3 jolt_p;
+    JPH::Quat  jolt_r;
+    body_interface.GetPositionAndRotation(sb.body, jolt_p, jolt_r);
 
-    if (binding.getMotionType() != JPH::EMotionType::Static) {
+    JPH::RVec3 jolt_v;
+    JPH::RVec3 jolt_w;
+    body_interface.GetLinearAndAngularVelocity(sb.body, jolt_v, jolt_w);
 
-      JPH::RVec3 jolt_p;
-      JPH::Quat jolt_r;
-      body_interface.GetPositionAndRotation(binding.body_id, jolt_p, jolt_r);
+    glm::vec3 pos(jolt_p[0], jolt_p[1], jolt_p[2]);
+    glm::quat rot(jolt_r.GetW(), jolt_r.GetX(), jolt_r.GetY(), jolt_r.GetZ());
 
-      JPH::RVec3 jolt_v;
-      JPH::RVec3 jolt_w;
-      body_interface.GetLinearAndAngularVelocity(binding.body_id, jolt_v,
-                                                 jolt_w);
+    DynamicObject& dynamics = sb.entity->getDynamics();
+    dynamics.setTranslation(pos);
+    dynamics.setRotation(rot);
 
-      glm::vec3 pos(jolt_p[0], jolt_p[1], jolt_p[2]);
-      glm::quat rot(jolt_r.GetW(), jolt_r.GetX(), jolt_r.GetY(), jolt_r.GetZ());
+    glm::vec3 vel(jolt_v[0], jolt_v[1], jolt_v[2]);
+    glm::vec3 rpy(jolt_w[0], jolt_w[1], jolt_w[2]);
 
-      // std::cout << "position: " << jolt_p[0] << " " << jolt_p[1] << " "
-      //           << jolt_p[2] << "\n";
+    dynamics.setVelocity(vel);
+    dynamics.setAngularVelocity(rpy);
 
-      binding.dynamic_obj->setTranslation(pos);
-      binding.dynamic_obj->setRotation(rot);
-
-      glm::vec3 vel(jolt_v[0], jolt_v[1], jolt_v[2]);
-      glm::vec3 rpy(jolt_w[0], jolt_w[1], jolt_w[2]);
-
-      binding.dynamic_obj->setVelocity(vel);
-      binding.dynamic_obj->setAngularVelocity(rpy);
-
-      disp_obj->setTranslation(pos);
-      disp_obj->setRotation(rot);
-    }
-  }
-}
-
-void PhysicsInterface::preRegister(DisplayObject* display_obj,
-                                   DynamicObject* dynamic_obj) {
-  if (disp_to_dyna_.find(display_obj) == disp_to_dyna_.end()) {
-    PhysicsBinding binding;
-    binding.dynamic_obj = dynamic_obj;
-    disp_to_dyna_.insert({display_obj, binding});
+    sb.entity->setTranslation(pos);
+    sb.entity->setRotation(rot);
   }
 }
 
@@ -166,170 +141,196 @@ void PhysicsInterface::preRegister(DisplayObject* display_obj,
 void PhysicsInterface::handleEvent(Event* e) {
   using namespace JPH::literals;
 
-  DisplayObject* object = static_cast<DisplayEvent*>(e)->getAddedObject();
+  Entity* object = static_cast<DisplayEvent*>(e)->getAddedObject();
+
   if (e->getType() == "OBJ_ADD") {
+    handleAdd(object);
+  } else if (e->getType() == "OBJ_RM") {
+    handleRemove(object);
+  }
+}
 
-    bool is_set = false;
-    if (disp_to_dyna_.find(object) != disp_to_dyna_.end())
-      is_set = disp_to_dyna_[object].isValid();
-    else
-      disp_to_dyna_.insert({object, PhysicsBinding()});
+void PhysicsInterface::handleAdd(Entity* object) {
+  const bool already_registered =
+      static_bodies_.count(object) != 0 ||
+      std::any_of(sim_bodies_.begin(), sim_bodies_.end(),
+                  [object](const SimBody& sb) { return sb.entity == object; });
 
-    if (!is_set && object->isRenderable()) {
+  if (already_registered || !object->isRenderable()) {
+    return;
+  }
 
-      PhysicsBinding& binding = disp_to_dyna_[object];
+  const bool       is_dynamic = object->isDynamic();
+  JPH::EMotionType motion_type =
+      is_dynamic ? JPH::EMotionType::Dynamic : JPH::EMotionType::Static;
+  JPH::ObjectLayer layer = is_dynamic ? Layers::MOVING : Layers::NON_MOVING;
 
-      JPH::BodyID body_id;
-      JPH::BodyCreationSettings shape_settings;
-      JPH::BodyInterface& body_interface = physics_system_->GetBodyInterface();
+  JPH::BodyCreationSettings shape_settings;
+  JPH::BodyInterface& body_interface = physics_system_->GetBodyInterface();
 
-      const std::shared_ptr<Renderable> renderable = object->getRenderable();
+  const std::shared_ptr<Renderable> renderable = object->getRenderable();
 
-      glm::vec3 pos = object->getTranslation();
-      glm::quat ori = object->getRotation();
-      //
-      JPH::ObjectLayer obj_layer =
-          binding.isDynamic() ? Layers::MOVING : Layers::NON_MOVING;
+  glm::vec3 pos = object->getTranslation();
+  glm::quat ori = object->getRotation();
 
-      switch (renderable->getType()) {
+  switch (renderable->getType()) {
 
-        case ShapeType::kSphere: {
-          const std::shared_ptr<ShapeRenderable> shape_render =
-              std::dynamic_pointer_cast<ShapeRenderable>(renderable);
-          ShapeMetadata shape_meta = shape_render->getShapeMeta();
+    case ShapeType::kSphere: {
+      const std::shared_ptr<ShapeRenderable> shape_render =
+          std::dynamic_pointer_cast<ShapeRenderable>(renderable);
+      ShapeMetadata shape_meta = shape_render->getShapeMeta();
 
-          std::cout << "[physics interface] handling add sphere event"
-                    << std::endl;
-          break;
-        }
-
-        case ShapeType::kMesh: {
-          const std::shared_ptr<MeshRenderable> mesh_render =
-              std::dynamic_pointer_cast<MeshRenderable>(renderable);
-
-          const std::vector<Eigen::MatrixX3d>& meshes =
-              mesh_render->get_meshes();
-
-          // No convex decomposition (e.g. purely visual meshes like sensors)
-          // means no collision body at all.
-          if (meshes.empty()) {
-            return;
-          }
-
-          JPH::StaticCompoundShapeSettings compound_settings;
-
-          for (const auto& verts : meshes) {
-
-            std::vector<JPH::Vec3> jph_verts;
-            jph_verts.reserve(verts.rows());
-            for (int i = 0; i < verts.rows(); ++i)
-              jph_verts.emplace_back(verts(i, 0), verts(i, 1), verts(i, 2));
-
-            // Use Jolt's reference-counted pointer
-            JPH::Ref<JPH::ConvexHullShapeSettings> hull_settings =
-                new JPH::ConvexHullShapeSettings(jph_verts.data(),
-                                                 jph_verts.size());
-
-            // Optional tuning:
-            // hull_settings->mMaxConvexRadius = 0.05f;   // makes it less spiky
-            // hull_settings->mShrinkByConvexRadius = true;
-
-            compound_settings.AddShape(
-                JPH::Vec3::sZero(),      // local position offset
-                JPH::Quat::sIdentity(),  // local rotation
-                hull_settings            // Ref keeps it alive
-            );
-          }
-
-          // Build compound shape
-          JPH::Shape::ShapeResult shape_result = compound_settings.Create();
-          if (shape_result.HasError())
-            throw std::runtime_error(shape_result.GetError().c_str());
-
-          JPH::RefConst<JPH::Shape> compound_shape = shape_result.Get();
-
-          shape_settings = JPH::BodyCreationSettings(
-              compound_shape, JPH::RVec3(pos[0], pos[1], pos[2]),
-              JPH::Quat(ori[0], ori[1], ori[2], ori[3]),
-              binding.getMotionType(), binding.getLayer());
-
-          break;
-        }
-        case ShapeType::kCube: {
-          const std::shared_ptr<ShapeRenderable> shape_render =
-              std::dynamic_pointer_cast<ShapeRenderable>(renderable);
-          ShapeMetadata shape_meta = shape_render->getShapeMeta();
-
-          shape_settings = JPH::BodyCreationSettings(
-              new JPH::BoxShape(JPH::Vec3(shape_meta.size / 2,
-                                          shape_meta.size / 2,
-                                          shape_meta.size / 2)),
-              JPH::RVec3(pos[0], pos[1], pos[2]),
-              JPH::Quat(ori[0], ori[1], ori[2], ori[3]),
-              binding.getMotionType(), binding.getLayer());
-          break;
-        }
-
-        case ShapeType::kCylinder: {
-          const std::shared_ptr<ShapeRenderable> shape_render =
-              std::dynamic_pointer_cast<ShapeRenderable>(renderable);
-          ShapeMetadata shape_meta = shape_render->getShapeMeta();
-
-          JPH::Quat align_rot = JPH::Quat::sRotation(JPH::Vec3::sAxisX(), 90.f);
-          JPH::Quat renderable_ori(ori[1], ori[2], ori[3], ori[0]);
-          shape_settings = JPH::BodyCreationSettings(
-              new JPH::CylinderShape(shape_meta.height / 2., shape_meta.radius),
-              JPH::RVec3(pos[0], pos[1], pos[2] + shape_meta.height / 2),
-              // JPH::Quat(ori[1], ori[2], ori[3], ori[0]),
-              align_rot * renderable_ori, binding.getMotionType(),
-              binding.getLayer());
-
-          break;
-        }
-
-        case ShapeType::kPlane: {
-          const std::shared_ptr<ShapeRenderable> shape_render =
-              std::dynamic_pointer_cast<ShapeRenderable>(renderable);
-          ShapeMetadata shape_meta = shape_render->getShapeMeta();
-          // std::cout << "[physics interface] handling add plane event"
-          //           << std::endl;
-
-          // in case max is somehow smaller than min
-          double half_width = fabs(shape_meta.x_max - shape_meta.x_min) / 2.;
-          double half_height = fabs(shape_meta.y_max - shape_meta.y_min) / 2.;
-
-          shape_settings = JPH::BodyCreationSettings(
-              new JPH::BoxShape(JPH::Vec3(half_width, half_height, 0.5)),
-              JPH::RVec3(pos[0], pos[1], pos[2] - 0.5),
-              JPH::Quat(ori[1], ori[2], ori[3], ori[0]),
-              binding.getMotionType(), binding.getLayer());
-          break;
-        }
-      }
-
-      if (binding.isDynamic()) {
-        shape_settings.mOverrideMassProperties =
-            JPH::EOverrideMassProperties::MassAndInertiaProvided;
-        JPH::MassProperties mass_properties;
-        mass_properties.mMass = binding.dynamic_obj->getMass();
-
-        Eigen::Matrix3d inertia_mat = binding.dynamic_obj->getInertia();
-
-        mass_properties.mInertia = JPH::Mat44::sIdentity();
-        mass_properties.mInertia(0, 0) = inertia_mat(0, 0);
-        mass_properties.mInertia(1, 1) = inertia_mat(1, 1);
-        mass_properties.mInertia(2, 2) = inertia_mat(2, 2);
-
-        shape_settings.mMassPropertiesOverride = mass_properties;
-        // shape_settings.mGravityFactor = 0.f;
-      }
-
-      body_id = body_interface.CreateAndAddBody(shape_settings,
-                                                JPH::EActivation::Activate);
-
-      binding.body_id = body_id;
+      shape_settings = JPH::BodyCreationSettings(
+          new JPH::SphereShape(shape_meta.radius),
+          JPH::RVec3(pos[0], pos[1], pos[2]),
+          JPH::Quat(ori[0], ori[1], ori[2], ori[3]), motion_type, layer);
+      break;
     }
 
-  } else if (e->getType() == "OBJ_RM") {
+    case ShapeType::kMesh: {
+      const std::shared_ptr<MeshRenderable> mesh_render =
+          std::dynamic_pointer_cast<MeshRenderable>(renderable);
+
+      const std::vector<Eigen::MatrixX3d>& meshes = mesh_render->get_meshes();
+
+      // No convex decomposition (e.g. purely visual meshes like sensors)
+      // means no collision body at all.
+      if (meshes.empty()) {
+        return;
+      }
+
+      JPH::StaticCompoundShapeSettings compound_settings;
+
+      for (const auto& verts : meshes) {
+
+        std::vector<JPH::Vec3> jph_verts;
+        jph_verts.reserve(verts.rows());
+        for (int i = 0; i < verts.rows(); ++i) {
+          jph_verts.emplace_back(verts(i, 0), verts(i, 1), verts(i, 2));
+        }
+
+        // Use Jolt's reference-counted pointer
+        JPH::Ref<JPH::ConvexHullShapeSettings> hull_settings =
+            new JPH::ConvexHullShapeSettings(jph_verts.data(),
+                                             jph_verts.size());
+
+        compound_settings.AddShape(JPH::Vec3::sZero(),  // local position offset
+                                   JPH::Quat::sIdentity(),  // local rotation
+                                   hull_settings  // Ref keeps it alive
+        );
+      }
+
+      JPH::Shape::ShapeResult shape_result = compound_settings.Create();
+      if (shape_result.HasError()) {
+        throw std::runtime_error(shape_result.GetError().c_str());
+      }
+
+      JPH::RefConst<JPH::Shape> compound_shape = shape_result.Get();
+
+      shape_settings = JPH::BodyCreationSettings(
+          compound_shape, JPH::RVec3(pos[0], pos[1], pos[2]),
+          JPH::Quat(ori[0], ori[1], ori[2], ori[3]), motion_type, layer);
+      break;
+    }
+
+    case ShapeType::kCube: {
+      const std::shared_ptr<ShapeRenderable> shape_render =
+          std::dynamic_pointer_cast<ShapeRenderable>(renderable);
+      ShapeMetadata shape_meta = shape_render->getShapeMeta();
+
+      shape_settings = JPH::BodyCreationSettings(
+          new JPH::BoxShape(JPH::Vec3(shape_meta.size / 2, shape_meta.size / 2,
+                                      shape_meta.size / 2)),
+          JPH::RVec3(pos[0], pos[1], pos[2]),
+          JPH::Quat(ori[0], ori[1], ori[2], ori[3]), motion_type, layer);
+      break;
+    }
+
+    case ShapeType::kCylinder: {
+      const std::shared_ptr<ShapeRenderable> shape_render =
+          std::dynamic_pointer_cast<ShapeRenderable>(renderable);
+      ShapeMetadata shape_meta = shape_render->getShapeMeta();
+
+      JPH::Quat align_rot = JPH::Quat::sRotation(JPH::Vec3::sAxisX(), 90.f);
+      JPH::Quat renderable_ori(ori[1], ori[2], ori[3], ori[0]);
+      shape_settings = JPH::BodyCreationSettings(
+          new JPH::CylinderShape(shape_meta.height / 2., shape_meta.radius),
+          JPH::RVec3(pos[0], pos[1], pos[2] + shape_meta.height / 2),
+          align_rot * renderable_ori, motion_type, layer);
+      break;
+    }
+
+    case ShapeType::kPlane: {
+      const std::shared_ptr<ShapeRenderable> shape_render =
+          std::dynamic_pointer_cast<ShapeRenderable>(renderable);
+      ShapeMetadata shape_meta = shape_render->getShapeMeta();
+
+      // in case max is somehow smaller than min
+      double half_width  = fabs(shape_meta.x_max - shape_meta.x_min) / 2.;
+      double half_height = fabs(shape_meta.y_max - shape_meta.y_min) / 2.;
+
+      shape_settings = JPH::BodyCreationSettings(
+          new JPH::BoxShape(JPH::Vec3(half_width, half_height, 0.5)),
+          JPH::RVec3(pos[0], pos[1], pos[2] - 0.5),
+          JPH::Quat(ori[1], ori[2], ori[3], ori[0]), motion_type, layer);
+      break;
+    }
+
+    default: {
+      std::cerr << "[physics interface] unhandled shape type; skipping body "
+                   "creation\n";
+      return;
+    }
+  }
+
+  if (is_dynamic) {
+    DynamicObject& dynamics = object->getDynamics();
+
+    shape_settings.mOverrideMassProperties =
+        JPH::EOverrideMassProperties::MassAndInertiaProvided;
+    JPH::MassProperties mass_properties;
+    mass_properties.mMass = dynamics.getMass();
+
+    Eigen::Matrix3d inertia_mat = dynamics.getInertia();
+
+    mass_properties.mInertia       = JPH::Mat44::sIdentity();
+    mass_properties.mInertia(0, 0) = inertia_mat(0, 0);
+    mass_properties.mInertia(1, 1) = inertia_mat(1, 1);
+    mass_properties.mInertia(2, 2) = inertia_mat(2, 2);
+
+    shape_settings.mMassPropertiesOverride = mass_properties;
+  }
+
+  JPH::BodyID body_id = body_interface.CreateAndAddBody(
+      shape_settings, JPH::EActivation::Activate);
+
+  if (is_dynamic) {
+    sim_bodies_.push_back({object, body_id});
+  } else {
+    static_bodies_.emplace(object, body_id);
+  }
+}
+
+void PhysicsInterface::handleRemove(Entity* object) {
+  JPH::BodyInterface& body_interface = physics_system_->GetBodyInterface();
+
+  auto destroy = [&body_interface](JPH::BodyID body) {
+    body_interface.RemoveBody(body);
+    body_interface.DestroyBody(body);
+  };
+
+  auto static_it = static_bodies_.find(object);
+  if (static_it != static_bodies_.end()) {
+    destroy(static_it->second);
+    static_bodies_.erase(static_it);
+    return;
+  }
+
+  auto sim_it =
+      std::find_if(sim_bodies_.begin(), sim_bodies_.end(),
+                   [object](const SimBody& sb) { return sb.entity == object; });
+  if (sim_it != sim_bodies_.end()) {
+    destroy(sim_it->body);
+    sim_bodies_.erase(sim_it);
   }
 }

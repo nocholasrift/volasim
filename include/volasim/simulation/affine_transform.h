@@ -9,9 +9,9 @@ class AffineTransform {
   AffineTransform();
   ~AffineTransform();
   SDL_Point transformPoint(int x, int y);
-  void translate(int x, int y);
-  void rotate(double r);
-  void scale(double x, double y);
+  void      translate(int x, int y);
+  void      rotate(double r);
+  void      scale(double x, double y);
 
   void concatenate(AffineTransform& at);
 
@@ -22,7 +22,7 @@ class AffineTransform {
   double** transform;
 
   double** identity();
-  void cleanMatrix(double** m);
+  void     cleanMatrix(double** m);
 };
 
 #endif

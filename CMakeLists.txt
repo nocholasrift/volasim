@@ -37,8 +37,7 @@ add_executable(volasim
   src/simulation/mesh_renderable.cpp
   src/simulation/xml_parser.cpp
   src/simulation/xml_template.cpp
-  src/simulation/display_object.cpp
-  src/simulation/display_object_container.cpp
+  src/simulation/entity.cpp
   src/simulation/shape_renderable.cpp
   src/simulation/physics_interface.cpp
   src/simulation/camera.cpp

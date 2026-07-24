@@ -17,11 +17,12 @@
 #include <iostream>
 #include <memory>
 #include <unordered_map>
+#include <vector>
 
 #include <volasim/event/event_listener.h>
-#include <volasim/simulation/dynamic_object.h>
+#include <volasim/simulation/entity.h>
 
-class DynamicObject;
+class Entity;
 
 // Disable common warnings triggered by Jolt, you can use JPH_SUPPRESS_WARNING_PUSH / JPH_SUPPRESS_WARNING_POP to store and restore the warning state
 JPH_SUPPRESS_WARNINGS
@@ -36,7 +37,7 @@ static void TraceImpl(const char* inFMT, ...) {
   //  JPH::literals::va_end(list);
 
   // Print to the TTY
-  std::cout << "" << std::endl;
+  std::cout << "\n";
 }
 
 #ifdef JPH_ENABLE_ASSERTS
@@ -60,7 +61,7 @@ static bool AssertFailedImpl(const char* inExpression, const char* inMessage,
 // but only if you do collision testing).
 namespace Layers {
 static constexpr JPH::ObjectLayer NON_MOVING = 0;
-static constexpr JPH::ObjectLayer MOVING = 1;
+static constexpr JPH::ObjectLayer MOVING     = 1;
 static constexpr JPH::ObjectLayer NUM_LAYERS = 2;
 };  // namespace Layers
 
@@ -90,7 +91,7 @@ class ObjectLayerPairFilterImpl : public JPH::ObjectLayerPairFilter {
 namespace BroadPhaseLayers {
 static constexpr JPH::BroadPhaseLayer NON_MOVING(0);
 static constexpr JPH::BroadPhaseLayer MOVING(1);
-static constexpr uint NUM_LAYERS(2);
+static constexpr uint                 NUM_LAYERS(2);
 };  // namespace BroadPhaseLayers
 
 // BroadPhaseLayerInterface implementation
@@ -100,7 +101,7 @@ class BPLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface {
   BPLayerInterfaceImpl() {
     // Create a mapping table from object to broad phase layer
     mObjectToBroadPhase[Layers::NON_MOVING] = BroadPhaseLayers::NON_MOVING;
-    mObjectToBroadPhase[Layers::MOVING] = BroadPhaseLayers::MOVING;
+    mObjectToBroadPhase[Layers::MOVING]     = BroadPhaseLayers::MOVING;
   }
 
   virtual uint GetNumBroadPhaseLayers() const override {
@@ -135,7 +136,7 @@ class BPLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface {
 class ObjectVsBroadPhaseLayerFilterImpl
     : public JPH::ObjectVsBroadPhaseLayerFilter {
  public:
-  virtual bool ShouldCollide(JPH::ObjectLayer inLayer1,
+  virtual bool ShouldCollide(JPH::ObjectLayer     inLayer1,
                              JPH::BroadPhaseLayer inLayer2) const override {
     switch (inLayer1) {
       case Layers::NON_MOVING:
@@ -155,7 +156,7 @@ class MyContactListener : public JPH::ContactListener {
   // See: ContactListener
   virtual JPH::ValidateResult OnContactValidate(
       const JPH::Body& inBody1, const JPH::Body& inBody2,
-      JPH::RVec3Arg inBaseOffset,
+      JPH::RVec3Arg                  inBaseOffset,
       const JPH::CollideShapeResult& inCollisionResult) override {
     // std::cout << "Contact validate callback" << std::endl;
 
@@ -163,16 +164,16 @@ class MyContactListener : public JPH::ContactListener {
     return JPH::ValidateResult::AcceptAllContactsForThisBodyPair;
   }
 
-  virtual void OnContactAdded(const JPH::Body& inBody1,
-                              const JPH::Body& inBody2,
+  virtual void OnContactAdded(const JPH::Body&            inBody1,
+                              const JPH::Body&            inBody2,
                               const JPH::ContactManifold& inManifold,
-                              JPH::ContactSettings& ioSettings) override {
+                              JPH::ContactSettings&       ioSettings) override {
     std::cout << "A contact was added" << std::endl;
     is_colliding_ = true;
   }
 
-  virtual void OnContactPersisted(const JPH::Body& inBody1,
-                                  const JPH::Body& inBody2,
+  virtual void OnContactPersisted(const JPH::Body&            inBody1,
+                                  const JPH::Body&            inBody2,
                                   const JPH::ContactManifold& inManifold,
                                   JPH::ContactSettings& ioSettings) override {
     // std::cout << "A contact was persisted" << std::endl;
@@ -192,30 +193,20 @@ class MyContactListener : public JPH::ContactListener {
 class MyBodyActivationListener : public JPH::BodyActivationListener {
  public:
   virtual void OnBodyActivated(const JPH::BodyID& inBodyID,
-                               JPH::uint64 inBodyUserData) override {
+                               JPH::uint64        inBodyUserData) override {
     // std::cout << "A body got activated" << std::endl;
   }
 
   virtual void OnBodyDeactivated(const JPH::BodyID& inBodyID,
-                                 JPH::uint64 inBodyUserData) override {
+                                 JPH::uint64        inBodyUserData) override {
     // std::cout << "A body went to sleep " << std::endl;
   }
 };
 
-struct PhysicsBinding {
-  DynamicObject* dynamic_obj = nullptr;
-  JPH::BodyID body_id;
-
-  bool isDynamic() const { return dynamic_obj != nullptr; }
-  bool isValid() const { return !body_id.IsInvalid(); }
-
-  JPH::ObjectLayer getLayer() const {
-    return isDynamic() ? Layers::MOVING : Layers::NON_MOVING;
-  }
-
-  JPH::EMotionType getMotionType() const {
-    return isDynamic() ? JPH::EMotionType::Dynamic : JPH::EMotionType::Static;
-  }
+// A dynamic entity and its Jolt body, iterated every physics step.
+struct SimBody {
+  Entity*     entity;
+  JPH::BodyID body;
 };
 
 class PhysicsInterface : public EventListener {
@@ -232,32 +223,25 @@ class PhysicsInterface : public EventListener {
   virtual void handleEvent(Event* e) override;
 
   void update(double dt);
-  void preRegister(DisplayObject* display_obj, DynamicObject* dynamic_obj);
 
-  std::vector<DynamicObject*> getDynamicObjects() {
-    std::vector<DynamicObject*> dyna_objs;
-
-    for (auto& [disp_obj, binding] : disp_to_dyna_) {
-      if (binding.isDynamic()) {
-        dyna_objs.push_back(binding.dynamic_obj);
-      }
-    }
-
-    return dyna_objs;
-  }
+  const std::vector<SimBody>& dynamicBodies() const { return sim_bodies_; }
 
  private:
+  void handleAdd(Entity* object);
+  void handleRemove(Entity* object);
+
   std::unique_ptr<JPH::PhysicsSystem> physics_system_;
 
-  std::unordered_map<DisplayObject*, PhysicsBinding> disp_to_dyna_;
+  std::vector<SimBody>                     sim_bodies_;
+  std::unordered_map<Entity*, JPH::BodyID> static_bodies_;
 
-  MyContactListener contact_listener_;
-  BPLayerInterfaceImpl broad_phase_layer_interface_;
-  MyBodyActivationListener body_activation_listener_;
-  ObjectLayerPairFilterImpl object_vs_object_layer_filter_;
+  MyContactListener                 contact_listener_;
+  BPLayerInterfaceImpl              broad_phase_layer_interface_;
+  MyBodyActivationListener          body_activation_listener_;
+  ObjectLayerPairFilterImpl         object_vs_object_layer_filter_;
   ObjectVsBroadPhaseLayerFilterImpl object_vs_broadphase_layer_filter_;
 
-  std::unique_ptr<JPH::TempAllocatorImpl> temp_allocator_;
+  std::unique_ptr<JPH::TempAllocatorImpl>   temp_allocator_;
   std::unique_ptr<JPH::JobSystemThreadPool> job_system_;
 };
 

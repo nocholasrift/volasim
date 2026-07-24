@@ -21,10 +21,10 @@ enum class ShapeType {
 class Renderable {
  public:
   Renderable() {}
-  virtual ~Renderable() = default;
-  virtual void draw(Shader& shader) = 0;
-  virtual ShapeType getType() const = 0;
-  virtual void buildFromXML(const pugi::xml_node& item) = 0;
+  virtual ~Renderable()                                      = default;
+  virtual void      draw(Shader& shader)                     = 0;
+  virtual ShapeType getType() const                          = 0;
+  virtual void      buildFromXML(const pugi::xml_node& item) = 0;
 
  private:
 };

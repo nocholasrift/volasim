@@ -35,8 +35,8 @@ std::string expand(const std::string& text, const Params& params) {
     }
 
     std::string token = text.substr(i + 2, close - (i + 2));
-    size_t bar = token.find('|');
-    std::string name = trim(token.substr(0, bar));
+    size_t      bar   = token.find('|');
+    std::string name  = trim(token.substr(0, bar));
 
     auto it = params.find(name);
     if (it != params.end()) {

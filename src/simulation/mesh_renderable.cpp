@@ -33,7 +33,7 @@ void MeshRenderable::draw(Shader& shader) {
 
 void MeshRenderable::readConvexDecomp() {
   Assimp::Importer importer;
-  const aiScene* scene = importer.ReadFile(
+  const aiScene*   scene = importer.ReadFile(
       std::string(cvx_decomp_fname_).c_str(),
       aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
           aiProcess_PreTransformVertices);
@@ -46,13 +46,13 @@ void MeshRenderable::readConvexDecomp() {
   convex_meshes_.clear();
   convex_meshes_.reserve(scene->mNumMeshes);
   for (size_t i = 0; i < scene->mNumMeshes; ++i) {
-    const aiMesh* model = scene->mMeshes[i];
+    const aiMesh*     model = scene->mMeshes[i];
     Eigen::MatrixX3d& verts =
         convex_meshes_.emplace_back(model->mNumVertices, 3);
     // std::cout << i << " -- verts: " << model->mNumVertices << "\n";
     for (size_t j = 0; j < model->mNumVertices; ++j) {
-      aiVector3D aiv = model->mVertices[j];
-      glm::vec3 pos_corrected = correction_ * glm::vec3(aiv.x, aiv.y, aiv.z);
+      aiVector3D aiv           = model->mVertices[j];
+      glm::vec3  pos_corrected = correction_ * glm::vec3(aiv.x, aiv.y, aiv.z);
       verts.row(j) =
           Eigen::Vector3d(pos_corrected.x, pos_corrected.y, pos_corrected.z);
     }
@@ -62,19 +62,19 @@ void MeshRenderable::readConvexDecomp() {
 void MeshRenderable::buildFromXML(const pugi::xml_node& item) {
   pugi::xml_node geometry_node = item.child("geometry");
 
-  model_fname_ = geometry_node.attribute("model_file").as_string();
+  model_fname_      = geometry_node.attribute("model_file").as_string();
   cvx_decomp_fname_ = geometry_node.attribute("decomp_file").as_string();
 
   // Baked into the asset so it never moves the depth camera, which tracks the
-  // owning DisplayObject's frame rather than the mesh.
+  // owning entity's frame rather than the mesh.
   correction_ = glm::mat3(1.0f);
   std::string correction_rpy_deg =
       geometry_node.attribute("correction_rpy").as_string();
 
   if (!correction_rpy_deg.empty()) {
-    glm::vec3 rpy_deg(0.f);
+    glm::vec3         rpy_deg(0.f);
     std::stringstream ss(correction_rpy_deg);
-    std::string tok;
+    std::string       tok;
 
     int i = 0;
     while (ss >> tok && i < 3) {
@@ -86,14 +86,14 @@ void MeshRenderable::buildFromXML(const pugi::xml_node& item) {
     }
 
     glm::vec3 rpy = glm::radians(rpy_deg);
-    glm::mat4 r = glm::rotate(glm::mat4(1.0f), rpy.z, glm::vec3(0, 0, 1)) *
+    glm::mat4 r   = glm::rotate(glm::mat4(1.0f), rpy.z, glm::vec3(0, 0, 1)) *
                   glm::rotate(glm::mat4(1.0f), rpy.y, glm::vec3(0, 1, 0)) *
                   glm::rotate(glm::mat4(1.0f), rpy.x, glm::vec3(1, 0, 0));
     correction_ = glm::mat3(r);
   }
 
   Assimp::Importer importer;
-  const aiScene* scene = importer.ReadFile(
+  const aiScene*   scene = importer.ReadFile(
       std::string(model_fname_).c_str(),
       aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
           // aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace |  // expensive; unused by current shaders
@@ -104,8 +104,8 @@ void MeshRenderable::buildFromXML(const pugi::xml_node& item) {
                              std::string(model_fname_));
   }
 
-  const aiMesh* model = scene->mMeshes[0];
-  std::vector<float> vertices;
+  const aiMesh*             model = scene->mMeshes[0];
+  std::vector<float>        vertices;
   std::vector<unsigned int> indices;
 
   const aiVector3D aiVectorZero(0.f, 0.f, 0.f);
