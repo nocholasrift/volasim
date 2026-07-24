@@ -1,0 +1,19 @@
+# ROS2 side (bridge + controller) talking to a sim on the host. See README.md.
+services:
+  ros2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ros2
+    image: volasim/ros2:humble
+    environment:
+      - VOLASIM_SIM_HOST=host.docker.internal  # reach the sim's PUB on the host
+      - AUTO_TAKEOFF=${AUTO_TAKEOFF:-0}
+      - RECORD=${RECORD:-0}                    # 1 = record an MCAP bag to ./bags
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+    ports:
+      - "5557:5557"  # bridge PUB, so host sim can connect to localhost:5557
+    volumes:
+      - ../bags:/ws/bags  # recorded bags land in <repo>/bags on the host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Linux; no-op on Docker Desktop
+    restart: unless-stopped
