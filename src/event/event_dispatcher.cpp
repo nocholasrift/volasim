@@ -7,22 +7,6 @@
 #include <volasim/event/event.h>
 #include <volasim/event/event_listener.h>
 
-EventDispatcher::~EventDispatcher() {
-  //TODO: Find out if map destructor automatically frees container memory.
-  for (auto& it : listeners) {
-    std::vector<EventListener*> l = it.second;
-
-    for (EventListener* listener : l) {
-      // cerr << "addr of stuff: " << it->first << " " << listener << endl;
-      if (listener) {
-        //delete listener;
-        listener = nullptr;
-      }
-    }
-    l.clear();
-  }
-}
-
 void EventDispatcher::addEventListener(EventListener*     l,
                                        const std::string& eventType) {
   // if(!(*listeners)[eventType])
@@ -33,10 +17,9 @@ void EventDispatcher::addEventListener(EventListener*     l,
     listeners.insert(tuple);
   }
 
-  auto vec = listeners[eventType];
-  auto it  = vec.begin();
-  if ((it = find(vec.begin(), vec.end(), l)) == vec.end())
+  if (!hasEventListener(l, eventType)) {
     listeners[eventType].push_back(l);
+  }
 }
 
 void EventDispatcher::removeEventListener(EventListener*     l,

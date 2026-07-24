@@ -21,7 +21,12 @@ class EventDispatcher {
   }
 
   EventDispatcher() = default;
-  ~EventDispatcher();
+  ~EventDispatcher() = default;
+
+  EventDispatcher(const EventDispatcher&)            = delete;
+  EventDispatcher& operator=(const EventDispatcher&) = delete;
+  EventDispatcher(EventDispatcher&&)                 = delete;
+  EventDispatcher& operator=(EventDispatcher&&)      = delete;
 
   void addEventListener(EventListener* l, const std::string& eventType);
   void removeEventListener(EventListener* l, const std::string& eventType);

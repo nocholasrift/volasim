@@ -213,10 +213,11 @@ Entity& XMLParser::handleVehicle(const pugi::xml_node& vehicle_node,
   std::stringstream ss(pos_str);
   std::string       axis;
 
-  glm::vec3 pos;
+  glm::vec3 pos(0.F);
   int       i = 0;
-  while (ss >> axis)
+  while (ss >> axis && i < 3) {
     pos[i++] = std::stof(axis);
+  }
 
   DynamicObject* vehicle = vehicle_registry_.at(
       vehicle_definition.dynamics_type)(vehicle_definition.xml_node);
@@ -286,10 +287,11 @@ void XMLParser::handleBlock(const pugi::xml_node& item, Entity& world) {
   std::stringstream ss(pos_str);
   std::string       axis;
 
-  glm::vec3 pos;
+  glm::vec3 pos(0.F);
   int       i = 0;
-  while (ss >> axis)
+  while (ss >> axis && i < 3) {
     pos[i++] = std::stof(axis);
+  }
 
   createAndAddRenderable(name, renderables_[class_name], pos, world);
 

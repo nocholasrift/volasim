@@ -8,10 +8,12 @@
 #include <glm/gtc/quaternion.hpp>
 
 #include <atomic>
+#include <cstdint>
 #include <list>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 
 class DynamicObject;
 

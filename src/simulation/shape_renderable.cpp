@@ -94,7 +94,7 @@ void ShapeRenderable::buildFromXML(const pugi::xml_node& item) {
     case ShapeType::kSphere:
       break;
     case ShapeType::kCylinder: {
-      float n_sectors = 32;
+      constexpr int n_sectors = 32;
 
       meta_.radius = std::stof(geometry_node.attribute("radius").as_string());
       meta_.height = std::stof(geometry_node.attribute("length").as_string());

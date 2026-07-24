@@ -16,7 +16,7 @@ struct CameraSettings {
   float radius = 1.F;
   float fov    = 60.F;
 
-  float fps = 60.F;
+  unsigned int fps = 60;
 
   glm::ivec2 window_sz = glm::ivec2(640, 480);
 
@@ -37,7 +37,7 @@ class Camera {
   Camera(const CameraSettings& settings);
 
   Camera(const glm::ivec2& window_sz, double yaw, double pitch, double radius,
-         double fov = 60.F, double fps = 60.F,
+         double fov = 60.F, unsigned int fps = 60,
          const glm::vec3& world_up   = glm::vec3(0.F, 0.F, 1.F),
          DynamicObject*   target_obj = nullptr);
 
@@ -83,16 +83,16 @@ class Camera {
   static constexpr float kMouseSense      = .005F;
   static constexpr float kMouseWheelSense = .5F;
 
-  glm::vec3 position_;
-  glm::vec3 direction_;
-  glm::vec3 up_;
-  glm::vec3 right_;
+  glm::vec3 position_{0.F};
+  glm::vec3 direction_{0.F};
+  glm::vec3 up_{0.F};
+  glm::vec3 right_{0.F};
   glm::vec3 world_up_ = glm::vec3(0.F, 0.F, 1.F);
 
   uint8_t id_{0};
 
   // camera options
-  float movement_speed_;
+  float movement_speed_{0.F};
 
   float fov_    = 90.F;
   float radius_ = 1.F;

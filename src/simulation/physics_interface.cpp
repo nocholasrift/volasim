@@ -180,7 +180,10 @@ void PhysicsInterface::handleAdd(Entity* object) {
           std::dynamic_pointer_cast<ShapeRenderable>(renderable);
       ShapeMetadata shape_meta = shape_render->getShapeMeta();
 
-      std::cout << "[physics interface] handling add sphere event\n";
+      shape_settings = JPH::BodyCreationSettings(
+          new JPH::SphereShape(shape_meta.radius),
+          JPH::RVec3(pos[0], pos[1], pos[2]),
+          JPH::Quat(ori[0], ori[1], ori[2], ori[3]), motion_type, layer);
       break;
     }
 
@@ -271,6 +274,12 @@ void PhysicsInterface::handleAdd(Entity* object) {
           JPH::RVec3(pos[0], pos[1], pos[2] - 0.5),
           JPH::Quat(ori[1], ori[2], ori[3], ori[0]), motion_type, layer);
       break;
+    }
+
+    default: {
+      std::cerr << "[physics interface] unhandled shape type; skipping body "
+                   "creation\n";
+      return;
     }
   }
 

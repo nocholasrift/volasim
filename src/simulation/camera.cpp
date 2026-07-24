@@ -1,40 +1,31 @@
 #include <volasim/simulation/camera.h>
 
 Camera::Camera(const glm::ivec2& window_sz, double yaw, double pitch,
-               double radius, double fov, double fps, const glm::vec3& world_up,
-               DynamicObject* target_obj)
-    : radius_(radius), world_up_(world_up), target_obj_(target_obj) {
-
-  yaw_   = yaw;
-  pitch_ = pitch;
-  fov_   = fov;
-  fps_   = fps;
-
-  lastx_ = static_cast<float>(window_sz[0]) / 2.;
-  lasty_ = static_cast<float>(window_sz[1]) / 2.;
-
-  dimensions_.width  = window_sz[0];
-  dimensions_.height = window_sz[1];
-
+               double radius, double fov, unsigned int fps,
+               const glm::vec3& world_up, DynamicObject* target_obj)
+    : world_up_(world_up),
+      fov_(static_cast<float>(fov)),
+      radius_(static_cast<float>(radius)),
+      yaw_(static_cast<float>(yaw)),
+      pitch_(static_cast<float>(pitch)),
+      lastx_(static_cast<float>(window_sz[0]) / 2.F),
+      lasty_(static_cast<float>(window_sz[1]) / 2.F),
+      fps_(fps),
+      dimensions_{window_sz[0], window_sz[1]},
+      target_obj_(target_obj) {
   updateCameraVectors();
 }
 
-Camera::Camera(const CameraSettings& settings) {
-
-  yaw_    = settings.yaw;
-  pitch_  = settings.pitch;
-  fov_    = settings.fov;
-  fps_    = settings.fps;
-  radius_ = settings.radius;
-
-  target_obj_ = settings.target;
-
-  lastx_ = static_cast<float>(settings.window_sz[0]) / 2.;
-  lasty_ = static_cast<float>(settings.window_sz[1]) / 2.;
-
-  dimensions_.width  = settings.window_sz[0];
-  dimensions_.height = settings.window_sz[1];
-
+Camera::Camera(const CameraSettings& settings)
+    : fov_(settings.fov),
+      radius_(settings.radius),
+      yaw_(settings.yaw),
+      pitch_(settings.pitch),
+      lastx_(static_cast<float>(settings.window_sz[0]) / 2.F),
+      lasty_(static_cast<float>(settings.window_sz[1]) / 2.F),
+      fps_(settings.fps),
+      dimensions_{settings.window_sz[0], settings.window_sz[1]},
+      target_obj_(settings.target) {
   updateCameraVectors();
 }
 
@@ -50,7 +41,8 @@ Camera Camera::fromXML(const pugi::xml_node& camera_xml) {
     settings.pitch     = std::stof(camera_xml.child_value("cam_pitch"));
     settings.radius    = std::stof(camera_xml.child_value("cam_distance"));
     settings.fov       = std::stof(camera_xml.child_value("fov_deg"));
-    settings.fps       = std::stof(camera_xml.child_value("fps"));
+    settings.fps =
+        static_cast<unsigned int>(std::stoul(camera_xml.child_value("fps")));
 
     settings.target = nullptr;
   } catch (const std::exception& e) {

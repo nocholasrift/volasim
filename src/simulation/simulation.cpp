@@ -113,7 +113,10 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
 
   shape_shader_ = Shader(mesh_vertex_shader, mesh_fragment_shader);
 
-  // parser populates the scene graph under world_ and returns any depth sensors
+  // parser populates the scene graph under world_ and returns any depth sensors.
+  // world_ lives for the whole program; if it is ever reset/reloaded, dispatch
+  // OBJ_RM for the old subtree (children-first) before destroying it, otherwise
+  // physics bodies outlive their entities. removeChild() already does this per node.
   auto t_start = std::chrono::steady_clock::now();
   world_       = xml_parser.loadWorldFromXML(gpu_sensors_);
   auto elapsed = std::chrono::steady_clock::now() - t_start;
