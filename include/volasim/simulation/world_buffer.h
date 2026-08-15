@@ -1,7 +1,7 @@
 #ifndef WORLD_BUFFER_H
 #define WORLD_BUFFER_H
 
-#include <volasim/simulation/entity.h>
+#include <volasim/simulation/entity_id.h>
 #include <volasim/simulation/transform.h>
 
 #include <chrono>
@@ -49,6 +49,13 @@ struct PoseFrames {
   // false until a second step has been published — nothing to blend from yet
   bool has_prev{false};
 };
+
+// How far the instant being drawn falls between the two published steps, as a
+// fraction of one step. Clamped, so a stalled physics thread freezes on its
+// newest step rather than running the blend past it into invented state.
+[[nodiscard]] float interpolationAlpha(
+    std::chrono::steady_clock::time_point now,
+    std::chrono::steady_clock::time_point curr_time, double step_seconds);
 
 // Hands poses from the physics thread to the render thread.
 //

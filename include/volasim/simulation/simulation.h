@@ -7,6 +7,7 @@
 #include <volasim/simulation/camera.h>
 #include <volasim/simulation/entity.h>
 #include <volasim/simulation/input_manager.h>
+#include <volasim/simulation/loop_pacer.h>
 #include <volasim/simulation/physics_interface.h>
 #include <volasim/simulation/rate_counter.h>
 #include <volasim/simulation/shader.h>
@@ -97,12 +98,6 @@ class Simulation {
   // Hands the newest command from the comms thread to the dynamics. Physics
   // thread only — nothing else may touch a DynamicObject while it is stepping.
   void applyPendingInput();
-
-  // How far the frame being drawn falls between the two published steps. The
-  // pair is the newest two *completed* steps, so the drawn state trails live
-  // physics by one step: the state for right now has not been computed yet.
-  [[nodiscard]] float interpolationAlpha(
-      std::chrono::steady_clock::time_point now) const;
 
   static constexpr uint8_t kMouseRightClick  = 1;
   static constexpr uint8_t kMouseMiddleClick = 2;

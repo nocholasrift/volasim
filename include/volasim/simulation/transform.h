@@ -26,11 +26,10 @@ struct Transform {
   blended.position = glm::mix(a.position, b.position, alpha);
   blended.scale    = glm::mix(a.scale, b.scale, alpha);
 
-  // A quaternion and its negation are the same rotation, so flip b when the
-  // pair points opposite ways — otherwise the blend takes the long way round.
-  const glm::quat end =
-      glm::dot(a.rotation, b.rotation) < 0.F ? -b.rotation : b.rotation;
-  blended.rotation = glm::normalize(glm::slerp(a.rotation, end, alpha));
+  // slerp, not a component-wise blend: it negates one quaternion when the pair
+  // points opposite ways, which is what keeps the rotation from taking the long
+  // way round (a quaternion and its negation are the same rotation).
+  blended.rotation = glm::normalize(glm::slerp(a.rotation, b.rotation, alpha));
 
   return blended;
 }

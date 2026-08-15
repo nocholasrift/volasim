@@ -1,5 +1,15 @@
 #include <volasim/simulation/world_buffer.h>
 
+#include <algorithm>
+
+float interpolationAlpha(std::chrono::steady_clock::time_point now,
+                         std::chrono::steady_clock::time_point curr_time,
+                         double                                step_seconds) {
+  const double elapsed = std::chrono::duration<double>(now - curr_time).count();
+
+  return static_cast<float>(std::clamp(elapsed / step_seconds, 0., 1.));
+}
+
 void WorldSnapshot::set(EntityID id, const Transform& transform) {
   if (id >= slots_.size()) {
     slots_.resize(id + 1);

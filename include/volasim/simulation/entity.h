@@ -1,6 +1,7 @@
 #ifndef ENTITY_H
 #define ENTITY_H
 
+#include <volasim/simulation/entity_id.h>
 #include <volasim/simulation/renderable.h>
 #include <volasim/simulation/shader.h>
 #include <volasim/simulation/transform.h>
@@ -15,8 +16,6 @@
 
 class DynamicObject;
 class WorldSnapshot;
-
-using EntityID = std::uint32_t;
 
 class EntityFactory;
 

@@ -215,7 +215,8 @@ SDL_AppResult Simulation::update(void* appstate) {
   if (interpolate_ && render_frames_.has_prev) {
     render_poses_.blendFrom(
         render_frames_.prev, render_frames_.curr,
-        interpolationAlpha(std::chrono::steady_clock::now()));
+        interpolationAlpha(std::chrono::steady_clock::now(),
+                           render_frames_.curr_time, physics_step_seconds_));
     poses = &render_poses_;
   }
 
@@ -248,25 +249,10 @@ SDL_AppResult Simulation::update(void* appstate) {
   return SDL_APP_CONTINUE; /* carry on with the program! */
 }
 
-float Simulation::interpolationAlpha(
-    std::chrono::steady_clock::time_point now) const {
-  const double elapsed =
-      std::chrono::duration<double>(now - render_frames_.curr_time).count();
-
-  const double alpha = elapsed / physics_step_seconds_;
-
-  // Clamped, so a stalled physics thread freezes on its newest step rather
-  // than running the blend past it into invented state.
-  return static_cast<float>(std::clamp(alpha, 0., 1.));
-}
-
 void Simulation::physicsLoop() {
   using clock = std::chrono::steady_clock;
 
-  const clock::duration step = std::chrono::duration_cast<clock::duration>(
-      std::chrono::duration<double>(physics_step_seconds_));
-
-  clock::time_point next_step = clock::now();
+  LoopPacer pacer(physics_step_seconds_, clock::now());
 
   RateCounter rate("physics");
 
@@ -279,21 +265,14 @@ void Simulation::physicsLoop() {
       rate.tick();
     }
 
-    next_step += step;
-
-    // Running behind: drop the missed steps instead of trying to catch up,
-    // which would only push us further behind.
-    const clock::time_point now = clock::now();
-    if (next_step < now) {
-      next_step = now + step;
-    }
+    const clock::time_point deadline = pacer.nextDeadline(clock::now());
 
     // A wait rather than a sleep, so quitSDL's notify releases this thread at
     // once instead of it having to run out the step period. The deadline is
     // the only thing tying this loop to real time.
     {
       std::unique_lock<std::mutex> lock(running_mtx_);
-      running_cv_.wait_until(lock, next_step,
+      running_cv_.wait_until(lock, deadline,
                              [this] { return !is_running_.load(); });
     }
   }
