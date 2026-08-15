@@ -243,7 +243,7 @@ void Simulation::physicsLoop() {
   const clock::duration step = std::chrono::duration_cast<clock::duration>(
       std::chrono::duration<double>(physics_step_seconds_));
 
-  clock::time_point next_step = clock::now() + step;
+  clock::time_point next_step = clock::now();
 
   RateCounter rate("physics");
 
@@ -265,7 +265,14 @@ void Simulation::physicsLoop() {
       next_step = now + step;
     }
 
-    std::this_thread::sleep_until(next_step);
+    // A wait rather than a sleep, so quitSDL's notify releases this thread at
+    // once instead of it having to run out the step period. The deadline is
+    // the only thing tying this loop to real time.
+    {
+      std::unique_lock<std::mutex> lock(running_mtx_);
+      running_cv_.wait_until(lock, next_step,
+                             [this] { return !is_running_.load(); });
+    }
   }
 }
 
@@ -281,7 +288,11 @@ void Simulation::quitSDL(void* appstate, SDL_AppResult result) {
     physics_thread_.join();
   }
 
-  SDL_GL_DestroyContext(gl_ctx_);
+  // reached with nothing initialized when startup failed
+  if (gl_ctx_ != nullptr) {
+    SDL_GL_DestroyContext(gl_ctx_);
+  }
+
   SDL_Quit();
 }
 

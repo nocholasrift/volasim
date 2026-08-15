@@ -125,8 +125,8 @@ class Simulation {
   Uint64 ms_per_frame_;
   Uint64 frame_start_;
 
-  SDL_Window*   window_;
-  SDL_GLContext gl_ctx_;
+  SDL_Window*   window_{nullptr};
+  SDL_GLContext gl_ctx_{nullptr};
 
   std::unique_ptr<Entity> world_;
 

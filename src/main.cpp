@@ -35,8 +35,15 @@ ZMQServer&  server = ZMQServer::getInstance();
 
 /* This function runs once at startup. */
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
-  Args args = parseArgs(argc, argv);
-  t1        = std::thread([&]() {
+  Args args;
+  try {
+    args = parseArgs(argc, argv);
+  } catch (const std::exception& e) {
+    std::cerr << "[volasim] " << e.what() << "\n";
+    return SDL_APP_FAILURE;
+  }
+
+  t1 = std::thread([&]() {
     // blocking call to getSimState before loop.
     // ensured sim is running before going to loop
     sim.getSimState();
@@ -70,5 +77,8 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
 void SDL_AppQuit(void* appstate, SDL_AppResult result) {
   sim.quitSDL(appstate, result);
 
-  t1.join();
+  // SDL runs this even when init failed, so the thread may never have started
+  if (t1.joinable()) {
+    t1.join();
+  }
 }
