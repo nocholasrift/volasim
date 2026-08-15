@@ -9,6 +9,7 @@
 #include <volasim/simulation/input_manager.h>
 #include <volasim/simulation/physics_interface.h>
 #include <volasim/simulation/shader.h>
+#include <volasim/simulation/world_buffer.h>
 #include <volasim/simulation/xml_parser.h>
 #include <volasim/types.h>
 
@@ -16,9 +17,11 @@
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_opengl.h>
 
-#include <chrono>
+#include <atomic>
 #include <condition_variable>
 #include <list>
+#include <mutex>
+#include <string>
 #include <string_view>
 #include <thread>
 
@@ -87,9 +90,18 @@ class Simulation {
  private:
   Simulation();
 
+  // Steps physics at a fixed rate on its own thread until the sim stops.
+  void physicsLoop();
+
+  // Hands the newest command from the comms thread to the dynamics. Physics
+  // thread only — nothing else may touch a DynamicObject while it is stepping.
+  void applyPendingInput();
+
   static constexpr uint8_t kMouseRightClick  = 1;
   static constexpr uint8_t kMouseMiddleClick = 2;
   static constexpr uint8_t kMouseLeftClick   = 3;
+
+  static constexpr double kPhysicsStepSeconds = 1. / 200.;
 
   int window_width_;
   int window_height_;
@@ -98,20 +110,28 @@ class Simulation {
 
   double time_;
 
-  std::atomic<bool>       is_running_ = false;
+  std::atomic<bool>       is_running_       = false;
+  std::atomic<bool>       is_shutting_down_ = false;
   std::condition_variable running_cv_;
   std::mutex              running_mtx_;
 
+  std::thread physics_thread_;
+
   Uint64 ms_per_frame_;
   Uint64 frame_start_;
-  Uint64 last_step_;
-
-  std::chrono::steady_clock::time_point precise_time_;
 
   SDL_Window*   window_;
   SDL_GLContext gl_ctx_;
 
   std::unique_ptr<Entity> world_;
+
+  // physics publishes poses here; the render thread reads a whole step at a time
+  WorldBuffer   world_buffer_;
+  WorldSnapshot render_poses_;  // render thread only
+
+  std::mutex  input_mtx_;
+  std::string pending_input_;
+  bool        has_pending_input_{false};
 
   EventDispatcher&  event_handler_;
   PhysicsInterface& physics_interface_;

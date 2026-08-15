@@ -21,6 +21,7 @@
 
 #include <volasim/event/event_listener.h>
 #include <volasim/simulation/entity.h>
+#include <volasim/simulation/world_buffer.h>
 
 class Entity;
 
@@ -220,9 +221,12 @@ class PhysicsInterface : public EventListener {
   PhysicsInterface();
   ~PhysicsInterface();
 
+  // OBJ_ADD / OBJ_RM arrive while the world is being loaded, before the physics
+  // thread starts; bodies must not be added or removed once it is running.
   virtual void handleEvent(Event* e) override;
 
-  void update(double dt);
+  // Steps the world and publishes the resulting poses. Physics thread only.
+  void update(double dt, WorldBuffer& world_buffer);
 
   const std::vector<SimBody>& dynamicBodies() const { return sim_bodies_; }
 

@@ -3,9 +3,7 @@
 
 #include <volasim/simulation/renderable.h>
 #include <volasim/simulation/shader.h>
-
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
+#include <volasim/simulation/transform.h>
 
 #include <atomic>
 #include <cstdint>
@@ -16,14 +14,9 @@
 #include <utility>
 
 class DynamicObject;
+class WorldSnapshot;
 
 using EntityID = std::uint32_t;
-
-struct Transform {
-  glm::vec3 position{0.F};
-  glm::quat rotation{1.F, 0.F, 0.F, 0.F};  // w,x,y,z
-  glm::vec3 scale{1.F};
-};
 
 class EntityFactory;
 
@@ -55,8 +48,13 @@ class Entity {
 
   [[nodiscard]] glm::vec3 getTranslation() const { return local_.position; }
   [[nodiscard]] glm::quat getRotation() const { return local_.rotation; }
-  [[nodiscard]] glm::mat4 getLocalTransform() const;
-  [[nodiscard]] glm::mat4 getGlobalTransform() const;
+  [[nodiscard]] const Transform& getLocalTransform() const { return local_; }
+
+  // Pose to display this entity with: its physics pose when the snapshot has
+  // one, otherwise the transform it was authored with.
+  [[nodiscard]] const Transform& getPose(const WorldSnapshot& snapshot) const;
+  [[nodiscard]] glm::mat4        getGlobalTransform(
+             const WorldSnapshot& snapshot) const;
 
   [[nodiscard]] bool isVisible() const { return is_visible_; }
 
@@ -72,7 +70,12 @@ class Entity {
   [[nodiscard]] DynamicObject& getDynamics() { return *dynamic_object_; }
   void setDynamics(std::unique_ptr<DynamicObject> dynamics);
 
-  void draw(const glm::mat4& view, const glm::mat4& proj, Shader& shader);
+  // parent_transform is the global transform of this node's parent; the root is
+  // drawn with identity. Accumulating downwards keeps the traversal linear in
+  // the number of nodes instead of walking back up to the root at every node.
+  void draw(const WorldSnapshot& snapshot, const glm::mat4& parent_transform,
+            const glm::mat4& view, const glm::mat4& proj, Shader& shader) const;
+
   [[nodiscard]] EntityID getID() const { return id_; }
 
  private:

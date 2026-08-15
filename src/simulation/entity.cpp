@@ -2,6 +2,7 @@
 #include <volasim/event/event_dispatcher.h>
 #include <volasim/simulation/dynamic_object.h>
 #include <volasim/simulation/entity.h>
+#include <volasim/simulation/world_buffer.h>
 
 Entity::Entity(ConstructorToken /*unused*/, EntityID id, std::string_view name)
     : id_(id), name_(name) {}
@@ -42,29 +43,31 @@ void Entity::notifyRemoval() {
   EventDispatcher::getInstance().dispatchEvent(&event);
 }
 
-[[nodiscard]] glm::mat4 Entity::getLocalTransform() const {
-  glm::mat4 trans_mat = glm::translate(glm::mat4(1.0F), local_.position);
-  glm::mat4 rot_mat   = glm::mat4_cast(local_.rotation);
-  glm::mat4 scale_mat = glm::scale(glm::mat4(1.0F), local_.scale);
+[[nodiscard]] const Transform& Entity::getPose(
+    const WorldSnapshot& snapshot) const {
+  const Transform* pose = snapshot.find(id_);
 
-  return trans_mat * rot_mat * scale_mat;
+  return pose != nullptr ? *pose : local_;
 }
 
-[[nodiscard]] glm::mat4 Entity::getGlobalTransform() const {
+[[nodiscard]] glm::mat4 Entity::getGlobalTransform(
+    const WorldSnapshot& snapshot) const {
   if (parent_) {
-    return parent_->getGlobalTransform() * getLocalTransform();
+    return parent_->getGlobalTransform(snapshot) * getPose(snapshot).toMatrix();
   }
 
-  return getLocalTransform();
+  return getPose(snapshot).toMatrix();
 }
 
-void Entity::draw(const glm::mat4& view_mat, const glm::mat4& proj_mat,
-                  Shader& shader) {
+void Entity::draw(const WorldSnapshot& snapshot,
+                  const glm::mat4& parent_transform, const glm::mat4& view_mat,
+                  const glm::mat4& proj_mat, Shader& shader) const {
+
+  const glm::mat4 model_mat = parent_transform * getPose(snapshot).toMatrix();
 
   // shader will already have been set to used by this point
   if (isVisible() && render_) {
-    glm::mat4 model_mat = getGlobalTransform();
-    glm::mat4 mvp       = proj_mat * view_mat * model_mat;
+    glm::mat4 mvp = proj_mat * view_mat * model_mat;
     shader.setUniformMat4("mvp", mvp);
     shader.setUniformMat4("model", model_mat);
 
@@ -72,6 +75,6 @@ void Entity::draw(const glm::mat4& view_mat, const glm::mat4& proj_mat,
   }
 
   for (const auto& child : children_) {
-    child->draw(view_mat, proj_mat, shader);
+    child->draw(snapshot, model_mat, view_mat, proj_mat, shader);
   }
 }
