@@ -110,6 +110,9 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
 
   ms_per_frame_ = 1000 / frames_per_sec_;
 
+  physics_step_seconds_ = 1. / args.physics_hz;
+  report_rates_         = args.report_rates;
+
   shape_shader_ = Shader(mesh_vertex_shader, mesh_fragment_shader);
 
   // parser populates the scene graph under world_ and returns any depth sensors.
@@ -144,6 +147,9 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
     is_running_ = true;
   }
   running_cv_.notify_all();
+
+  // world loading is done, so the first report covers running frames only
+  render_rate_.reset();
 
   // The scene graph is complete at this point: physics may now step it
   // concurrently with rendering, which is only safe while no bodies are
@@ -195,6 +201,10 @@ SDL_AppResult Simulation::update(void* appstate) {
 
   frame_start_ = SDL_GetTicks();
 
+  if (report_rates_) {
+    render_rate_.tick();
+  }
+
   world_buffer_.read(render_poses_);
 
   glm::mat4 view_mat = camera().getViewMatrix(render_poses_);
@@ -231,14 +241,20 @@ void Simulation::physicsLoop() {
   using clock = std::chrono::steady_clock;
 
   const clock::duration step = std::chrono::duration_cast<clock::duration>(
-      std::chrono::duration<double>(kPhysicsStepSeconds));
+      std::chrono::duration<double>(physics_step_seconds_));
 
   clock::time_point next_step = clock::now() + step;
 
+  RateCounter rate("physics");
+
   while (is_running_.load()) {
     applyPendingInput();
-    physics_interface_.update(kPhysicsStepSeconds, world_buffer_);
+    physics_interface_.update(physics_step_seconds_, world_buffer_);
     setSimState();
+
+    if (report_rates_) {
+      rate.tick();
+    }
 
     next_step += step;
 

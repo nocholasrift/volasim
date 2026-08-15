@@ -8,6 +8,7 @@
 #include <volasim/simulation/entity.h>
 #include <volasim/simulation/input_manager.h>
 #include <volasim/simulation/physics_interface.h>
+#include <volasim/simulation/rate_counter.h>
 #include <volasim/simulation/shader.h>
 #include <volasim/simulation/world_buffer.h>
 #include <volasim/simulation/xml_parser.h>
@@ -101,8 +102,6 @@ class Simulation {
   static constexpr uint8_t kMouseMiddleClick = 2;
   static constexpr uint8_t kMouseLeftClick   = 3;
 
-  static constexpr double kPhysicsStepSeconds = 1. / 200.;
-
   int window_width_;
   int window_height_;
 
@@ -116,6 +115,12 @@ class Simulation {
   std::mutex              running_mtx_;
 
   std::thread physics_thread_;
+
+  // set from the command line; the render loop's rate comes from the world XML
+  double physics_step_seconds_{1. / 1000.};
+
+  bool        report_rates_{false};
+  RateCounter render_rate_{"render", "fps"};
 
   Uint64 ms_per_frame_;
   Uint64 frame_start_;
