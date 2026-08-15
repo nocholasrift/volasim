@@ -17,23 +17,55 @@ const Transform* WorldSnapshot::find(EntityID id) const {
   return &slots_[id].transform;
 }
 
+void WorldSnapshot::blendFrom(const WorldSnapshot& prev,
+                              const WorldSnapshot& curr, float alpha) {
+  slots_.resize(curr.slots_.size());
+
+  for (std::size_t id = 0; id < curr.slots_.size(); ++id) {
+    const Slot& target = curr.slots_[id];
+
+    slots_[id].valid = target.valid;
+    if (!target.valid) {
+      continue;
+    }
+
+    const Transform* start = prev.find(static_cast<EntityID>(id));
+    slots_[id].transform   = start != nullptr
+                                 ? lerp(*start, target.transform, alpha)
+                                 : target.transform;
+  }
+}
+
 void WorldSnapshot::invalidate() {
   for (Slot& slot : slots_) {
     slot.valid = false;
   }
 }
 
-void WorldBuffer::publish() {
+void WorldBuffer::publish(std::chrono::steady_clock::time_point stamp) {
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    front_.swap(back_);
+
+    // rotate: curr retires to prev, the finished step becomes curr, and the
+    // buffer prev just gave up is recycled as the next back buffer
+    prev_.swap(curr_);
+    curr_.swap(back_);
+
+    curr_time_ = stamp;
+    has_prev_  = has_published_;
   }
+
+  has_published_ = true;
 
   // back_ now holds the step before last; the next step refills it from scratch
   back_.invalidate();
 }
 
-void WorldBuffer::read(WorldSnapshot& out) const {
+void WorldBuffer::read(PoseFrames& out) const {
   std::lock_guard<std::mutex> lock(mutex_);
-  out = front_;
+
+  out.prev      = prev_;
+  out.curr      = curr_;
+  out.curr_time = curr_time_;
+  out.has_prev  = has_prev_;
 }

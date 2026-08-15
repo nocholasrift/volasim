@@ -98,6 +98,12 @@ class Simulation {
   // thread only — nothing else may touch a DynamicObject while it is stepping.
   void applyPendingInput();
 
+  // How far the frame being drawn falls between the two published steps. The
+  // pair is the newest two *completed* steps, so the drawn state trails live
+  // physics by one step: the state for right now has not been computed yet.
+  [[nodiscard]] float interpolationAlpha(
+      std::chrono::steady_clock::time_point now) const;
+
   static constexpr uint8_t kMouseRightClick  = 1;
   static constexpr uint8_t kMouseMiddleClick = 2;
   static constexpr uint8_t kMouseLeftClick   = 3;
@@ -130,9 +136,14 @@ class Simulation {
 
   std::unique_ptr<Entity> world_;
 
-  // physics publishes poses here; the render thread reads a whole step at a time
-  WorldBuffer   world_buffer_;
-  WorldSnapshot render_poses_;  // render thread only
+  // physics publishes poses here; the render thread reads whole steps at a time
+  WorldBuffer world_buffer_;
+
+  // render thread only
+  PoseFrames    render_frames_;
+  WorldSnapshot render_poses_;  // the blend of those frames, when interpolating
+
+  bool interpolate_{false};
 
   std::mutex  input_mtx_;
   std::string pending_input_;

@@ -11,6 +11,7 @@
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 
 #include <algorithm>
+#include <chrono>
 #include <memory>
 
 PhysicsInterface::PhysicsInterface() {
@@ -143,7 +144,7 @@ void PhysicsInterface::update(double dt, WorldBuffer& world_buffer) {
     poses.set(sb.entity->getID(), pose);
   }
 
-  world_buffer.publish();
+  world_buffer.publish(std::chrono::steady_clock::now());
 }
 
 // TODO: Relax requirement that must be renderable b4 adding to display tree

@@ -11,6 +11,7 @@
 #include <GL/glu.h>
 #include <GL/glut.h>
 #endif
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <glm/ext/matrix_clip_space.hpp>
@@ -112,6 +113,7 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
 
   physics_step_seconds_ = 1. / args.physics_hz;
   report_rates_         = args.report_rates;
+  interpolate_          = args.interpolate;
 
   shape_shader_ = Shader(mesh_vertex_shader, mesh_fragment_shader);
 
@@ -205,9 +207,19 @@ SDL_AppResult Simulation::update(void* appstate) {
     render_rate_.tick();
   }
 
-  world_buffer_.read(render_poses_);
+  world_buffer_.read(render_frames_);
 
-  glm::mat4 view_mat = camera().getViewMatrix(render_poses_);
+  // Without interpolation the newest step is drawn as it stands, which holds a
+  // pose across frames whenever physics steps slower than the display.
+  const WorldSnapshot* poses = &render_frames_.curr;
+  if (interpolate_ && render_frames_.has_prev) {
+    render_poses_.blendFrom(
+        render_frames_.prev, render_frames_.curr,
+        interpolationAlpha(std::chrono::steady_clock::now()));
+    poses = &render_poses_;
+  }
+
+  glm::mat4 view_mat = camera().getViewMatrix(*poses);
 
   glm::mat4 proj_mat = glm::perspective(
       glm::radians(camera().getFov()),                     // fov
@@ -218,7 +230,7 @@ SDL_AppResult Simulation::update(void* appstate) {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   for (GPUSensor& sensor : gpu_sensors_) {
-    sensor.update(*world_, render_poses_, shape_shader_);
+    sensor.update(*world_, *poses, shape_shader_);
   }
 
   glUseProgram(shape_shader_.getID());
@@ -226,8 +238,7 @@ SDL_AppResult Simulation::update(void* appstate) {
   shape_shader_.setUniformVec3("lightColor", glm::vec3(.8F, .8F, .8F));
   shape_shader_.setUniformVec3("lightPos", glm::vec3(0, 0, 5));
 
-  world_->draw(render_poses_, glm::mat4(1.F), view_mat, proj_mat,
-               shape_shader_);
+  world_->draw(*poses, glm::mat4(1.F), view_mat, proj_mat, shape_shader_);
   for (GPUSensor& sensor : gpu_sensors_) {
     sensor.draw(view_mat, proj_mat, shape_shader_);
   }
@@ -235,6 +246,18 @@ SDL_AppResult Simulation::update(void* appstate) {
   SDL_GL_SwapWindow(window_);
 
   return SDL_APP_CONTINUE; /* carry on with the program! */
+}
+
+float Simulation::interpolationAlpha(
+    std::chrono::steady_clock::time_point now) const {
+  const double elapsed =
+      std::chrono::duration<double>(now - render_frames_.curr_time).count();
+
+  const double alpha = elapsed / physics_step_seconds_;
+
+  // Clamped, so a stalled physics thread freezes on its newest step rather
+  // than running the blend past it into invented state.
+  return static_cast<float>(std::clamp(alpha, 0., 1.));
 }
 
 void Simulation::physicsLoop() {

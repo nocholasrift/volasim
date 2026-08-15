@@ -20,6 +20,10 @@ struct Args {
 
   // print the rate each loop actually achieves, once per second
   bool report_rates{false};
+
+  // draw poses blended between the last two physics steps rather than the
+  // newest one as it stands
+  bool interpolate{false};
 };
 
 inline Args parseArgs(int argc, char* argv[]) {
@@ -55,6 +59,8 @@ inline Args parseArgs(int argc, char* argv[]) {
       }
     } else if (arg == "--rates") {
       args.report_rates = true;
+    } else if (arg == "--interpolate") {
+      args.interpolate = true;
     }
   }
   return args;
