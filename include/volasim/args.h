@@ -40,13 +40,25 @@ inline Args parseArgs(int argc, char* argv[]) {
         throw std::runtime_error(arg + " requires a rate in Hz");
       }
 
-      const std::string value = argv[++i];
+      const std::string value    = argv[++i];
+      std::size_t       consumed = 0;
+      double            rate     = 0.;
+      bool              parsed   = true;
+
       try {
-        args.physics_hz = std::stod(value);
+        rate = std::stod(value, &consumed);
       } catch (const std::exception&) {
+        parsed = false;
+      }
+
+      // stod stops at the first character it cannot use, so without the length
+      // check a value like "100abc" would be taken as 100
+      if (!parsed || consumed != value.size()) {
         throw std::runtime_error("--physics-hz expects a number, got '" +
                                  value + "'");
       }
+
+      args.physics_hz = rate;
 
       // isfinite first: NaN compares false against any bound
       if (!std::isfinite(args.physics_hz) || args.physics_hz < kMinPhysicsHz ||

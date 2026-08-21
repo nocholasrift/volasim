@@ -2,6 +2,8 @@
 #define LOOP_PACER_H
 
 #include <chrono>
+#include <cmath>
+#include <stdexcept>
 
 // Keeps a loop on a fixed schedule by handing out the deadline for each
 // iteration. It owns the schedule but does no waiting of its own: the caller
@@ -13,9 +15,7 @@ class LoopPacer {
   using Clock = std::chrono::steady_clock;
 
   LoopPacer(double step_seconds, Clock::time_point start)
-      : step_(std::chrono::duration_cast<Clock::duration>(
-            std::chrono::duration<double>(step_seconds))),
-        next_(start) {}
+      : step_(checkedStep(step_seconds)), next_(start) {}
 
   // Advances the schedule and returns when the next iteration is due. Falling
   // behind drops the missed steps rather than chasing them, which would only
@@ -38,6 +38,30 @@ class LoopPacer {
   [[nodiscard]] unsigned int droppedSteps() const { return dropped_; }
 
  private:
+  // nextDeadline divides by the step, and a zero-length one is undefined: it
+  // traps on x86 and quietly returns nonsense on arm64. Rates reaching the
+  // physics loop are already bounded by --physics-hz, so this guards the class
+  // for anything else that picks it up.
+  static Clock::duration checkedStep(double step_seconds) {
+    const double max_seconds =
+        std::chrono::duration<double>(Clock::duration::max()).count();
+
+    if (!std::isfinite(step_seconds) || step_seconds <= 0. ||
+        step_seconds > max_seconds) {
+      throw std::invalid_argument(
+          "[LoopPacer] step must be finite, positive and representable");
+    }
+
+    const Clock::duration step = std::chrono::duration_cast<Clock::duration>(
+        std::chrono::duration<double>(step_seconds));
+
+    if (step <= Clock::duration::zero()) {
+      throw std::invalid_argument("[LoopPacer] step is too small to represent");
+    }
+
+    return step;
+  }
+
   Clock::duration   step_;
   Clock::time_point next_;
 

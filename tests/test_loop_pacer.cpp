@@ -2,6 +2,8 @@
 
 #include <volasim/simulation/loop_pacer.h>
 
+#include <limits>
+
 namespace {
 
 using Clock = LoopPacer::Clock;
@@ -76,5 +78,22 @@ TEST_CASE("deadlines are never handed out in the past") {
     now                              = now + std::chrono::milliseconds(7);
     const Clock::time_point deadline = pacer.nextDeadline(now);
     CHECK(deadline > now);
+  }
+}
+
+// A zero-length step would divide by zero in nextDeadline: a trap on x86, and
+// on arm64 a silent zero that turns the dropped-step count into nonsense.
+TEST_CASE("a pacer rejects a step it cannot schedule with") {
+  for (double step : {0., -1., -0.001, std::numeric_limits<double>::quiet_NaN(),
+                      std::numeric_limits<double>::infinity(), 1e300}) {
+    CAPTURE(step);
+    CHECK_THROWS_AS(LoopPacer(step, at(0.)), std::invalid_argument);
+  }
+}
+
+TEST_CASE("a pacer accepts the rates the command line allows") {
+  for (double hz : {0.001, 1., 200., 1000., 1000000.}) {
+    CAPTURE(hz);
+    CHECK_NOTHROW(LoopPacer(1. / hz, at(0.)));
   }
 }

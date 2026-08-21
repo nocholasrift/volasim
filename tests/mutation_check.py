@@ -8,10 +8,8 @@ with the behaviour broken, so they are not testing what they look like they are.
 Usage: python3 tests/mutation_check.py   (from the repo root, after configuring build/)
 """
 
-import os
 import subprocess
 import sys
-import time
 
 # (description, file, code to break, what to break it into)
 MUTATIONS = [
@@ -45,25 +43,72 @@ MUTATIONS = [
 ]
 
 
+FLAGS_FILE = "build/tests/CMakeFiles/volasim_tests.dir/flags.make"
+BINARY = "build/volasim_tests_mutation"
+
+SOURCES = [
+    "tests/main.cpp",
+    "tests/test_args.cpp",
+    "tests/test_transform.cpp",
+    "tests/test_world_buffer.cpp",
+    "tests/test_loop_pacer.cpp",
+    "src/simulation/world_buffer.cpp",
+]
+
+
+def compile_flags():
+    """Flags CMake uses for the test target, so this compiles what CMake would.
+
+    Requires build/ to have been configured at least once.
+    """
+    defines, includes, flags = "", "", ""
+    with open(FLAGS_FILE) as handle:
+        for line in handle:
+            if line.startswith("CXX_DEFINES ="):
+                defines = line.split("=", 1)[1]
+            elif line.startswith("CXX_INCLUDES ="):
+                includes = line.split("=", 1)[1]
+            elif line.startswith("CXX_FLAGS ="):
+                flags = line.split("=", 1)[1]
+
+    return (defines + " " + includes + " " + flags).split()
+
+
 def write(path, text):
     with open(path, "w") as handle:
         handle.write(text)
-    # Make's mtime comparison is coarse enough that a rewrite landing in the same
-    # instant as the last build gets treated as up to date, which silently tests
-    # a stale binary. Push the mtime forward so the rebuild always happens.
-    stamp = time.time() + 1
-    os.utime(path, (stamp, stamp))
 
 
-def build_and_run():
-    build = subprocess.run(["cmake", "--build", "build", "--target", "volasim_tests", "-j8"],
+def build_and_run(flags):
+    """Compiles the suite in one shot and runs it.
+
+    Deliberately not an incremental build: mutating a header and rebuilding
+    left the odd object holding the previous edit, and a mutation judged
+    against a stale binary reports whatever the last build happened to say.
+    Compiling every translation unit each time costs a few seconds and removes
+    the question entirely.
+    """
+    build = subprocess.run(["c++"] + flags + SOURCES + ["-o", BINARY],
                            capture_output=True, text=True)
     if build.returncode != 0:
         return None
-    return subprocess.run(["./build/volasim_tests"], capture_output=True, text=True)
+
+    return subprocess.run([BINARY], capture_output=True, text=True)
 
 
 def main():
+    # With a red baseline every mutation looks caught, because the tests were
+    # already failing before anything was broken.
+    flags = compile_flags()
+
+    baseline = build_and_run(flags)
+    if baseline is None:
+        print("baseline does not build; fix that before mutating")
+        return 1
+    if baseline.returncode != 0:
+        print("baseline tests already fail; fix that before mutating")
+        return 1
+
     missed = []
 
     for name, path, original_code, broken_code in MUTATIONS:
@@ -77,20 +122,27 @@ def main():
 
         write(path, original.replace(original_code, broken_code, 1))
         try:
-            result = build_and_run()
+            result = build_and_run(flags)
         finally:
             write(path, original)
 
         if result is None:
-            print(f"  SKIPPED  {name}: does not compile when broken")
+            # the compiler rejected the break, which protects the behaviour too
+            print(f"  caught   {name} (does not compile when broken)")
         elif result.returncode != 0:
             print(f"  caught   {name}")
         else:
             print(f"  MISSED   {name}")
             missed.append(name)
 
-    subprocess.run(["cmake", "--build", "build", "--target", "volasim_tests", "-j8"],
-                   capture_output=True)
+    # A restore that did not take would leave the tree broken while every
+    # mutation above still reported a tidy result.
+    restored = build_and_run(flags)
+    if restored is None or restored.returncode != 0:
+        print("\ntree is not clean after restoring; check for a failed restore")
+        if restored is not None:
+            print(restored.stdout[-2000:])
+        return 1
 
     if missed:
         print(f"\n{len(missed)} mutation(s) not caught: {', '.join(missed)}")

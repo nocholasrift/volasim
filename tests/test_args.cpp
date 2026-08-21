@@ -2,17 +2,21 @@
 
 #include <volasim/args.h>
 
+#include <string>
 #include <vector>
 
 namespace {
 
-// parseArgs takes argv as the C runtime hands it over, so the literals have to
-// shed their constness to get there.
-Args parse(const std::vector<const char*>& args) {
+// parseArgs takes argv as the C runtime hands it over. Copying into strings
+// first gives it genuinely mutable storage to point at, rather than casting the
+// constness off string literals.
+Args parse(const std::vector<std::string>& args) {
+  std::vector<std::string> storage = args;
+
   std::vector<char*> argv;
-  argv.reserve(args.size());
-  for (const char* arg : args) {
-    argv.push_back(const_cast<char*>(arg));
+  argv.reserve(storage.size());
+  for (std::string& arg : storage) {
+    argv.push_back(arg.data());
   }
 
   return parseArgs(static_cast<int>(argv.size()), argv.data());
@@ -56,9 +60,15 @@ TEST_CASE("degenerate physics rates are rejected") {
   }
 }
 
+// stod stops at the first character it cannot use, so a value with a numeric
+// prefix would otherwise be accepted as whatever that prefix parsed to.
 TEST_CASE("malformed physics rates are rejected") {
-  CHECK_THROWS_AS(parse({"volasim", "--physics-hz", "abc"}),
-                  std::runtime_error);
+  for (const char* rate : {"abc", "100abc", "1e3x", "100 200", "", " "}) {
+    CAPTURE(rate);
+    CHECK_THROWS_AS(parse({"volasim", "--physics-hz", rate}),
+                    std::runtime_error);
+  }
+
   CHECK_THROWS_AS(parse({"volasim", "--physics-hz"}), std::runtime_error);
 }
 
