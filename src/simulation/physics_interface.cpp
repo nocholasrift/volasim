@@ -11,6 +11,7 @@
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 
 #include <algorithm>
+#include <chrono>
 #include <memory>
 
 PhysicsInterface::PhysicsInterface() {
@@ -88,7 +89,7 @@ PhysicsInterface::~PhysicsInterface() {
   JPH::Factory::sInstance = nullptr;
 }
 
-void PhysicsInterface::update(double dt) {
+void PhysicsInterface::update(double dt, WorldBuffer& world_buffer) {
   JPH::BodyInterface& body_interface = physics_system_->GetBodyInterface();
 
   // std::cout << "applying update at " << dt << " seconds\n";
@@ -109,7 +110,11 @@ void PhysicsInterface::update(double dt) {
   // 2. Step the physics system
   physics_system_->Update(dt, 1, temp_allocator_.get(), job_system_.get());
 
-  // 3. Write the true physical state back to entity + dynamics (post-collision).
+  // 3. Write the true physical state (post-collision) back to the dynamics and
+  // into the pose buffer the renderer reads. Entities themselves are never
+  // mutated here — their authored transform is the renderer's fallback.
+  WorldSnapshot& poses = world_buffer.writeBuffer();
+
   for (const SimBody& sb : sim_bodies_) {
     JPH::RVec3 jolt_p;
     JPH::Quat  jolt_r;
@@ -132,9 +137,14 @@ void PhysicsInterface::update(double dt) {
     dynamics.setVelocity(vel);
     dynamics.setAngularVelocity(rpy);
 
-    sb.entity->setTranslation(pos);
-    sb.entity->setRotation(rot);
+    // scale is authored, never simulated
+    Transform pose = sb.entity->getLocalTransform();
+    pose.position  = pos;
+    pose.rotation  = rot;
+    poses.set(sb.entity->getID(), pose);
   }
+
+  world_buffer.publish(std::chrono::steady_clock::now());
 }
 
 // TODO: Relax requirement that must be renderable b4 adding to display tree

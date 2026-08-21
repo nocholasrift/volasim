@@ -2,10 +2,13 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include <volasim/simulation/dynamic_object.h>
-
 #include <glm/glm.hpp>
 #include <pugixml.hpp>
+
+#include <cstdint>
+
+class Entity;
+class WorldSnapshot;
 
 // Defines several possible options for camera movement. Used as abstraction to stay away from window-system specific input methods
 enum Camera_Movement { FORWARD, BACKWARD, LEFT, RIGHT };
@@ -20,7 +23,7 @@ struct CameraSettings {
 
   glm::ivec2 window_sz = glm::ivec2(640, 480);
 
-  DynamicObject* target = nullptr;
+  const Entity* target = nullptr;
 };
 
 // An abstract camera class that processes input and calculates the corresponding Euler Angles, Vectors and Matrices for use in OpenGL
@@ -39,12 +42,14 @@ class Camera {
   Camera(const glm::ivec2& window_sz, double yaw, double pitch, double radius,
          double fov = 60.F, unsigned int fps = 60,
          const glm::vec3& world_up   = glm::vec3(0.F, 0.F, 1.F),
-         DynamicObject*   target_obj = nullptr);
+         const Entity*    target_obj = nullptr);
 
   static Camera fromXML(const pugi::xml_node& camera_xml);
 
-  // returns the view matrix calculated using Euler Angles and the LookAt Matrix
-  glm::mat4 getViewMatrix();
+  // returns the view matrix calculated using Euler Angles and the LookAt Matrix.
+  // The target is located through the snapshot so the camera follows the same
+  // step of the simulation as the rest of the frame.
+  [[nodiscard]] glm::mat4 getViewMatrix(const WorldSnapshot& snapshot) const;
 
   [[nodiscard]] float getFov() const { return fov_; }
 
@@ -52,7 +57,7 @@ class Camera {
 
   Dimensions getDimensions() { return dimensions_; }
 
-  void setTarget(DynamicObject* target_obj) { target_obj_ = target_obj; }
+  void setTarget(const Entity* target_obj) { target_obj_ = target_obj; }
 
   void                  setID(uint8_t id) { id_ = id; }
   [[nodiscard]] uint8_t getID() const { return id_; }
@@ -108,6 +113,6 @@ class Camera {
 
   bool enable_orbit_and_pan_ = false;
 
-  DynamicObject* target_obj_ = nullptr;
+  const Entity* target_obj_ = nullptr;
 };
 #endif

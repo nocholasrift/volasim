@@ -5,6 +5,7 @@
 #include <volasim/simulation/entity.h>
 #include <volasim/simulation/gl_resource.h>
 #include <volasim/simulation/shader.h>
+#include <volasim/simulation/world_buffer.h>
 
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/glm.hpp>
@@ -149,12 +150,9 @@ class GPUSensor {
   }
 
   // Renders the scene into the sensor's depth FBO. Call once per frame before draw().
-  void update(Entity* world, Shader& shader) {
-    if (world == nullptr) {
-      throw std::invalid_argument("[GPU Sensor] world is null");
-    }
-
-    sensor_view_mat_ = getViewMat();
+  void update(const Entity& world, const WorldSnapshot& snapshot,
+              Shader& shader) {
+    sensor_view_mat_ = getViewMat(snapshot);
 
     GLint viewport[4];
     glGetIntegerv(GL_VIEWPORT, viewport);
@@ -165,7 +163,8 @@ class GPUSensor {
     glClear(GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(depth_shader_->getID());
-    world->draw(sensor_view_mat_, proj_mat_, *depth_shader_);
+    world.draw(snapshot, glm::mat4(1.F), sensor_view_mat_, proj_mat_,
+               *depth_shader_);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
@@ -197,10 +196,10 @@ class GPUSensor {
     glBindTexture(GL_TEXTURE_2D, 0);
   }
 
-  glm::mat4 getViewMat() {
+  glm::mat4 getViewMat(const WorldSnapshot& snapshot) const {
     // lookAt needs a position and two basis vectors, which are just columns of
     // the global transform (glm is column-major) — no decomposition needed.
-    glm::mat4 tf      = parent_->getGlobalTransform();
+    glm::mat4 tf      = parent_->getGlobalTransform(snapshot);
     auto      pos     = glm::vec3(tf[3]);                  // translation column
     glm::vec3 forward = glm::normalize(glm::vec3(tf[0]));  // local +X in world
     glm::vec3 up      = glm::normalize(glm::vec3(tf[2]));  // local +Z in world

@@ -1,8 +1,10 @@
 #include <volasim/simulation/camera.h>
+#include <volasim/simulation/entity.h>
+#include <volasim/simulation/world_buffer.h>
 
 Camera::Camera(const glm::ivec2& window_sz, double yaw, double pitch,
                double radius, double fov, unsigned int fps,
-               const glm::vec3& world_up, DynamicObject* target_obj)
+               const glm::vec3& world_up, const Entity* target_obj)
     : world_up_(world_up),
       fov_(static_cast<float>(fov)),
       radius_(static_cast<float>(radius)),
@@ -53,13 +55,16 @@ Camera Camera::fromXML(const pugi::xml_node& camera_xml) {
   return Camera(settings);
 }
 
-glm::mat4 Camera::getViewMatrix() {
+glm::mat4 Camera::getViewMatrix(const WorldSnapshot& snapshot) const {
   if (target_obj_ == nullptr) {
     return glm::lookAt(position_, glm::vec3(0.f, 0.f, 0.f), up_);
   }
 
-  return glm::lookAt(position_ + target_obj_->getTranslation(),
-                     target_obj_->getTranslation(), up_);
+  // translation column of the target's global transform (glm is column-major)
+  const glm::vec3 target_pos =
+      glm::vec3(target_obj_->getGlobalTransform(snapshot)[3]);
+
+  return glm::lookAt(position_ + target_pos, target_pos, up_);
 }
 
 void Camera::processKeyboard(Camera_Movement direction, float deltaTime) {}

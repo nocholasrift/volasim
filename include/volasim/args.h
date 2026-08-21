@@ -1,11 +1,29 @@
 #ifndef VOLASIM_ARGS_H
 #define VOLASIM_ARGS_H
 
+#include <cmath>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 
+// Bounds on --physics-hz. The step period is held as a steady_clock::duration,
+// so a rate above the maximum truncates to a zero-length step (the loop then
+// free-runs) and one below the minimum overflows the duration.
+inline constexpr double kMinPhysicsHz = 1e-3;
+inline constexpr double kMaxPhysicsHz = 1e6;
+
 struct Args {
   std::string world_path{"./definitions/worlds/world_250_world.xml"};
+
+  // rate of the physics thread, independent of the render loop's fps
+  double physics_hz{1000.};
+
+  // print the rate each loop actually achieves, once per second
+  bool report_rates{false};
+
+  // draw poses blended between the last two physics steps rather than the
+  // newest one as it stands
+  bool interpolate{false};
 };
 
 inline Args parseArgs(int argc, char* argv[]) {
@@ -17,6 +35,44 @@ inline Args parseArgs(int argc, char* argv[]) {
         throw std::runtime_error(arg + " requires a path argument");
       }
       args.world_path = argv[++i];
+    } else if (arg == "--physics-hz") {
+      if (i + 1 >= argc) {
+        throw std::runtime_error(arg + " requires a rate in Hz");
+      }
+
+      const std::string value    = argv[++i];
+      std::size_t       consumed = 0;
+      double            rate     = 0.;
+      bool              parsed   = true;
+
+      try {
+        rate = std::stod(value, &consumed);
+      } catch (const std::exception&) {
+        parsed = false;
+      }
+
+      // stod stops at the first character it cannot use, so without the length
+      // check a value like "100abc" would be taken as 100
+      if (!parsed || consumed != value.size()) {
+        throw std::runtime_error("--physics-hz expects a number, got '" +
+                                 value + "'");
+      }
+
+      args.physics_hz = rate;
+
+      // isfinite first: NaN compares false against any bound
+      if (!std::isfinite(args.physics_hz) || args.physics_hz < kMinPhysicsHz ||
+          args.physics_hz > kMaxPhysicsHz) {
+        std::ostringstream err_msg;
+        err_msg << "--physics-hz must be a finite rate between "
+                << kMinPhysicsHz << " and " << kMaxPhysicsHz << " Hz, got '"
+                << value << "'";
+        throw std::runtime_error(err_msg.str());
+      }
+    } else if (arg == "--rates") {
+      args.report_rates = true;
+    } else if (arg == "--interpolate") {
+      args.interpolate = true;
     }
   }
   return args;

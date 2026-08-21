@@ -9,6 +9,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 add_subdirectory(third_party/SDL EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/JoltPhysics/Build EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/pugixml EXCLUDE_FROM_ALL)
+# cppzmq registers its own ctest entry for a target we never build, which then
+# reports as a failure in every ctest run
+set(CPPZMQ_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(third_party/cppzmq EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/assimp EXCLUDE_FROM_ALL)
 
@@ -38,6 +41,7 @@ add_executable(volasim
   src/simulation/xml_parser.cpp
   src/simulation/xml_template.cpp
   src/simulation/entity.cpp
+  src/simulation/world_buffer.cpp
   src/simulation/shape_renderable.cpp
   src/simulation/physics_interface.cpp
   src/simulation/camera.cpp
@@ -63,6 +67,9 @@ target_compile_definitions(volasim PRIVATE GLM_ENABLE_EXPERIMENTAL GL_SILENCE_DE
 if(APPLE)
   target_compile_definitions(volasim PRIVATE USE_APPLE_OPENGL_HEADERS)
 endif()
+
+enable_testing()
+add_subdirectory(tests)
 
 add_custom_target(copy_assets
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/definitions ${CMAKE_CURRENT_BINARY_DIR}/definitions
