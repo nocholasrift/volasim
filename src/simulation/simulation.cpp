@@ -130,13 +130,9 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
              1e9
       << "\n";
 
-  // sensors are constructed during parsing; init() needs the live GL context
-  // TODO(multi-drone): drone id is hardcoded to 0. Attribute each sensor to its
-  // owning drone's vehicle_id once the scene graph exposes the mapping.
-  uint32_t sensor_id = 0;
+  // ids are assigned by the parser; init() needs the live GL context
   for (GPUSensor& sensor : gpu_sensors_) {
     sensor.init();
-    sensor.setIds(0, sensor_id++);
   }
 
   const std::vector<SimBody>& sim_bodies = physics_interface_.dynamicBodies();
@@ -234,10 +230,8 @@ SDL_AppResult Simulation::update(void* appstate) {
   glEnable(GL_DEPTH_TEST);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  // Each sensor captures at its own rate_hz so a fast display does not re-render
-  // and read back the depth buffer every frame. The readback itself is polled
-  // every frame: it was started on an earlier tick, so the fence is normally
-  // already signalled and the map does not stall.
+  // sadly, depth sensor updates and handoff to comms must happen in the render thread
+  // due to the coupling with openGL.
   const auto now = std::chrono::steady_clock::now();
   for (GPUSensor& sensor : gpu_sensors_) {
     if (sensor.captureDue(now)) {
@@ -245,9 +239,9 @@ SDL_AppResult Simulation::update(void* appstate) {
       sensor.captureDepth();
     }
 
-    DepthFrame frame;
+    SensorFrame frame;
     if (sensor.tryReadback(frame)) {
-      cloud_handoff_.publish(sensor.sensorKey(), std::move(frame));
+      sensor_handoff_.publish(sensor.sensorKey(), std::move(frame));
     }
   }
 
@@ -376,6 +370,6 @@ std::unordered_map<uint32_t, std::string> Simulation::getSimState() {
   return sim_state_.states;
 }
 
-std::vector<DepthFrame> Simulation::drainCloudFrames() {
-  return cloud_handoff_.drain();
+std::vector<SensorFrame> Simulation::drainSensorFrames() {
+  return sensor_handoff_.drain();
 }

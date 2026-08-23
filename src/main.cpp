@@ -11,7 +11,7 @@
 #include <volasim/args.h>
 #include <volasim/comms/topics.h>
 #include <volasim/comms/zmq_server.h>
-#include <volasim/sensors/depth_frame.h>
+#include <volasim/sensors/sensor_handoff.h>
 #include <volasim/simulation/simulation.h>
 
 #ifdef USE_APPLE_OPENGL_HEADERS
@@ -56,11 +56,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
         server.publishState(volasim::topics::state(drone_id), state_bytes);
       }
 
-      // depth frames arrive at sensor_hz; drain whatever is ready and send the
-      // raw uint16 payload zero-copy alongside its header
-      for (DepthFrame& frame : sim.drainCloudFrames()) {
-        zmq::message_t payload(frame.depth_mm.data(),
-                               frame.depth_mm.size() * sizeof(uint16_t));
+      for (SensorFrame& frame : sim.drainSensorFrames()) {
+        zmq::message_t payload(frame.payload.data(), frame.payload.size());
         server.publishSensor(frame.topic, frame.header, std::move(payload));
       }
 

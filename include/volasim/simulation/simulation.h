@@ -7,7 +7,7 @@
 #include <volasim/simulation/camera.h>
 #include <volasim/simulation/entity.h>
 #include <volasim/simulation/input_manager.h>
-#include <volasim/sensors/depth_frame.h>
+#include <volasim/sensors/sensor_handoff.h>
 #include <volasim/simulation/loop_pacer.h>
 #include <volasim/simulation/physics_interface.h>
 #include <volasim/simulation/rate_counter.h>
@@ -95,8 +95,8 @@ class Simulation {
   // Snapshot of the latest serialized simulation state.
   std::unordered_map<uint32_t, std::string> getSimState();
 
-  // Newest depth frame per sensor, moved out for the comms thread to publish.
-  std::vector<DepthFrame> drainCloudFrames();
+  // Newest frame per sensor, moved out for the comms thread to publish.
+  std::vector<SensorFrame> drainSensorFrames();
 
   EventDispatcher&  getHandler() { return event_handler_; }
   PhysicsInterface& getPhysicsInterface() { return physics_interface_; }
@@ -132,9 +132,7 @@ class Simulation {
   // set from the command line; the render loop's rate comes from the world XML
   double physics_step_seconds_{1. / 1000.};
 
-  // newest depth frame per sensor, handed from the render thread to comms. Each
-  // sensor paces its own captures at the rate_hz in its XML definition.
-  CloudHandoff cloud_handoff_;
+  SensorHandoff sensor_handoff_;
 
   bool        report_rates_{false};
   RateCounter render_rate_{"render", "fps"};

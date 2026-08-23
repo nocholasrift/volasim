@@ -347,6 +347,10 @@ void XMLParser::handleSensor(const pugi::xml_node& item, Entity& root,
   // Parenting to the sensor object makes the depth camera follow the robot's
   // motion through the scene graph.
   sensors.emplace_back(GPUSensor::fromXML(item, sensor_entity_ptr));
+
+  // TODO(multi-drone): drone id is 0 until sensors are attributed to their
+  // owning vehicle.
+  sensors.back().setIds(0, static_cast<uint32_t>(sensors.size() - 1));
 }
 
 void XMLParser::createAndAddRenderable(

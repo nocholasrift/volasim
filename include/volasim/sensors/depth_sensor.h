@@ -3,7 +3,7 @@
 
 #include <volasim/comms/msgs/DepthCamera.pb.h>
 #include <volasim/comms/topics.h>
-#include <volasim/sensors/depth_frame.h>
+#include <volasim/sensors/sensor_handoff.h>
 #include <volasim/simulation/dynamic_object.h>
 #include <volasim/simulation/entity.h>
 #include <volasim/simulation/gl_resource.h>
@@ -75,10 +75,8 @@ static const std::string point_fragment_shader =
     "  FragColor = vec4(0.0, 0.0, 1.0, 1.0);\n"
     "}\n";
 
-// Fullscreen pass that turns the depth buffer into uint16 millimetres, so the
-// GPU->CPU readback carries the compact metric depth real RGBD sensors emit
-// rather than raw float window depth. Emitted as a fullscreen triangle driven
-// by gl_VertexID, so it needs no vertex buffer.
+// Depth buffer -> uint16 mm, so the readback ships compact metric depth like a
+// real RGBD sensor instead of raw float window depth.
 static const std::string depth_convert_vertex_shader =
     "#version 330 core\n"
     "out vec2 v_uv;\n"
@@ -261,7 +259,6 @@ class GPUSensor {
 
   glm::mat4 getProjMat() { return proj_mat_; }
 
-  // Assigns the ids the wire messages are addressed by. Called once after load.
   void setIds(uint32_t drone_id, uint32_t sensor_id) {
     drone_id_  = drone_id;
     sensor_id_ = sensor_id;
@@ -269,14 +266,11 @@ class GPUSensor {
                 std::to_string(sensor_id);
   }
 
-  // Unique key per sensor for the cloud handoff (drone id in the high word).
   [[nodiscard]] uint64_t sensorKey() const {
     return (static_cast<uint64_t>(drone_id_) << 32) | sensor_id_;
   }
 
-  // True when this sensor is due to capture, at its own rate_hz. The gate is
-  // created on first use so it starts from a live clock reading rather than
-  // load time. Poll every frame; capture only when it returns true.
+  // Gate is created on first use so it starts from a live clock, not load time.
   bool captureDue(std::chrono::steady_clock::time_point now) {
     if (!gate_) {
       gate_ = std::make_unique<RateGate>(settings_.rate_hz, now);
@@ -284,12 +278,10 @@ class GPUSensor {
     return gate_->due(now);
   }
 
-  // Converts the current depth buffer to uint16 mm and kicks off an async
-  // readback into a PBO, fenced so tryReadback() can later map it without
-  // stalling. Call on a sensor tick, after update() has rendered depth_tex_.
+  // Assumes update() already rendered depth_tex_ this frame.
   void captureDepth() {
     if (free_pbos_.empty()) {
-      return;  // every buffer is in flight; drop this capture (drop-old)
+      return;  // all buffers in flight; a fresh frame comes next tick anyway
     }
 
     const int w = static_cast<int>(settings_.width);
@@ -316,8 +308,7 @@ class GPUSensor {
     const int pbo = free_pbos_.back();
     free_pbos_.pop_back();
 
-    // alignment 1: pack rows tightly so the buffer is exactly w*h*2 bytes,
-    // matching the payload we allocate regardless of odd widths
+    // tight-pack rows so the readback is exactly w*h*2 bytes even for odd widths
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo_[pbo].get());
     glReadPixels(0, 0, w, h, GL_RED_INTEGER, GL_UNSIGNED_SHORT, nullptr);
@@ -333,30 +324,29 @@ class GPUSensor {
     glBindTexture(GL_TEXTURE_2D, 0);
   }
 
-  // If the oldest in-flight readback has finished, fills `out` and returns true.
-  // Non-blocking: an unfinished readback leaves `out` untouched and returns
-  // false. Call every frame; the readback started two-plus frames ago so the
-  // fence is normally already signalled and the map never stalls.
-  bool tryReadback(DepthFrame& out) {
+  // Polls without blocking, so calling it every frame never stalls the render
+  // thread; the oldest readback finishes first, hence front().
+  bool tryReadback(SensorFrame& out) {
     if (in_flight_.empty()) {
       return false;
     }
 
     InFlight&    front  = in_flight_.front();
-    const GLenum status = glClientWaitSync(front.fence, 0, 0);  // poll, no wait
+    const GLenum status = glClientWaitSync(front.fence, 0, 0);
     if (status != GL_ALREADY_SIGNALED && status != GL_CONDITION_SATISFIED) {
       return false;
     }
 
-    const std::size_t count =
-        static_cast<std::size_t>(settings_.width) * settings_.height;
+    const std::size_t bytes =
+        static_cast<std::size_t>(settings_.width) * settings_.height *
+        sizeof(uint16_t);
 
     glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo_[front.pbo].get());
     const void* mapped = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
     const bool  ok     = mapped != nullptr;
     if (ok) {
-      out.depth_mm.resize(count);
-      std::memcpy(out.depth_mm.data(), mapped, count * sizeof(uint16_t));
+      out.payload.resize(bytes);
+      std::memcpy(out.payload.data(), mapped, bytes);
       glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
     }
     glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
@@ -459,8 +449,7 @@ class GPUSensor {
  private:
   static constexpr int kNumPbos = 3;
 
-  // A readback in flight: which PBO holds it, the fence that signals its DMA is
-  // done, and the header captured when it was issued.
+  // fence signals when the PBO's DMA is done and safe to map.
   struct InFlight {
     int         pbo;
     GLsync      fence;
