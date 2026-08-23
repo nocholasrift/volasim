@@ -315,7 +315,9 @@ void PhysicsInterface::handleAdd(Entity* object) {
       shape_settings, JPH::EActivation::Activate);
 
   if (is_dynamic) {
-    sim_bodies_.push_back({object, body_id});
+    // id is the load-order index; size() is the next free slot before the push.
+    sim_bodies_.push_back(
+        {object, body_id, static_cast<uint32_t>(sim_bodies_.size())});
   } else {
     static_bodies_.emplace(object, body_id);
   }

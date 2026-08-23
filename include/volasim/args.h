@@ -26,6 +26,38 @@ struct Args {
   bool interpolate{false};
 };
 
+// Parses a rate flag's value and bounds-checks it. Shared by --physics-hz and
+// --sensor-hz so both reject the same degenerate inputs (non-numeric, trailing
+// junk, non-finite, out of range) with matching messages.
+inline double parseRate(const std::string& flag, const std::string& value,
+                        double min_hz, double max_hz) {
+  std::size_t consumed = 0;
+  double      rate     = 0.;
+  bool        parsed   = true;
+
+  try {
+    rate = std::stod(value, &consumed);
+  } catch (const std::exception&) {
+    parsed = false;
+  }
+
+  // stod stops at the first character it cannot use, so without the length
+  // check a value like "100abc" would be taken as 100
+  if (!parsed || consumed != value.size()) {
+    throw std::runtime_error(flag + " expects a number, got '" + value + "'");
+  }
+
+  // isfinite first: NaN compares false against any bound
+  if (!std::isfinite(rate) || rate < min_hz || rate > max_hz) {
+    std::ostringstream err_msg;
+    err_msg << flag << " must be a finite rate between " << min_hz << " and "
+            << max_hz << " Hz, got '" << value << "'";
+    throw std::runtime_error(err_msg.str());
+  }
+
+  return rate;
+}
+
 inline Args parseArgs(int argc, char* argv[]) {
   Args args;
   for (int i = 1; i < argc; ++i) {
@@ -39,36 +71,8 @@ inline Args parseArgs(int argc, char* argv[]) {
       if (i + 1 >= argc) {
         throw std::runtime_error(arg + " requires a rate in Hz");
       }
-
-      const std::string value    = argv[++i];
-      std::size_t       consumed = 0;
-      double            rate     = 0.;
-      bool              parsed   = true;
-
-      try {
-        rate = std::stod(value, &consumed);
-      } catch (const std::exception&) {
-        parsed = false;
-      }
-
-      // stod stops at the first character it cannot use, so without the length
-      // check a value like "100abc" would be taken as 100
-      if (!parsed || consumed != value.size()) {
-        throw std::runtime_error("--physics-hz expects a number, got '" +
-                                 value + "'");
-      }
-
-      args.physics_hz = rate;
-
-      // isfinite first: NaN compares false against any bound
-      if (!std::isfinite(args.physics_hz) || args.physics_hz < kMinPhysicsHz ||
-          args.physics_hz > kMaxPhysicsHz) {
-        std::ostringstream err_msg;
-        err_msg << "--physics-hz must be a finite rate between "
-                << kMinPhysicsHz << " and " << kMaxPhysicsHz << " Hz, got '"
-                << value << "'";
-        throw std::runtime_error(err_msg.str());
-      }
+      args.physics_hz =
+          parseRate("--physics-hz", argv[++i], kMinPhysicsHz, kMaxPhysicsHz);
     } else if (arg == "--rates") {
       args.report_rates = true;
     } else if (arg == "--interpolate") {

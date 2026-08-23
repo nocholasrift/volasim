@@ -6,6 +6,8 @@ set(PROTO_FILES
   Imu.proto
   Odometry.proto
   DroneState.proto
+  Header.proto
+  DepthCamera.proto
 )
 
 add_library(myproto STATIC ${PROTO_FILES})

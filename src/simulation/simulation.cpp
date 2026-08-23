@@ -131,8 +131,12 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
       << "\n";
 
   // sensors are constructed during parsing; init() needs the live GL context
+  // TODO(multi-drone): drone id is hardcoded to 0. Attribute each sensor to its
+  // owning drone's vehicle_id once the scene graph exposes the mapping.
+  uint32_t sensor_id = 0;
   for (GPUSensor& sensor : gpu_sensors_) {
     sensor.init();
+    sensor.setIds(0, sensor_id++);
   }
 
   const std::vector<SimBody>& sim_bodies = physics_interface_.dynamicBodies();
@@ -230,8 +234,21 @@ SDL_AppResult Simulation::update(void* appstate) {
   glEnable(GL_DEPTH_TEST);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+  // Each sensor captures at its own rate_hz so a fast display does not re-render
+  // and read back the depth buffer every frame. The readback itself is polled
+  // every frame: it was started on an earlier tick, so the fence is normally
+  // already signalled and the map does not stall.
+  const auto now = std::chrono::steady_clock::now();
   for (GPUSensor& sensor : gpu_sensors_) {
-    sensor.update(*world_, *poses, shape_shader_);
+    if (sensor.captureDue(now)) {
+      sensor.update(*world_, *poses, shape_shader_);
+      sensor.captureDepth();
+    }
+
+    DepthFrame frame;
+    if (sensor.tryReadback(frame)) {
+      cloud_handoff_.publish(sensor.sensorKey(), std::move(frame));
+    }
   }
 
   glUseProgram(shape_shader_.getID());
@@ -334,30 +351,31 @@ void Simulation::setSimState() {
     return;
   }
 
-  {
-    std::lock_guard<std::mutex> lock(sim_state_.mutex);
-    for (const SimBody& sb : sim_bodies) {
-      if (!sb.entity->getDynamics().getSimState().SerializeToString(
-              &sim_state_.state)) {
-        std::cerr << "[Simulation] Failed to serialize state\n";
-      }
-      break;
+  std::lock_guard<std::mutex> lock(sim_state_.mutex);
+  for (const SimBody& sb : sim_bodies) {
+    // Serialize into a temporary so a failed encode leaves the drone's last
+    // good state in place rather than clobbering it with a partial write.
+    std::string bytes;
+    if (!sb.entity->getDynamics().getSimState().SerializeToString(&bytes)) {
+      std::cerr << "[Simulation] Failed to serialize state for drone "
+                << sb.vehicle_id << "\n";
+      continue;
     }
+    sim_state_.states[sb.vehicle_id] = std::move(bytes);
   }
 }
 
-const std::string Simulation::getSimState() {
-  // comms blocks here until the world is loaded, or gives up if the sim is
-  // torn down before it ever starts
-  {
-    std::unique_lock<std::mutex> lock(running_mtx_);
-    running_cv_.wait(lock, [this] {
-      return is_running_.load() || is_shutting_down_.load();
-    });
-  }
+void Simulation::waitUntilRunning() {
+  std::unique_lock<std::mutex> lock(running_mtx_);
+  running_cv_.wait(
+      lock, [this] { return is_running_.load() || is_shutting_down_.load(); });
+}
 
+std::unordered_map<uint32_t, std::string> Simulation::getSimState() {
   std::lock_guard<std::mutex> lock(sim_state_.mutex);
-  std::string                 state = sim_state_.state;
+  return sim_state_.states;
+}
 
-  return state;
+std::vector<DepthFrame> Simulation::drainCloudFrames() {
+  return cloud_handoff_.drain();
 }

@@ -9,7 +9,9 @@
 #include <thread>
 #define SDL_MAIN_USE_CALLBACKS 1 /* use the callbacks instead of main() */
 #include <volasim/args.h>
+#include <volasim/comms/topics.h>
 #include <volasim/comms/zmq_server.h>
+#include <volasim/sensors/depth_frame.h>
 #include <volasim/simulation/simulation.h>
 
 #ifdef USE_APPLE_OPENGL_HEADERS
@@ -44,12 +46,24 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
   }
 
   t1 = std::thread([&]() {
-    // blocking call to getSimState before loop.
-    // ensured sim is running before going to loop
-    sim.getSimState();
+    // block until the world is loaded and physics is running before publishing
+    sim.waitUntilRunning();
     auto next_time = std::chrono::steady_clock::now();
     while (sim.isRunning()) {
-      server.publishInfo(sim.getSimState());
+      // one message per drone; the topic carries the drone id so subscribers
+      // filter by drone/<id>/ in the ZMQ layer
+      for (const auto& [drone_id, state_bytes] : sim.getSimState()) {
+        server.publishState(volasim::topics::state(drone_id), state_bytes);
+      }
+
+      // depth frames arrive at sensor_hz; drain whatever is ready and send the
+      // raw uint16 payload zero-copy alongside its header
+      for (DepthFrame& frame : sim.drainCloudFrames()) {
+        zmq::message_t payload(frame.depth_mm.data(),
+                               frame.depth_mm.size() * sizeof(uint16_t));
+        server.publishSensor(frame.topic, frame.header, std::move(payload));
+      }
+
       next_time =
           std::chrono::steady_clock::now() + std::chrono::microseconds(2000);
       std::this_thread::sleep_until(next_time);

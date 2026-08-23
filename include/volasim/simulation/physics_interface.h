@@ -208,6 +208,7 @@ class MyBodyActivationListener : public JPH::BodyActivationListener {
 struct SimBody {
   Entity*     entity;
   JPH::BodyID body;
+  uint32_t    vehicle_id;
 };
 
 class PhysicsInterface : public EventListener {

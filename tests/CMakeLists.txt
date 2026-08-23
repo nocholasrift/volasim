@@ -7,6 +7,8 @@ add_executable(volasim_tests
   test_transform.cpp
   test_world_buffer.cpp
   test_loop_pacer.cpp
+  test_topics.cpp
+  test_rate_gate.cpp
   ${CMAKE_SOURCE_DIR}/src/simulation/world_buffer.cpp
 )
 
