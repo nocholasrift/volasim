@@ -240,6 +240,10 @@ class PhysicsInterface : public EventListener {
   std::vector<SimBody>                     sim_bodies_;
   std::unordered_map<Entity*, JPH::BodyID> static_bodies_;
 
+  // Monotonic so an id stays stable across removals; sim_bodies_.size() would
+  // reuse a live id after a remove-then-add.
+  uint32_t next_vehicle_id_ = 0;
+
   MyContactListener                 contact_listener_;
   BPLayerInterfaceImpl              broad_phase_layer_interface_;
   MyBodyActivationListener          body_activation_listener_;
