@@ -15,7 +15,7 @@ if [ "${RECORD:-0}" = "1" ]; then
   mkdir -p /ws/bags
   BAG_DIR="/ws/bags/run_$(date +%Y%m%d_%H%M%S)"
   echo "[run_ros2_stack] recording MCAP bag to ${BAG_DIR}"
-  ros2 bag record -s mcap -o "${BAG_DIR}" /odometry /command_pos /command &
+  ros2 bag record -s mcap -o "${BAG_DIR}" -a &
   RECORD_PID=$!
 fi
 

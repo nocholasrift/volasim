@@ -130,7 +130,7 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
              1e9
       << "\n";
 
-  // sensors are constructed during parsing; init() needs the live GL context
+  // ids are assigned by the parser; init() needs the live GL context
   for (GPUSensor& sensor : gpu_sensors_) {
     sensor.init();
   }
@@ -230,8 +230,19 @@ SDL_AppResult Simulation::update(void* appstate) {
   glEnable(GL_DEPTH_TEST);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+  // sadly, depth sensor updates and handoff to comms must happen in the render thread
+  // due to the coupling with openGL.
+  const auto now = std::chrono::steady_clock::now();
   for (GPUSensor& sensor : gpu_sensors_) {
-    sensor.update(*world_, *poses, shape_shader_);
+    if (sensor.captureDue(now)) {
+      sensor.update(*world_, *poses, shape_shader_);
+      sensor.captureDepth();
+    }
+
+    SensorFrame frame;
+    if (sensor.tryReadback(frame)) {
+      sensor_handoff_.publish(sensor.sensorKey(), std::move(frame));
+    }
   }
 
   glUseProgram(shape_shader_.getID());
@@ -334,30 +345,31 @@ void Simulation::setSimState() {
     return;
   }
 
-  {
-    std::lock_guard<std::mutex> lock(sim_state_.mutex);
-    for (const SimBody& sb : sim_bodies) {
-      if (!sb.entity->getDynamics().getSimState().SerializeToString(
-              &sim_state_.state)) {
-        std::cerr << "[Simulation] Failed to serialize state\n";
-      }
-      break;
+  std::lock_guard<std::mutex> lock(sim_state_.mutex);
+  for (const SimBody& sb : sim_bodies) {
+    // Serialize into a temporary so a failed encode leaves the drone's last
+    // good state in place rather than clobbering it with a partial write.
+    std::string bytes;
+    if (!sb.entity->getDynamics().getSimState().SerializeToString(&bytes)) {
+      std::cerr << "[Simulation] Failed to serialize state for drone "
+                << sb.vehicle_id << "\n";
+      continue;
     }
+    sim_state_.states[sb.vehicle_id] = std::move(bytes);
   }
 }
 
-const std::string Simulation::getSimState() {
-  // comms blocks here until the world is loaded, or gives up if the sim is
-  // torn down before it ever starts
-  {
-    std::unique_lock<std::mutex> lock(running_mtx_);
-    running_cv_.wait(lock, [this] {
-      return is_running_.load() || is_shutting_down_.load();
-    });
-  }
+void Simulation::waitUntilRunning() {
+  std::unique_lock<std::mutex> lock(running_mtx_);
+  running_cv_.wait(
+      lock, [this] { return is_running_.load() || is_shutting_down_.load(); });
+}
 
+std::unordered_map<uint32_t, std::string> Simulation::getSimState() {
   std::lock_guard<std::mutex> lock(sim_state_.mutex);
-  std::string                 state = sim_state_.state;
+  return sim_state_.states;
+}
 
-  return state;
+std::vector<SensorFrame> Simulation::drainSensorFrames() {
+  return sensor_handoff_.drain();
 }

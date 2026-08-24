@@ -14,6 +14,15 @@ services:
       - "5557:5557"  # bridge PUB, so host sim can connect to localhost:5557
     volumes:
       - ../bags:/ws/bags  # recorded bags land in <repo>/bags on the host
+      # Cloud stream: the bridge prefers ipc and falls back to tcp on its own,
+      # so nothing here is required. On a NATIVE LINUX Docker host you can keep
+      # it on ipc (no tcp copy) by sharing the socket and pointing the bridge at
+      # it — uncomment both lines below. This does NOT work under Docker Desktop
+      # (macOS/Windows): a unix socket cannot cross the host<->VM boundary, so
+      # there the bridge stays on the tcp fallback.
+      # - /tmp/volasim_cloud:/tmp/volasim_cloud
+    # environment override for the ipc case above:
+    #   - VOLASIM_CLOUD_ENDPOINT=ipc:///tmp/volasim_cloud
     extra_hosts:
       - "host.docker.internal:host-gateway"  # Linux; no-op on Docker Desktop
     restart: unless-stopped

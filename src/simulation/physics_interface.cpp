@@ -315,7 +315,7 @@ void PhysicsInterface::handleAdd(Entity* object) {
       shape_settings, JPH::EActivation::Activate);
 
   if (is_dynamic) {
-    sim_bodies_.push_back({object, body_id});
+    sim_bodies_.push_back({object, body_id, next_vehicle_id_++});
   } else {
     static_bodies_.emplace(object, body_id);
   }

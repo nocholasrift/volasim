@@ -98,17 +98,18 @@ class VolasimROSWrapper {
       input_ = {0, 0, 0, 0};
     }
 
-    volasim_msgs::DroneState drone_state;
-
-    zmq::message_t update;
-    auto result = zmq_subscriber_.recv(update, zmq::recv_flags::dontwait);
-
-    if (!result.has_value()) {
+    // State is multipart: [topic]["drone/<id>/state"] [DroneState]. Read the
+    // topic frame, then drain to the last frame, which holds the DroneState.
+    zmq::message_t topic;
+    if (!zmq_subscriber_.recv(topic, zmq::recv_flags::dontwait).has_value()) {
       return;
     }
+    zmq::message_t update;
+    while (zmq_subscriber_.get(zmq::sockopt::rcvmore)) {
+      (void)zmq_subscriber_.recv(update);
+    }
 
-    /*volasim_msgs::Odometry& odom = *drone_state.mutable_odom();*/
-    /*volasim_msgs::Imu& imu = *drone_state.mutable_imu();*/
+    volasim_msgs::DroneState drone_state;
     if (!drone_state.ParseFromArray(update.data(), update.size())) {
       ROS_WARN("[VolasimROSWrapper] Failed to parse odometry message");
       return;

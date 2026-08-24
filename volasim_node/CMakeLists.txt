@@ -82,6 +82,7 @@ elseif(ROS_VERSION EQUAL 2)
   find_package(std_msgs REQUIRED)
   find_package(std_srvs REQUIRED)
   find_package(nav_msgs REQUIRED)
+  find_package(sensor_msgs REQUIRED)
   find_package(ament_cmake REQUIRED)
   find_package(geometry_msgs REQUIRED)
   find_package(rcl_interfaces REQUIRED)
@@ -91,6 +92,7 @@ elseif(ROS_VERSION EQUAL 2)
     ${rclcpp_INCLUDE_DIRS}
     ${std_msgs_INCLUDE_DIRS}
     ${nav_msgs_INCLUDE_DIRS}
+    ${sensor_msgs_INCLUDE_DIRS}
     ${geometry_msgs_INCLUDE_DIRS}
     ${rcl_interfaces_INCLUDE_DIRS}
     ${trajectory_msgs_INCLUDE_DIRS}
@@ -99,11 +101,12 @@ elseif(ROS_VERSION EQUAL 2)
   add_executable(vola_ros_bridge
     src/vola_ros2_bridge.cpp
   )
-  ament_target_dependencies(vola_ros_bridge 
+  ament_target_dependencies(vola_ros_bridge
     rclcpp
     std_msgs
     std_srvs
     nav_msgs
+    sensor_msgs
     trajectory_msgs
   )
   target_link_libraries(vola_ros_bridge

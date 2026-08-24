@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package volasim_msgs;
+
+import "Header.proto";
+
+// Metadata for one depth-camera frame. The pixel payload travels as a separate
+// raw ZMQ frame (see comms/topics.h for the frame layout), never inside this
+// message — depth is bulk data and must not go through protobuf field encoding.
+// One proto per sensor type rather than a shared header: each sensor carries
+// exactly the fields it needs and nothing else. The sensor's world pose is not
+// here; it is broadcast on the /tf-style transform stream and resolved via
+// header.frame_id.
+message DepthCamera {
+  enum Encoding {
+    DEPTH_U16_MM = 0;  // uint16 little-endian, millimetres, row-major
+  }
+
+  Header header = 1;
+
+  uint32   width    = 2;
+  uint32   height   = 3;
+  Encoding encoding = 4;
+
+  // pinhole intrinsics, in pixels; the consumer reconstructs the cloud from
+  // these plus the depth payload
+  float fx = 5;
+  float fy = 6;
+  float cx = 7;
+  float cy = 8;
+
+  float z_near = 9;
+  float z_far  = 10;
+}
