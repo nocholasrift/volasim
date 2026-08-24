@@ -8,6 +8,7 @@ set(PROTO_FILES
   DroneState.proto
   Header.proto
   DepthCamera.proto
+  Transform.proto
 )
 
 add_library(myproto STATIC ${PROTO_FILES})

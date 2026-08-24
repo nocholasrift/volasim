@@ -85,6 +85,10 @@ class Simulation {
   void setSimState();
   void setInputs(const std::string& buffer);
 
+  // Serializes the current dynamic tf (odom -> base_link) for every drone.
+  // Physics thread only, alongside setSimState.
+  void setTransforms();
+
   const Camera& camera() const { return cameras_[active_camera]; }
   Camera&       camera() { return cameras_[active_camera]; }
 
@@ -98,6 +102,14 @@ class Simulation {
   // Newest frame per sensor, moved out for the comms thread to publish.
   std::vector<SensorFrame> drainSensorFrames();
 
+  // Dynamic tf per drone (odom -> base_link), as serialized TFMessage bytes.
+  // Refreshed every physics step alongside the state snapshot.
+  std::unordered_map<uint32_t, std::string> getTransforms();
+
+  // Static tf tree per drone (base_link -> each sensor), as serialized TFMessage
+  // bytes. Built once at load; the comms thread re-publishes it at a low rate.
+  std::unordered_map<uint32_t, std::string> getStaticTransforms();
+
   EventDispatcher&  getHandler() { return event_handler_; }
   PhysicsInterface& getPhysicsInterface() { return physics_interface_; }
 
@@ -110,6 +122,10 @@ class Simulation {
   // Hands the newest command from the comms thread to the dynamics. Physics
   // thread only — nothing else may touch a DynamicObject while it is stepping.
   void applyPendingInput();
+
+  // Composes the fixed base_link -> sensor edges into static_tf_ once, during
+  // load, while nothing else touches the scene graph.
+  void buildStaticTransforms();
 
   static constexpr uint8_t kMouseRightClick  = 1;
   static constexpr uint8_t kMouseMiddleClick = 2;
@@ -171,6 +187,14 @@ class Simulation {
   Shader shape_shader_;
 
   SimState sim_state_;
+
+  // Dynamic tf (odom -> base_link) per drone, refreshed each physics step.
+  SimState tf_state_;
+
+  // Static tf tree (base_link -> sensors) per drone. Written once by
+  // buildStaticTransforms() before the physics thread starts, then read-only, so
+  // it needs no lock.
+  std::unordered_map<uint32_t, std::string> static_tf_;
 };
 
 #endif

@@ -17,7 +17,7 @@ struct SensorFrame {
 // readings instead of building a backlog.
 class SensorHandoff {
  public:
-  void publish(uint64_t sensor_key, SensorFrame&& frame) {
+  void publish(const std::string& sensor_key, SensorFrame&& frame) {
     std::lock_guard<std::mutex> lock(mutex_);
     latest_[sensor_key] = std::move(frame);
   }
@@ -35,8 +35,8 @@ class SensorHandoff {
   }
 
  private:
-  std::mutex                                mutex_;
-  std::unordered_map<uint64_t, SensorFrame> latest_;
+  std::mutex                                   mutex_;
+  std::unordered_map<std::string, SensorFrame> latest_;
 };
 
 #endif

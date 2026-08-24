@@ -1,20 +1,67 @@
 /*#include <volasim/comms/msgs/Odometry.pb.h>*/
+#include <volasim/comms/frames.h>
 #include <volasim/comms/msgs/DroneState.pb.h>
 #include <volasim/comms/msgs/Thrust.pb.h>
+#include <volasim/comms/msgs/Transform.pb.h>
 
+#include <geometry_msgs/TransformStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/Imu.h>
 #include <ros/ros.h>
 #include <std_msgs/Float32MultiArray.h>
+#include <tf2_ros/static_transform_broadcaster.h>
+#include <tf2_ros/transform_broadcaster.h>
 #include <trajectory_msgs/JointTrajectoryPoint.h>
 #include <std_srvs/Empty.h>
 #include <zmq.hpp>
 
 #include <array>
+#include <cstdint>
 #include <iostream>
 #include <queue>
+#include <string>
+#include <vector>
 
 enum class Action { kTakeoff, kLand, kFlying, kIdle };
+
+// Reads one whole multipart message, or returns empty when nothing is queued.
+static std::vector<zmq::message_t> recv_multipart(zmq::socket_t& sock) {
+  std::vector<zmq::message_t> frames;
+
+  zmq::message_t first;
+  if (!sock.recv(first, zmq::recv_flags::dontwait).has_value()) {
+    return frames;
+  }
+  frames.push_back(std::move(first));
+
+  while (sock.get(zmq::sockopt::rcvmore)) {
+    zmq::message_t part;
+    (void)sock.recv(part);
+    frames.push_back(std::move(part));
+  }
+  return frames;
+}
+
+// Route by exact topic suffix, never a prefix: "drone/<id>/tf" is a byte-prefix
+// of "drone/<id>/tf_static", so a prefix test on tf would also match tf_static.
+static bool ends_with(const std::string& s, const std::string& suffix) {
+  return s.size() >= suffix.size() &&
+         s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
+static uint32_t drone_id_from_topic(const std::string& topic) {
+  const size_t first = topic.find('/');
+  if (first == std::string::npos) {
+    return 0;
+  }
+  const size_t      second = topic.find('/', first + 1);
+  const std::string id     = topic.substr(first + 1, second - first - 1);
+  try {
+    return static_cast<uint32_t>(std::stoul(id));
+  } catch (const std::exception&) {
+    return 0;
+  }
+}
 
 class VolasimROSWrapper {
  public:
@@ -38,7 +85,9 @@ class VolasimROSWrapper {
     zmq_subscriber_ = zmq::socket_t(zmq_context_, zmq::socket_type::sub);
     zmq_subscriber_.connect("tcp://localhost:5556");
     zmq_subscriber_.set(zmq::sockopt::subscribe, "");
-    zmq_subscriber_.set(zmq::sockopt::rcvhwm, 1);
+    // state, tf and tf_static interleave on this socket, so a depth-1 queue would
+    // drop one stream between ticks; leave room for a short burst per drone.
+    zmq_subscriber_.set(zmq::sockopt::rcvhwm, 10);
 
     zmq_publisher_ = zmq::socket_t(zmq_context_, zmq::socket_type::pub);
     zmq_publisher_.bind("tcp://*:5557");
@@ -98,27 +147,76 @@ class VolasimROSWrapper {
       input_ = {0, 0, 0, 0};
     }
 
-    // State is multipart: [topic]["drone/<id>/state"] [DroneState]. Read the
-    // topic frame, then drain to the last frame, which holds the DroneState.
-    zmq::message_t topic;
-    if (!zmq_subscriber_.recv(topic, zmq::recv_flags::dontwait).has_value()) {
+    // Drain every queued message; state, tf and tf_static share this socket.
+    for (;;) {
+      std::vector<zmq::message_t> frames = recv_multipart(zmq_subscriber_);
+      if (frames.size() < 2) {
+        return;
+      }
+      const std::string topic(static_cast<const char*>(frames[0].data()),
+                              frames[0].size());
+      if (ends_with(topic, "/state")) {
+        handle_state(frames);
+      } else if (ends_with(topic, "/tf_static")) {
+        handle_tf(frames, /*is_static=*/true);
+      } else if (ends_with(topic, "/tf")) {
+        handle_tf(frames, /*is_static=*/false);
+      }
+    }
+  }
+
+  // Maps one TFMessage onto a tf2 broadcast. Frame names come straight off the
+  // wire — the sim owns the tf tree convention, the bridge just forwards it.
+  void handle_tf(const std::vector<zmq::message_t>& frames, bool is_static) {
+    volasim_msgs::TFMessage tf_msg;
+    if (!tf_msg.ParseFromArray(frames[1].data(), frames[1].size())) {
+      ROS_WARN("[VolasimROSWrapper] Failed to parse tf message");
       return;
     }
-    zmq::message_t update;
-    while (zmq_subscriber_.get(zmq::sockopt::rcvmore)) {
-      (void)zmq_subscriber_.recv(update);
+
+    std::vector<geometry_msgs::TransformStamped> out;
+    out.reserve(tf_msg.transforms_size());
+    for (const volasim_msgs::TransformStamped& t : tf_msg.transforms()) {
+      geometry_msgs::TransformStamped ts;
+      ts.header.stamp.fromNSec(t.header().stamp_ns());
+      ts.header.frame_id         = t.header().frame_id();
+      ts.child_frame_id          = t.child_frame_id();
+      ts.transform.translation.x = t.translation().x();
+      ts.transform.translation.y = t.translation().y();
+      ts.transform.translation.z = t.translation().z();
+      ts.transform.rotation.x    = t.rotation().x();
+      ts.transform.rotation.y    = t.rotation().y();
+      ts.transform.rotation.z    = t.rotation().z();
+      ts.transform.rotation.w    = t.rotation().w();
+      out.push_back(ts);
     }
 
+    if (out.empty()) {
+      return;
+    }
+    if (is_static) {
+      static_tf_broadcaster_.sendTransform(out);
+    } else {
+      tf_broadcaster_.sendTransform(out);
+    }
+  }
+
+  void handle_state(const std::vector<zmq::message_t>& frames) {
+    const std::string topic(static_cast<const char*>(frames[0].data()),
+                            frames[0].size());
+    const uint32_t drone_id = drone_id_from_topic(topic);
+
     volasim_msgs::DroneState drone_state;
-    if (!drone_state.ParseFromArray(update.data(), update.size())) {
+    if (!drone_state.ParseFromArray(frames[1].data(), frames[1].size())) {
       ROS_WARN("[VolasimROSWrapper] Failed to parse odometry message");
       return;
     }
 
     nav_msgs::Odometry msg;
     msg.header.stamp = ros::Time::now();
-    msg.header.frame_id = "odom";
-    msg.child_frame_id = "base_link";
+    // Match the tf tree so the odom resolves against odom -> base_link.
+    msg.header.frame_id = volasim::frames::odom(drone_id);
+    msg.child_frame_id = volasim::frames::baseLink(drone_id);
     msg.pose.pose.position.x = drone_state.odom().position().x();
     msg.pose.pose.position.y = drone_state.odom().position().y();
     msg.pose.pose.position.z = drone_state.odom().position().z();
@@ -138,7 +236,7 @@ class VolasimROSWrapper {
 
     sensor_msgs::Imu imu_msg;
     imu_msg.header.stamp = ros::Time::now();
-    imu_msg.header.frame_id = "base_link";
+    imu_msg.header.frame_id = volasim::frames::baseLink(drone_id);
     imu_msg.orientation.x = drone_state.imu().orientation().x();
     imu_msg.orientation.y = drone_state.imu().orientation().y();
     imu_msg.orientation.z = drone_state.imu().orientation().z();
@@ -204,6 +302,9 @@ class VolasimROSWrapper {
   ros::ServiceServer land_srv_;
 
   ros::Timer timer_;
+
+  tf2_ros::TransformBroadcaster       tf_broadcaster_;
+  tf2_ros::StaticTransformBroadcaster static_tf_broadcaster_;
 
   std::array<float, 4> input_{0, 0, 0, 0};
 

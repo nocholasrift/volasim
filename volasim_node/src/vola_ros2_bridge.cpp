@@ -1,15 +1,20 @@
+#include <volasim/comms/frames.h>
 #include <volasim/comms/msgs/DepthCamera.pb.h>
 #include <volasim/comms/msgs/DroneState.pb.h>
 #include <volasim/comms/msgs/Odometry.pb.h>
 #include <volasim/comms/msgs/Thrust.pb.h>
+#include <volasim/comms/msgs/Transform.pb.h>
 
 #include <geometry_msgs/msg/point.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 #include <std_msgs/msg/float32_multi_array.hpp>
 #include <std_srvs/srv/empty.hpp>
+#include <tf2_ros/static_transform_broadcaster.h>
+#include <tf2_ros/transform_broadcaster.h>
 #include <zmq.hpp>
 
 #include <array>
@@ -17,6 +22,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 #include <queue>
 #include <string>
 #include <vector>
@@ -67,6 +73,29 @@ static std::vector<zmq::message_t> recv_multipart(zmq::socket_t& sock) {
   return frames;
 }
 
+// state, tf and tf_static share one socket, so messages are routed by the exact
+// topic suffix. A prefix test would be wrong: "drone/<id>/tf" is a byte-prefix
+// of "drone/<id>/tf_static", so a prefix on tf would also swallow tf_static.
+static bool ends_with(const std::string& s, const std::string& suffix) {
+  return s.size() >= suffix.size() &&
+         s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
+// Pulls <id> out of a "drone/<id>/<stream>" topic; 0 if it cannot be parsed.
+static uint32_t drone_id_from_topic(const std::string& topic) {
+  const size_t first = topic.find('/');
+  if (first == std::string::npos) {
+    return 0;
+  }
+  const size_t      second = topic.find('/', first + 1);
+  const std::string id     = topic.substr(first + 1, second - first - 1);
+  try {
+    return static_cast<uint32_t>(std::stoul(id));
+  } catch (const std::exception&) {
+    return 0;
+  }
+}
+
 class VolasimROS2Wrapper : public rclcpp::Node {
  public:
   VolasimROS2Wrapper() : Node("volasim_ros2") {
@@ -82,6 +111,10 @@ class VolasimROS2Wrapper : public rclcpp::Node {
         this->create_publisher<geometry_msgs::msg::Point>("command_pos", 10);
     cloud_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
         "depth/points", 10);
+
+    tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+    static_tf_broadcaster_ =
+        std::make_unique<tf2_ros::StaticTransformBroadcaster>(*this);
 
     // Timer: 1 ms
     timer_ =
@@ -101,7 +134,9 @@ class VolasimROS2Wrapper : public rclcpp::Node {
     zmq_subscriber_ = zmq::socket_t(zmq_context_, zmq::socket_type::sub);
     zmq_subscriber_.connect(sim_state_endpoint());
     zmq_subscriber_.set(zmq::sockopt::subscribe, "");
-    zmq_subscriber_.set(zmq::sockopt::rcvhwm, 1);
+    // state, tf and tf_static interleave on this socket, so a depth-1 queue would
+    // drop one stream between ticks; leave room for a short burst per drone.
+    zmq_subscriber_.set(zmq::sockopt::rcvhwm, 10);
 
     cloud_endpoint_          = cloud_primary_endpoint();
     cloud_fallback_endpoint_ = cloud_fallback_endpoint(cloud_endpoint_);
@@ -168,16 +203,71 @@ class VolasimROS2Wrapper : public rclcpp::Node {
       input_ = {0, 0, 0, 0};
     }
 
-    poll_state();
+    poll_fast();
     poll_cloud();
   }
 
-  void poll_state() {
-    // State is multipart: [topic]["drone/<id>/state"] [DroneState].
-    std::vector<zmq::message_t> frames = recv_multipart(zmq_subscriber_);
-    if (frames.size() < 2) {
+  // Drains every queued message on the fast socket and routes each by its topic;
+  // state, tf and tf_static share this socket.
+  void poll_fast() {
+    for (;;) {
+      std::vector<zmq::message_t> frames = recv_multipart(zmq_subscriber_);
+      if (frames.size() < 2) {
+        return;
+      }
+      const std::string topic(static_cast<const char*>(frames[0].data()),
+                              frames[0].size());
+      if (ends_with(topic, "/state")) {
+        handle_state(frames);
+      } else if (ends_with(topic, "/tf_static")) {
+        handle_tf(frames, /*is_static=*/true);
+      } else if (ends_with(topic, "/tf")) {
+        handle_tf(frames, /*is_static=*/false);
+      }
+    }
+  }
+
+  // Maps one TFMessage onto a tf2 broadcast. Frame names come straight off the
+  // wire — the sim owns the tf tree convention, the bridge just forwards it.
+  void handle_tf(const std::vector<zmq::message_t>& frames, bool is_static) {
+    volasim_msgs::TFMessage tf_msg;
+    if (!tf_msg.ParseFromArray(frames[1].data(), frames[1].size())) {
+      RCLCPP_WARN(this->get_logger(),
+                  "[VolasimROS2Wrapper] Failed to parse tf message");
       return;
     }
+
+    std::vector<geometry_msgs::msg::TransformStamped> out;
+    out.reserve(tf_msg.transforms_size());
+    for (const volasim_msgs::TransformStamped& t : tf_msg.transforms()) {
+      geometry_msgs::msg::TransformStamped ts;
+      ts.header.stamp            = rclcpp::Time(t.header().stamp_ns());
+      ts.header.frame_id         = t.header().frame_id();
+      ts.child_frame_id          = t.child_frame_id();
+      ts.transform.translation.x = t.translation().x();
+      ts.transform.translation.y = t.translation().y();
+      ts.transform.translation.z = t.translation().z();
+      ts.transform.rotation.x    = t.rotation().x();
+      ts.transform.rotation.y    = t.rotation().y();
+      ts.transform.rotation.z    = t.rotation().z();
+      ts.transform.rotation.w    = t.rotation().w();
+      out.push_back(ts);
+    }
+
+    if (out.empty()) {
+      return;
+    }
+    if (is_static) {
+      static_tf_broadcaster_->sendTransform(out);
+    } else {
+      tf_broadcaster_->sendTransform(out);
+    }
+  }
+
+  void handle_state(const std::vector<zmq::message_t>& frames) {
+    const std::string topic(static_cast<const char*>(frames[0].data()),
+                            frames[0].size());
+    const uint32_t drone_id = drone_id_from_topic(topic);
 
     // Parse the DroneState wrapper and pull out odom rather than parsing the
     // bytes as a bare Odometry, whose fields do not line up.
@@ -190,6 +280,10 @@ class VolasimROS2Wrapper : public rclcpp::Node {
     const volasim_msgs::Odometry& odom = state.odom();
 
     nav_msgs::msg::Odometry msg;
+    // Match the tf tree so the odom resolves against odom -> base_link.
+    msg.header.stamp       = this->now();
+    msg.header.frame_id    = volasim::frames::odom(drone_id);
+    msg.child_frame_id     = volasim::frames::baseLink(drone_id);
     msg.pose.pose.position.x = odom.position().x();
     msg.pose.pose.position.y = odom.position().y();
     msg.pose.pose.position.z = odom.position().z();
@@ -340,6 +434,9 @@ class VolasimROS2Wrapper : public rclcpp::Node {
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr       state_pub_;
   rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr     pos_cmd_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_pub_;
+
+  std::unique_ptr<tf2_ros::TransformBroadcaster>       tf_broadcaster_;
+  std::unique_ptr<tf2_ros::StaticTransformBroadcaster> static_tf_broadcaster_;
 
   rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr cmd_sub_;
   rclcpp::TimerBase::SharedPtr                                      timer_;
