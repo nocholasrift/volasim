@@ -1,5 +1,6 @@
 #include <glad/glad.h>
 
+#include <volasim/comms/frame_registry.h>
 #include <volasim/comms/frames.h>
 #include <volasim/comms/msgs/Transform.pb.h>
 #include <volasim/comms/topics.h>
@@ -21,7 +22,6 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <stdexcept>
-#include <unordered_set>
 
 namespace {
 
@@ -465,9 +465,12 @@ void Simulation::buildStaticTransforms() {
   // the whole static subtree atomically.
   std::unordered_map<uint32_t, volasim_msgs::TFMessage> per_drone;
 
-  // Sensor names must be unique within a drone; a repeat gets a numeric suffix
-  // until it no longer clashes with a name already taken on that drone.
-  std::unordered_map<uint32_t, std::unordered_set<std::string>> taken;
+  // Assigns unique sensor frames per drone. Roots are reserved first so a sensor
+  // named "odom"/"base_link" cannot shadow the tree's own frames.
+  volasim::frames::Registry registry;
+  for (const auto& [entity, drone_id] : drone_of_vehicle) {
+    registry.reserveRoots(drone_id);
+  }
 
   for (GPUSensor& sensor : gpu_sensors_) {
     const Entity& sensor_entity = sensor.entity();
@@ -476,31 +479,24 @@ void Simulation::buildStaticTransforms() {
     const auto     it       = drone_of_vehicle.find(vehicle);
     const uint32_t drone_id = it != drone_of_vehicle.end() ? it->second : 0;
 
-    const std::string base = sensor_entity.getName();
-    std::string       name = base;
-    for (uint32_t n = 1; !taken[drone_id].insert(name).second; ++n) {
-      name = base + "_" + std::to_string(n);
-    }
-
-    const std::string link    = volasim::frames::sensor(drone_id, name);
-    const std::string optical = volasim::frames::sensorOptical(drone_id, name);
+    const auto frames = registry.assignSensor(drone_id, sensor_entity.getName());
 
     // Hand the sensor its opaque publish labels; it stamps clouds in the optical
     // frame and publishes on the drone's depth topic.
-    sensor.setFrameId(optical);
+    sensor.setFrameId(frames.optical);
     sensor.setTopic(volasim::topics::depth(drone_id));
 
     // base_link -> sensor link frame (the physical mount pose).
     const Transform& mount = sensor_entity.getLocalTransform();
     fillTransform(per_drone[drone_id].add_transforms(), stamp_ns, drone_id,
-                  volasim::frames::baseLink(drone_id), link, mount.position,
-                  mount.rotation);
+                  volasim::frames::baseLink(drone_id), frames.link,
+                  mount.position, mount.rotation);
 
     // sensor link -> optical frame. Depth clouds are published in the optical
     // frame, so without this edge a z-forward cloud would be drawn along the
     // link frame's z (up) axis.
-    fillTransform(per_drone[drone_id].add_transforms(), stamp_ns, drone_id, link,
-                  optical, glm::vec3(0.F), kLinkToOptical);
+    fillTransform(per_drone[drone_id].add_transforms(), stamp_ns, drone_id,
+                  frames.link, frames.optical, glm::vec3(0.F), kLinkToOptical);
   }
 
   static_tf_.clear();

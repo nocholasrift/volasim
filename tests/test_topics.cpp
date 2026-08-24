@@ -1,5 +1,6 @@
 #include <doctest.h>
 
+#include <volasim/comms/frame_registry.h>
 #include <volasim/comms/frames.h>
 #include <volasim/comms/topics.h>
 
@@ -64,4 +65,48 @@ TEST_CASE("each drone's frames are disjoint from another's") {
   CHECK(frames::baseLink(0) != frames::baseLink(1));
   CHECK(frames::sensor(0, "depth") != frames::sensor(1, "depth"));
   CHECK(frames::sensor(0, "depth_a") != frames::sensor(0, "depth_b"));
+}
+
+TEST_CASE("frame registry keeps a sensor off the reserved root frames") {
+  frames::Registry reg;
+  reg.reserveRoots(0);
+
+  const auto base = reg.assignSensor(0, "base_link");
+  CHECK(base.link != frames::baseLink(0));
+  CHECK(base.link == "drone_0/base_link_1");
+
+  const auto odom = reg.assignSensor(0, "odom");
+  CHECK(odom.link != frames::odom(0));
+  CHECK(odom.link == "drone_0/odom_1");
+}
+
+TEST_CASE("frame registry disambiguates a name that hits another sensor's optical frame") {
+  frames::Registry reg;
+
+  const auto a = reg.assignSensor(0, "foo");
+  CHECK(a.link == "drone_0/foo");
+  CHECK(a.optical == "drone_0/foo_optical");
+
+  // "foo_optical" would produce link drone_0/foo_optical, already taken by a's
+  // optical frame, so it must be bumped.
+  const auto b = reg.assignSensor(0, "foo_optical");
+  CHECK(b.link != a.optical);
+  CHECK(b.link == "drone_0/foo_optical_1");
+}
+
+TEST_CASE("frame registry gives duplicate sensor names distinct frames") {
+  frames::Registry reg;
+  const auto a = reg.assignSensor(0, "cam");
+  const auto b = reg.assignSensor(0, "cam");
+  CHECK(a.link != b.link);
+  CHECK(a.optical != b.optical);
+  CHECK(b.link == "drone_0/cam_1");
+}
+
+TEST_CASE("frame registry disambiguates per drone independently") {
+  frames::Registry reg;
+  const auto a = reg.assignSensor(0, "cam");
+  const auto b = reg.assignSensor(1, "cam");
+  CHECK(a.link == "drone_0/cam");
+  CHECK(b.link == "drone_1/cam");  // different drone: no suffix needed
 }

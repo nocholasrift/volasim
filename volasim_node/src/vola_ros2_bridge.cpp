@@ -207,10 +207,14 @@ class VolasimROS2Wrapper : public rclcpp::Node {
     poll_cloud();
   }
 
-  // Drains every queued message on the fast socket and routes each by its topic;
-  // state, tf and tf_static share this socket.
+  // Drains the fast socket and routes each message by its topic; state, tf and
+  // tf_static share this socket. The batch is capped so a saturated fast stream
+  // cannot starve poll_cloud(), which runs after this each tick — well above the
+  // steady-state volume, so it only bounds a pathological burst.
+  static constexpr int kMaxFastMsgsPerTick = 32;
+
   void poll_fast() {
-    for (;;) {
+    for (int i = 0; i < kMaxFastMsgsPerTick; ++i) {
       std::vector<zmq::message_t> frames = recv_multipart(zmq_subscriber_);
       if (frames.size() < 2) {
         return;

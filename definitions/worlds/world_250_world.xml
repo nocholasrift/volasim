@@ -32,6 +32,7 @@
 
    <vehicle name="drone1" class="hummingbird">
      <include file="./definitions/sensors/realsense.xml" x="0.025" y="0.025" z="0.01" yaw="45" />
+     <include file="./definitions/sensors/realsense.xml" x="-0.025" y="0.025" z="0.01" yaw="135" />
      <init_pose>-2.25 2.5 2.0</init_pose>
    </vehicle>
 

@@ -63,6 +63,9 @@ static uint32_t drone_id_from_topic(const std::string& topic) {
   }
 }
 
+// Cap on fast-socket messages drained per timer callback (see the drain loop).
+static constexpr int kMaxFastMsgsPerTick = 32;
+
 class VolasimROSWrapper {
  public:
   VolasimROSWrapper(ros::NodeHandle& nh) {
@@ -147,8 +150,10 @@ class VolasimROSWrapper {
       input_ = {0, 0, 0, 0};
     }
 
-    // Drain every queued message; state, tf and tf_static share this socket.
-    for (;;) {
+    // Drain the fast socket; state, tf and tf_static share it. The batch is
+    // capped so a saturated fast stream cannot monopolise the callback — well
+    // above the steady-state volume, so it only bounds a pathological burst.
+    for (int i = 0; i < kMaxFastMsgsPerTick; ++i) {
       std::vector<zmq::message_t> frames = recv_multipart(zmq_subscriber_);
       if (frames.size() < 2) {
         return;
