@@ -1,3 +1,4 @@
+#include <volasim/comms/msgs/DepthCamera.pb.h>
 #include <volasim/comms/msgs/DroneState.pb.h>
 #include <volasim/comms/msgs/Odometry.pb.h>
 #include <volasim/comms/msgs/Thrust.pb.h>
@@ -5,15 +6,20 @@
 #include <geometry_msgs/msg/point.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <sensor_msgs/point_cloud2_iterator.hpp>
 #include <std_msgs/msg/float32_multi_array.hpp>
 #include <std_srvs/srv/empty.hpp>
 #include <zmq.hpp>
 
 #include <array>
+#include <chrono>
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <queue>
 #include <string>
+#include <vector>
 
 enum class Action { kTakeoff, kLand, kFlying, kIdle };
 
@@ -22,6 +28,43 @@ enum class Action { kTakeoff, kLand, kFlying, kIdle };
 static std::string sim_state_endpoint() {
   const char* host = std::getenv("VOLASIM_SIM_HOST");
   return "tcp://" + std::string(host ? host : "localhost") + ":5556";
+}
+
+// Preferred cloud endpoint: ipc, so a native same-host consumer pays no network
+// cost. VOLASIM_CLOUD_ENDPOINT overrides it (e.g. to force tcp).
+static std::string cloud_primary_endpoint() {
+  const char* ep = std::getenv("VOLASIM_CLOUD_ENDPOINT");
+  return ep ? ep : "ipc:///tmp/volasim_cloud";
+}
+
+// TCP endpoint to fall back to when ipc yields nothing — the only path that
+// crosses a container/VM boundary (ipc sockets are host-kernel objects and do
+// not survive a bind mount into the Docker Desktop VM). Empty when the primary
+// is already tcp, since there is nothing better to fall back to.
+static std::string cloud_fallback_endpoint(const std::string& primary) {
+  if (primary.rfind("tcp://", 0) == 0) {
+    return "";
+  }
+  const char* host = std::getenv("VOLASIM_SIM_HOST");
+  return "tcp://" + std::string(host ? host : "localhost") + ":5559";
+}
+
+// Reads one whole multipart message, or returns empty when nothing is queued.
+static std::vector<zmq::message_t> recv_multipart(zmq::socket_t& sock) {
+  std::vector<zmq::message_t> frames;
+
+  zmq::message_t first;
+  if (!sock.recv(first, zmq::recv_flags::dontwait).has_value()) {
+    return frames;
+  }
+  frames.push_back(std::move(first));
+
+  while (sock.get(zmq::sockopt::rcvmore)) {
+    zmq::message_t part;
+    (void)sock.recv(part);  // the rest of an atomic message is already buffered
+    frames.push_back(std::move(part));
+  }
+  return frames;
 }
 
 class VolasimROS2Wrapper : public rclcpp::Node {
@@ -37,6 +80,8 @@ class VolasimROS2Wrapper : public rclcpp::Node {
         this->create_publisher<nav_msgs::msg::Odometry>("odometry", 10);
     pos_cmd_pub_ =
         this->create_publisher<geometry_msgs::msg::Point>("command_pos", 10);
+    cloud_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
+        "depth/points", 10);
 
     // Timer: 1 ms
     timer_ =
@@ -57,6 +102,21 @@ class VolasimROS2Wrapper : public rclcpp::Node {
     zmq_subscriber_.connect(sim_state_endpoint());
     zmq_subscriber_.set(zmq::sockopt::subscribe, "");
     zmq_subscriber_.set(zmq::sockopt::rcvhwm, 1);
+
+    cloud_endpoint_          = cloud_primary_endpoint();
+    cloud_fallback_endpoint_ = cloud_fallback_endpoint(cloud_endpoint_);
+    zmq_cloud_sub_ = zmq::socket_t(zmq_context_, zmq::socket_type::sub);
+    zmq_cloud_sub_.set(zmq::sockopt::subscribe, "");
+    zmq_cloud_sub_.set(zmq::sockopt::rcvhwm, 1);
+    zmq_cloud_sub_.connect(cloud_endpoint_);
+    cloud_fallback_deadline_ =
+        std::chrono::steady_clock::now() + kCloudFallbackGrace;
+    RCLCPP_INFO(this->get_logger(), "[VolasimROS2Wrapper] cloud on %s%s",
+                cloud_endpoint_.c_str(),
+                cloud_fallback_endpoint_.empty()
+                    ? ""
+                    : (" (falls back to " + cloud_fallback_endpoint_ + ")")
+                          .c_str());
 
     zmq_publisher_ = zmq::socket_t(zmq_context_, zmq::socket_type::pub);
     zmq_publisher_.bind("tcp://*:5557");
@@ -79,7 +139,7 @@ class VolasimROS2Wrapper : public rclcpp::Node {
   }
 
   void land_srv(const std::shared_ptr<std_srvs::srv::Empty::Request> request,
-                std::shared_ptr<std_srvs::srv::Empty::Response> response) {
+                std::shared_ptr<std_srvs::srv::Empty::Response>      response) {
     pending_actions_.push(Action::kLand);
   }
 
@@ -108,16 +168,21 @@ class VolasimROS2Wrapper : public rclcpp::Node {
       input_ = {0, 0, 0, 0};
     }
 
-    zmq::message_t update;
-    auto result = zmq_subscriber_.recv(update, zmq::recv_flags::dontwait);
-    if (!result.has_value())
-      return;
+    poll_state();
+    poll_cloud();
+  }
 
-    // The sim publishes a DroneState (imu + odom); parse the wrapper and pull
-    // out the odom sub-message rather than parsing the bytes as a bare
-    // Odometry, whose fields do not line up with DroneState's.
+  void poll_state() {
+    // State is multipart: [topic]["drone/<id>/state"] [DroneState].
+    std::vector<zmq::message_t> frames = recv_multipart(zmq_subscriber_);
+    if (frames.size() < 2) {
+      return;
+    }
+
+    // Parse the DroneState wrapper and pull out odom rather than parsing the
+    // bytes as a bare Odometry, whose fields do not line up.
     volasim_msgs::DroneState state;
-    if (!state.ParseFromArray(update.data(), update.size())) {
+    if (!state.ParseFromArray(frames[1].data(), frames[1].size())) {
       RCLCPP_WARN(this->get_logger(),
                   "[VolasimROS2Wrapper] Failed to parse drone state message");
       return;
@@ -181,11 +246,103 @@ class VolasimROS2Wrapper : public rclcpp::Node {
       state_ = Action::kIdle;
   }
 
-  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr state_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr pos_cmd_pub_;
+  // Any frame at all proves the primary endpoint delivers; a malformed message
+  // is still delivery, so it too cancels the fallback.
+  void poll_cloud() {
+    // Cloud is multipart: [topic] [DepthCamera header] [uint16 mm payload].
+    std::vector<zmq::message_t> frames = recv_multipart(zmq_cloud_sub_);
+    if (frames.empty()) {
+      maybe_fallback_cloud();
+      return;
+    }
+    cloud_received_ = true;
+    if (frames.size() < 3) {
+      return;
+    }
+
+    volasim_msgs::DepthCamera header;
+    if (!header.ParseFromArray(frames[1].data(), frames[1].size())) {
+      RCLCPP_WARN(this->get_logger(),
+                  "[VolasimROS2Wrapper] Failed to parse depth header");
+      return;
+    }
+    publish_cloud(header, frames[2]);
+  }
+
+  // ipc gives nothing when the sim is on the far side of a container/VM
+  // boundary. After a grace period with no frames, switch the same socket over
+  // to tcp — one-shot, since tcp reaches the sim whether it is local or remote.
+  void maybe_fallback_cloud() {
+    if (cloud_received_ || cloud_fell_back_ || cloud_fallback_endpoint_.empty()) {
+      return;
+    }
+    if (std::chrono::steady_clock::now() < cloud_fallback_deadline_) {
+      return;
+    }
+    RCLCPP_WARN(this->get_logger(),
+                "[VolasimROS2Wrapper] no cloud on %s; falling back to %s",
+                cloud_endpoint_.c_str(), cloud_fallback_endpoint_.c_str());
+    zmq_cloud_sub_.disconnect(cloud_endpoint_);
+    zmq_cloud_sub_.connect(cloud_fallback_endpoint_);
+    cloud_endpoint_  = cloud_fallback_endpoint_;
+    cloud_fell_back_ = true;
+  }
+
+  void publish_cloud(const volasim_msgs::DepthCamera& header,
+                     const zmq::message_t&            payload) {
+    const uint32_t w = header.width();
+    const uint32_t h = header.height();
+    if (payload.size() < static_cast<size_t>(w) * h * sizeof(uint16_t)) {
+      RCLCPP_WARN(this->get_logger(),
+                  "[VolasimROS2Wrapper] depth payload smaller than w*h");
+      return;
+    }
+
+    const auto* depth = static_cast<const uint16_t*>(payload.data());
+    const float fx = header.fx(), fy = header.fy();
+    const float cx = header.cx(), cy = header.cy();
+
+    sensor_msgs::msg::PointCloud2 cloud;
+    cloud.header.frame_id = header.header().frame_id();
+    cloud.header.stamp    = rclcpp::Time(header.header().stamp_ns());
+    cloud.is_bigendian    = false;
+    cloud.is_dense        = false;
+
+    sensor_msgs::PointCloud2Modifier mod(cloud);
+    mod.setPointCloud2FieldsByString(1, "xyz");
+    mod.resize(static_cast<size_t>(w) * h);  // upper bound; trimmed below
+
+    sensor_msgs::PointCloud2Iterator<float> ix(cloud, "x");
+    sensor_msgs::PointCloud2Iterator<float> iy(cloud, "y");
+    sensor_msgs::PointCloud2Iterator<float> iz(cloud, "z");
+
+    size_t points = 0;
+    for (uint32_t row = 0; row < h; ++row) {
+      // glReadPixels gives row 0 at the bottom; flip to the top-origin optical
+      // frame so the cloud is not upside down.
+      const uint32_t v = h - 1 - row;
+      for (uint32_t u = 0; u < w; ++u) {
+        const uint16_t d = depth[row * w + u];
+        if (d == 0) {  // 0 is the sensor's no-return marker
+          continue;
+        }
+        const float z = static_cast<float>(d) * 0.001F;
+        *ix           = (static_cast<float>(u) - cx) * z / fx;
+        *iy           = (static_cast<float>(v) - cy) * z / fy;
+        *iz           = z;
+        ++ix, ++iy, ++iz, ++points;
+      }
+    }
+    mod.resize(points);
+    cloud_pub_->publish(cloud);
+  }
+
+  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr       state_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr     pos_cmd_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_pub_;
 
   rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr cmd_sub_;
-  rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::TimerBase::SharedPtr                                      timer_;
 
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr takeoff_srv_;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr land_srv_;
@@ -193,11 +350,21 @@ class VolasimROS2Wrapper : public rclcpp::Node {
   std::array<float, 4> input_{0, 0, 0, 0};
 
   std::queue<Action> pending_actions_;
-  Action state_ = Action::kIdle;
+  Action             state_ = Action::kIdle;
 
   zmq::context_t zmq_context_;
-  zmq::socket_t zmq_subscriber_;
-  zmq::socket_t zmq_publisher_;
+  zmq::socket_t  zmq_subscriber_;
+  zmq::socket_t  zmq_cloud_sub_;
+  zmq::socket_t  zmq_publisher_;
+
+  // Long enough that a slow-to-start sim is not mistaken for an unreachable ipc
+  // endpoint, short enough that a container consumer is not starved of cloud.
+  static constexpr std::chrono::seconds kCloudFallbackGrace{5};
+  std::string                           cloud_endpoint_;
+  std::string                           cloud_fallback_endpoint_;
+  std::chrono::steady_clock::time_point cloud_fallback_deadline_;
+  bool                                  cloud_received_  = false;
+  bool                                  cloud_fell_back_ = false;
 };
 
 int main(int argc, char* argv[]) {
