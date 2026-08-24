@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package volasim_msgs;
+
+import "Header.proto";
+import "Odometry.proto";
+
+// Mirrors ROS geometry_msgs/TransformStamped + tf2_msgs/TFMessage so the bridge
+// maps a TFMessage straight onto a tf2 broadcast. header.frame_id names the
+// PARENT frame; child_frame_id names the child. Translation/orientation reuse
+// the Odometry nested types so the pose encoding matches the odom stream.
+message TransformStamped {
+  Header               header         = 1;  // header.frame_id = parent frame
+  string               child_frame_id = 2;
+  Odometry.Position    translation    = 3;
+  Odometry.Orientation rotation       = 4;
+}
+
+message TFMessage {
+  repeated TransformStamped transforms = 1;
+}

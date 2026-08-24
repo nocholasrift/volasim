@@ -10,8 +10,10 @@ package volasim_msgs;
 // /tf-style message (a list of transforms) and resolved by frame_id, matching
 // how ROS decouples data from the transform tree.
 message Header {
-  int64  stamp_ns  = 1;
-  uint32 drone_id  = 2;
-  uint32 sensor_id = 3;  // 0 for messages not tied to a specific sensor
-  string frame_id  = 4;
+  reserved 3;              // was sensor_id; sensors are identified by frame_id now
+  reserved "sensor_id";
+
+  int64  stamp_ns = 1;
+  uint32 drone_id = 2;
+  string frame_id = 4;     // fully identifies the source frame (drone + sensor)
 }

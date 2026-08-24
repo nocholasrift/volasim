@@ -19,9 +19,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /ws
 
 # Mirror the repo layout so volasim_node's relative paths resolve unchanged.
-# Build context is the repo root (see docker-compose.yml).
+# Build context is the repo root (see docker-compose.yml). The whole comms dir is
+# copied (not just msgs/) so shared headers like frames.h and topics.h resolve.
 COPY docker/CMakeLists.txt ./CMakeLists.txt
-COPY include/volasim/comms/msgs/ ./include/volasim/comms/msgs/
+COPY include/volasim/comms/ ./include/volasim/comms/
 COPY volasim_node/ ./volasim_node/
 COPY third_party/cppzmq/zmq.hpp third_party/cppzmq/zmq_addon.hpp ./third_party/cppzmq/
 

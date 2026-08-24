@@ -2,7 +2,6 @@
 #define DEPTHSENSOR_H
 
 #include <volasim/comms/msgs/DepthCamera.pb.h>
-#include <volasim/comms/topics.h>
 #include <volasim/sensors/sensor_handoff.h>
 #include <volasim/simulation/dynamic_object.h>
 #include <volasim/simulation/entity.h>
@@ -260,16 +259,19 @@ class GPUSensor {
 
   glm::mat4 getProjMat() { return proj_mat_; }
 
-  void setIds(uint32_t drone_id, uint32_t sensor_id) {
-    drone_id_  = drone_id;
-    sensor_id_ = sensor_id;
-    frame_id_  = "drone_" + std::to_string(drone_id) + "_depth_" +
-                std::to_string(sensor_id);
-  }
+  // Where and under what frame this sensor's data is published. The sensor holds
+  // these as opaque strings; the transform-tree code owns how they are named and
+  // hands them in, so the sensor stays decoupled from drones and frame naming.
+  void setTopic(std::string topic) { topic_ = std::move(topic); }
+  void setFrameId(std::string frame_id) { frame_id_ = std::move(frame_id); }
 
-  [[nodiscard]] uint64_t sensorKey() const {
-    return (static_cast<uint64_t>(drone_id_) << 32) | sensor_id_;
-  }
+  // The published frame uniquely identifies this sensor, so it doubles as the
+  // handoff key that keeps only the newest frame per sensor.
+  [[nodiscard]] const std::string& sensorKey() const { return frame_id_; }
+
+  // The entity this sensor is mounted on. Lets the tree code read the sensor's
+  // name and owning vehicle without the sensor knowing anything about either.
+  [[nodiscard]] const Entity& entity() const { return *parent_; }
 
   // Gate is created on first use so it starts from a live clock, not load time.
   bool captureDue(std::chrono::steady_clock::time_point now) {
@@ -352,7 +354,7 @@ class GPUSensor {
     }
     glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 
-    out.topic  = volasim::topics::depth(drone_id_);
+    out.topic  = topic_;
     out.header = std::move(front.header);
 
     glDeleteSync(front.fence);
@@ -426,8 +428,8 @@ class GPUSensor {
         std::chrono::duration_cast<std::chrono::nanoseconds>(
             std::chrono::system_clock::now().time_since_epoch())
             .count());
-    header->set_drone_id(drone_id_);
-    header->set_sensor_id(sensor_id_);
+    // The cloud is built in the optical convention (z forward), so the tree code
+    // hands this sensor its optical frame as frame_id_.
     header->set_frame_id(frame_id_);
 
     msg.set_width(static_cast<uint32_t>(settings_.width));
@@ -471,9 +473,9 @@ class GPUSensor {
   std::vector<int>                                free_pbos_;
   std::deque<InFlight>                            in_flight_;
 
-  uint32_t    drone_id_{0};
-  uint32_t    sensor_id_{0};
-  std::string frame_id_{"depth"};
+  // Opaque publish labels, assigned by the transform-tree code after load.
+  std::string topic_{"depth"};
+  std::string frame_id_{"sensor"};
 
   // paces this sensor's captures at settings_.rate_hz; lazily created
   std::unique_ptr<RateGate> gate_;

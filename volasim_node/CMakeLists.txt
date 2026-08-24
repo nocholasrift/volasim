@@ -35,9 +35,11 @@ if(ROS_VERSION EQUAL 1)
   find_package(catkin COMPONENTS
     roscpp
     nav_msgs
+    sensor_msgs
     std_msgs
     geometry_msgs
     trajectory_msgs
+    tf2_ros
   )
 
   include_directories(${catkin_INCLUDE_DIRS})
@@ -87,6 +89,7 @@ elseif(ROS_VERSION EQUAL 2)
   find_package(geometry_msgs REQUIRED)
   find_package(rcl_interfaces REQUIRED)
   find_package(trajectory_msgs REQUIRED)
+  find_package(tf2_ros REQUIRED)
 
   include_directories(
     ${rclcpp_INCLUDE_DIRS}
@@ -107,7 +110,9 @@ elseif(ROS_VERSION EQUAL 2)
     std_srvs
     nav_msgs
     sensor_msgs
+    geometry_msgs
     trajectory_msgs
+    tf2_ros
   )
   target_link_libraries(vola_ros_bridge
     cppzmq

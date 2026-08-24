@@ -49,11 +49,29 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
     // block until the world is loaded and physics is running before publishing
     sim.waitUntilRunning();
     auto next_time = std::chrono::steady_clock::now();
+
+    // Static tf never changes, so it is re-sent at a low rate purely so a bridge
+    // that connects late still receives it (ZMQ PUB/SUB does not latch).
+    constexpr auto kStaticTfPeriod = std::chrono::seconds(1);
+    auto           next_static_tf  = std::chrono::steady_clock::now();
     while (sim.isRunning()) {
       // one message per drone; the topic carries the drone id so subscribers
       // filter by drone/<id>/ in the ZMQ layer
       for (const auto& [drone_id, state_bytes] : sim.getSimState()) {
         server.publishState(volasim::topics::state(drone_id), state_bytes);
+      }
+
+      // dynamic tf (odom -> base_link) every tick, on the fast socket
+      for (const auto& [drone_id, tf_bytes] : sim.getTransforms()) {
+        server.publishState(volasim::topics::tf(drone_id), tf_bytes);
+      }
+
+      const auto now = std::chrono::steady_clock::now();
+      if (now >= next_static_tf) {
+        for (const auto& [drone_id, tf_bytes] : sim.getStaticTransforms()) {
+          server.publishState(volasim::topics::tfStatic(drone_id), tf_bytes);
+        }
+        next_static_tf = now + kStaticTfPeriod;
       }
 
       for (SensorFrame& frame : sim.drainSensorFrames()) {

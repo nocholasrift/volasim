@@ -75,7 +75,9 @@ class Entity {
   void draw(const WorldSnapshot& snapshot, const glm::mat4& parent_transform,
             const glm::mat4& view, const glm::mat4& proj, Shader& shader) const;
 
-  [[nodiscard]] EntityID getID() const { return id_; }
+  [[nodiscard]] EntityID           getID() const { return id_; }
+  [[nodiscard]] const std::string& getName() const { return name_; }
+  [[nodiscard]] const Entity*      getParent() const { return parent_; }
 
  private:
   // Dispatch OBJ_RM for this node and its whole subtree (children first), so

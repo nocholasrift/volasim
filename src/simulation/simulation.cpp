@@ -1,5 +1,9 @@
 #include <glad/glad.h>
 
+#include <volasim/comms/frame_registry.h>
+#include <volasim/comms/frames.h>
+#include <volasim/comms/msgs/Transform.pb.h>
+#include <volasim/comms/topics.h>
 #include <volasim/simulation/simulation.h>
 #include <volasim/vehicles/drone.h>
 #include "SDL3/SDL_video.h"
@@ -18,6 +22,38 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <stdexcept>
+
+namespace {
+
+int64_t nowNs() {
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(
+             std::chrono::system_clock::now().time_since_epoch())
+      .count();
+}
+
+void fillTransform(volasim_msgs::TransformStamped* tf, int64_t stamp_ns,
+                   uint32_t drone_id, const std::string& parent_frame,
+                   const std::string& child_frame, const glm::vec3& t,
+                   const glm::quat& q) {
+  volasim_msgs::Header* header = tf->mutable_header();
+  header->set_stamp_ns(stamp_ns);
+  header->set_drone_id(drone_id);
+  header->set_frame_id(parent_frame);  // parent frame, per the tf convention
+  tf->set_child_frame_id(child_frame);
+
+  volasim_msgs::Odometry_Position* trans = tf->mutable_translation();
+  trans->set_x(t.x);
+  trans->set_y(t.y);
+  trans->set_z(t.z);
+
+  volasim_msgs::Odometry_Orientation* rot = tf->mutable_rotation();
+  rot->set_x(q.x);
+  rot->set_y(q.y);
+  rot->set_z(q.z);
+  rot->set_w(q.w);
+}
+
+}  // namespace
 
 Simulation::Simulation()
     : event_handler_(EventDispatcher::getInstance()),
@@ -135,6 +171,10 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
     sensor.init();
   }
 
+  // Sensor mount poses are fixed and the scene graph is complete here, before
+  // physics can mutate anything, so compose the static tf tree once.
+  buildStaticTransforms();
+
   const std::vector<SimBody>& sim_bodies = physics_interface_.dynamicBodies();
 
   // default camera target to the first dynamic object; else focus the origin
@@ -143,6 +183,7 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
   }
 
   setSimState();
+  setTransforms();
 
   {
     std::unique_lock<std::mutex> lock(running_mtx_);
@@ -271,6 +312,7 @@ void Simulation::physicsLoop() {
     applyPendingInput();
     physics_interface_.update(physics_step_seconds_, world_buffer_);
     setSimState();
+    setTransforms();
 
     if (report_rates_) {
       rate.tick();
@@ -372,4 +414,108 @@ std::unordered_map<uint32_t, std::string> Simulation::getSimState() {
 
 std::vector<SensorFrame> Simulation::drainSensorFrames() {
   return sensor_handoff_.drain();
+}
+
+void Simulation::setTransforms() {
+  const std::vector<SimBody>& sim_bodies = physics_interface_.dynamicBodies();
+  if (sim_bodies.empty()) {
+    return;
+  }
+
+  const int64_t stamp_ns = nowNs();
+
+  std::lock_guard<std::mutex> lock(tf_state_.mutex);
+  for (const SimBody& sb : sim_bodies) {
+    DynamicObject& dynamics = sb.entity->getDynamics();
+
+    volasim_msgs::TFMessage msg;
+    fillTransform(msg.add_transforms(), stamp_ns, sb.vehicle_id,
+                  volasim::frames::odom(sb.vehicle_id),
+                  volasim::frames::baseLink(sb.vehicle_id),
+                  dynamics.getTranslation(), dynamics.getRotation());
+
+    // Serialize into a temporary so a failed encode leaves the drone's last
+    // good tf in place rather than clobbering it with a partial write.
+    std::string bytes;
+    if (!msg.SerializeToString(&bytes)) {
+      std::cerr << "[Simulation] Failed to serialize tf for drone "
+                << sb.vehicle_id << "\n";
+      continue;
+    }
+    tf_state_.states[sb.vehicle_id] = std::move(bytes);
+  }
+}
+
+void Simulation::buildStaticTransforms() {
+  const int64_t stamp_ns = nowNs();
+
+  // Fixed rotation from a sensor's link frame (REP-103: x-forward, y-left,
+  // z-up) to its optical frame (REP-145: x-right, y-down, z-forward). glm quat
+  // order is (w, x, y, z).
+  const glm::quat kLinkToOptical(0.5F, -0.5F, 0.5F, -0.5F);
+
+  // Which drone each vehicle body belongs to, so a sensor's owning drone can be
+  // found from the entity it is mounted on.
+  std::unordered_map<const Entity*, uint32_t> drone_of_vehicle;
+  for (const SimBody& sb : physics_interface_.dynamicBodies()) {
+    drone_of_vehicle[sb.entity] = sb.vehicle_id;
+  }
+
+  // Group each drone's sensor edges into one TFMessage so a subscriber receives
+  // the whole static subtree atomically.
+  std::unordered_map<uint32_t, volasim_msgs::TFMessage> per_drone;
+
+  // Assigns unique sensor frames per drone. Roots are reserved first so a sensor
+  // named "odom"/"base_link" cannot shadow the tree's own frames.
+  volasim::frames::Registry registry;
+  for (const auto& [entity, drone_id] : drone_of_vehicle) {
+    registry.reserveRoots(drone_id);
+  }
+
+  for (GPUSensor& sensor : gpu_sensors_) {
+    const Entity& sensor_entity = sensor.entity();
+    const Entity* vehicle       = sensor_entity.getParent();
+
+    const auto     it       = drone_of_vehicle.find(vehicle);
+    const uint32_t drone_id = it != drone_of_vehicle.end() ? it->second : 0;
+
+    const auto frames = registry.assignSensor(drone_id, sensor_entity.getName());
+
+    // Hand the sensor its opaque publish labels; it stamps clouds in the optical
+    // frame and publishes on the drone's depth topic.
+    sensor.setFrameId(frames.optical);
+    sensor.setTopic(volasim::topics::depth(drone_id));
+
+    // base_link -> sensor link frame (the physical mount pose).
+    const Transform& mount = sensor_entity.getLocalTransform();
+    fillTransform(per_drone[drone_id].add_transforms(), stamp_ns, drone_id,
+                  volasim::frames::baseLink(drone_id), frames.link,
+                  mount.position, mount.rotation);
+
+    // sensor link -> optical frame. Depth clouds are published in the optical
+    // frame, so without this edge a z-forward cloud would be drawn along the
+    // link frame's z (up) axis.
+    fillTransform(per_drone[drone_id].add_transforms(), stamp_ns, drone_id,
+                  frames.link, frames.optical, glm::vec3(0.F), kLinkToOptical);
+  }
+
+  static_tf_.clear();
+  for (const auto& [drone_id, msg] : per_drone) {
+    std::string bytes;
+    if (!msg.SerializeToString(&bytes)) {
+      std::cerr << "[Simulation] Failed to serialize static tf for drone "
+                << drone_id << "\n";
+      continue;
+    }
+    static_tf_[drone_id] = std::move(bytes);
+  }
+}
+
+std::unordered_map<uint32_t, std::string> Simulation::getTransforms() {
+  std::lock_guard<std::mutex> lock(tf_state_.mutex);
+  return tf_state_.states;
+}
+
+std::unordered_map<uint32_t, std::string> Simulation::getStaticTransforms() {
+  return static_tf_;
 }
