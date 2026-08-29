@@ -403,12 +403,22 @@ class VolasimROS2Wrapper : public rclcpp::Node {
   }
 
   // Returns the cloud publisher for a sensor topic, creating it on first sight.
+  // Names arrive pre-sanitized from the sim, but a rejected topic name throws
+  // and would otherwise terminate the node — taking every other drone's state
+  // and clouds down with it — so a bad name is cached as null and skipped.
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_pub_for(
       const std::string& zmq_topic) {
     auto it = cloud_pubs_.find(zmq_topic);
     if (it == cloud_pubs_.end()) {
-      auto pub = this->create_publisher<sensor_msgs::msg::PointCloud2>(
-          ros_cloud_topic(zmq_topic), 10);
+      rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub;
+      try {
+        pub = this->create_publisher<sensor_msgs::msg::PointCloud2>(
+            ros_cloud_topic(zmq_topic), 10);
+      } catch (const rclcpp::exceptions::InvalidTopicNameError& e) {
+        RCLCPP_WARN(this->get_logger(),
+                    "[VolasimROS2Wrapper] skipping cloud on invalid topic '%s': %s",
+                    ros_cloud_topic(zmq_topic).c_str(), e.what());
+      }
       it = cloud_pubs_.emplace(zmq_topic, std::move(pub)).first;
     }
     return it->second;
@@ -480,7 +490,9 @@ class VolasimROS2Wrapper : public rclcpp::Node {
       }
     }
     mod.resize(points);
-    cloud_pub_for(zmq_topic)->publish(cloud);
+    if (const auto pub = cloud_pub_for(zmq_topic)) {
+      pub->publish(cloud);
+    }
   }
 
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr   state_pub_;

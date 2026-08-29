@@ -12,6 +12,23 @@
 //   drone_<id>/odom  ->  drone_<id>/base_link  ->  drone_<id>/depth_<sensor>
 namespace volasim::frames {
 
+// Folds an arbitrary sensor name into a token that is legal as both a tf frame
+// component and a ROS topic component: ROS rejects anything outside
+// [A-Za-z0-9_] (a hyphen, dot or space aborts create_publisher and kills the
+// bridge). Applied at name assignment, before the registry de-dupes, so two
+// names that fold together (e.g. "front-depth" and "front_depth") collide and
+// get bumped apart rather than racing for one topic.
+inline std::string toToken(const std::string& name) {
+  std::string out;
+  out.reserve(name.size());
+  for (char c : name) {
+    const bool legal = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                       (c >= '0' && c <= '9') || c == '_';
+    out.push_back(legal ? c : '_');
+  }
+  return out;
+}
+
 inline std::string drone(std::uint32_t drone_id) {
   return "drone_" + std::to_string(drone_id);
 }

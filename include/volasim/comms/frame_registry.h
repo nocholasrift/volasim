@@ -33,8 +33,9 @@ class Registry {
   // Assign a sensor's link/optical frames from a base name, bumping a numeric
   // suffix until both frames are free, then reserving both.
   SensorFrames assignSensor(std::uint32_t drone_id, const std::string& base) {
-    auto&       set  = taken_[drone_id];
-    std::string name = base;
+    auto&             set   = taken_[drone_id];
+    const std::string token = toToken(base);
+    std::string       name  = token;
     for (std::uint32_t n = 1;; ++n) {
       SensorFrames frames{name, sensor(drone_id, name),
                           sensorOptical(drone_id, name)};
@@ -43,7 +44,7 @@ class Registry {
         set.insert(frames.optical);
         return frames;
       }
-      name = base + "_" + std::to_string(n);
+      name = token + "_" + std::to_string(n);
     }
   }
 
