@@ -9,6 +9,19 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 add_subdirectory(third_party/SDL EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/JoltPhysics/Build EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/pugixml EXCLUDE_FROM_ALL)
+# Vendor libzmq so cppzmq (header-only) finds its backing library as an in-tree
+# target instead of a system package — cppzmq skips find_package when the
+# libzmq-static target already exists. Static build keeps volasim a single binary.
+set(BUILD_SHARED OFF CACHE BOOL "" FORCE)
+set(BUILD_STATIC ON CACHE BOOL "" FORCE)
+set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(WITH_PERF_TOOL OFF CACHE BOOL "" FORCE)
+set(WITH_DOCS OFF CACHE BOOL "" FORCE)
+set(WITH_TLS OFF CACHE BOOL "" FORCE)
+set(ENABLE_DRAFTS OFF CACHE BOOL "" FORCE)
+set(ENABLE_CPACK OFF CACHE BOOL "" FORCE)
+add_subdirectory(third_party/libzmq EXCLUDE_FROM_ALL)
+
 # cppzmq registers its own ctest entry for a target we never build, which then
 # reports as a failure in every ctest run
 set(CPPZMQ_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -57,7 +70,7 @@ target_link_libraries(volasim
   ${GLUT_LIBRARIES}
   Eigen3::Eigen
   ${GLM_LIBRARIES}
-  cppzmq
+  cppzmq-static
   myproto
   assimp
 )
