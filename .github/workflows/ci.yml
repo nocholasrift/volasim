@@ -42,9 +42,6 @@ jobs:
 
           # --- macOS ---
           - os-name: "macOS"
-            arch: "intel-x64"
-            runner: macos-13
-          - os-name: "macOS"
             arch: "arm64"
             runner: macos-latest
 
