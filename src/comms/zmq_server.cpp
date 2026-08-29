@@ -15,8 +15,10 @@ ZMQServer::ZMQServer() {
     state_publisher_.bind("tcp://*:5556");
 
     // Small queue so a slow cloud consumer drops stale frames instead of
-    // building lag; must be set before bind() to take effect.
-    cloud_publisher_.set(zmq::sockopt::sndhwm, 2);
+    // building lag; must be set before bind() to take effect. The bound is a
+    // few frames rather than one so several sensors sharing this socket each
+    // keep their latest cloud instead of contending for a single slot.
+    cloud_publisher_.set(zmq::sockopt::sndhwm, 6);
     // ipc for same-host native consumers; tcp so the ROS bridge can reach the
     // cloud stream from inside a container, mirroring the state publisher.
     cloud_publisher_.bind("ipc:///tmp/volasim_cloud");

@@ -18,6 +18,7 @@ namespace volasim::frames {
 class Registry {
  public:
   struct SensorFrames {
+    std::string name;  // the (possibly bumped) name both frames were built from
     std::string link;
     std::string optical;
   };
@@ -35,7 +36,8 @@ class Registry {
     auto&       set  = taken_[drone_id];
     std::string name = base;
     for (std::uint32_t n = 1;; ++n) {
-      SensorFrames frames{sensor(drone_id, name), sensorOptical(drone_id, name)};
+      SensorFrames frames{name, sensor(drone_id, name),
+                          sensorOptical(drone_id, name)};
       if (set.count(frames.link) == 0 && set.count(frames.optical) == 0) {
         set.insert(frames.link);
         set.insert(frames.optical);

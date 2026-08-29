@@ -11,10 +11,15 @@
 // SUB-side prefix filtering matches on, so subscribing to "drone/7/" delivers
 // every stream for drone 7 and nothing else.
 //
-//   state:     [topic]["drone/<id>/state"]     [DroneState]
-//   depth:     [topic]["drone/<id>/depth"]     [DepthCamera header] [raw uint16]
-//   tf:        [topic]["drone/<id>/tf"]        [TFMessage]  (dynamic, per tick)
-//   tf_static: [topic]["drone/<id>/tf_static"] [TFMessage]  (fixed, re-sent ~1 Hz)
+//   state:     [topic]["drone/<id>/state"]            [DroneState]
+//   depth:     [topic]["drone/<id>/<sensor>/depth"]   [DepthCamera header] [raw uint16]
+//   tf:        [topic]["drone/<id>/tf"]               [TFMessage]  (dynamic, per tick)
+//   tf_static: [topic]["drone/<id>/tf_static"]        [TFMessage]  (fixed, re-sent ~1 Hz)
+//
+// Each sensor gets its own depth topic (keyed by its unique name within the
+// drone), so two sensors on one drone are distinct streams rather than
+// alternating messages on a shared topic — otherwise a single downstream
+// PointCloud2 topic shows one sensor at a time and flickers between them.
 namespace volasim::topics {
 
 inline std::string drone(std::uint32_t drone_id) {
@@ -25,8 +30,9 @@ inline std::string state(std::uint32_t drone_id) {
   return drone(drone_id) + "/state";
 }
 
-inline std::string depth(std::uint32_t drone_id) {
-  return drone(drone_id) + "/depth";
+inline std::string depth(std::uint32_t      drone_id,
+                         const std::string& sensor_name) {
+  return drone(drone_id) + "/" + sensor_name + "/depth";
 }
 
 inline std::string tf(std::uint32_t drone_id) {
