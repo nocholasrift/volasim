@@ -1,0 +1,67 @@
+name: Multi-OS Cross-Architecture CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-matrix:
+    name: ${{ matrix.os-name }} (${{ matrix.arch }})
+    # Dynamically select the exact runner label based on the matrix item
+    runs-on: ${{ matrix.runner }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # --- Ubuntu 22.04 (LTS) ---
+          - os-name: "Ubuntu 22.04"
+            arch: "intel-x64"
+            runner: ubuntu-22.04
+          - os-name: "Ubuntu 22.04"
+            arch: "arm64"
+            runner: ubuntu-22.04-arm
+
+          # --- Ubuntu 24.04 (LTS) ---
+          - os-name: "Ubuntu 24.04"
+            arch: "intel-x64"
+            runner: ubuntu-24.04
+          - os-name: "Ubuntu 24.04"
+            arch: "arm64"
+            runner: ubuntu-24.04-arm
+
+          # --- Ubuntu 26.04 (Public Preview) ---
+          - os-name: "Ubuntu 26.04"
+            arch: "intel-x64"
+            runner: ubuntu-26.04
+          - os-name: "Ubuntu 26.04"
+            arch: "arm64"
+            runner: ubuntu-26.04-arm
+
+          # --- macOS ---
+          - os-name: "macOS"
+            arch: "intel-x64"
+            runner: macos-13
+          - os-name: "macOS"
+            arch: "arm64"
+            runner: macos-latest
+
+    steps:
+      # Step 1: Download code to the active runner machine
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Print system information to confirm the environment works
+      - name: Verify Architecture and OS
+        run: |
+          echo "Operating System Family: $RUNNER_OS"
+          echo "Actual Kernel Machine Architecture:"
+          uname -m
+
+      # Step 3: Insert your build or test commands here
+      - name: Build and Test Code
+        run: |
+          echo "Running your code validation tests..."
+
