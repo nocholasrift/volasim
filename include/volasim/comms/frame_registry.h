@@ -18,6 +18,7 @@ namespace volasim::frames {
 class Registry {
  public:
   struct SensorFrames {
+    std::string name;  // the (possibly bumped) name both frames were built from
     std::string link;
     std::string optical;
   };
@@ -32,16 +33,18 @@ class Registry {
   // Assign a sensor's link/optical frames from a base name, bumping a numeric
   // suffix until both frames are free, then reserving both.
   SensorFrames assignSensor(std::uint32_t drone_id, const std::string& base) {
-    auto&       set  = taken_[drone_id];
-    std::string name = base;
+    auto&             set   = taken_[drone_id];
+    const std::string token = toToken(base);
+    std::string       name  = token;
     for (std::uint32_t n = 1;; ++n) {
-      SensorFrames frames{sensor(drone_id, name), sensorOptical(drone_id, name)};
+      SensorFrames frames{name, sensor(drone_id, name),
+                          sensorOptical(drone_id, name)};
       if (set.count(frames.link) == 0 && set.count(frames.optical) == 0) {
         set.insert(frames.link);
         set.insert(frames.optical);
         return frames;
       }
-      name = base + "_" + std::to_string(n);
+      name = token + "_" + std::to_string(n);
     }
   }
 

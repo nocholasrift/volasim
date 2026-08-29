@@ -25,6 +25,8 @@
 #include <memory>
 #include <queue>
 #include <string>
+#include <string_view>
+#include <unordered_map>
 #include <vector>
 
 enum class Action { kTakeoff, kLand, kFlying, kIdle };
@@ -109,8 +111,8 @@ class VolasimROS2Wrapper : public rclcpp::Node {
         this->create_publisher<nav_msgs::msg::Odometry>("odometry", 10);
     pos_cmd_pub_ =
         this->create_publisher<geometry_msgs::msg::Point>("command_pos", 10);
-    cloud_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
-        "depth/points", 10);
+    // Cloud publishers are created lazily, one per sensor stream, in
+    // publish_cloud() — the set of sensors is not known until frames arrive.
 
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     static_tf_broadcaster_ =
@@ -142,7 +144,10 @@ class VolasimROS2Wrapper : public rclcpp::Node {
     cloud_fallback_endpoint_ = cloud_fallback_endpoint(cloud_endpoint_);
     zmq_cloud_sub_ = zmq::socket_t(zmq_context_, zmq::socket_type::sub);
     zmq_cloud_sub_.set(zmq::sockopt::subscribe, "");
-    zmq_cloud_sub_.set(zmq::sockopt::rcvhwm, 1);
+    // A few slots rather than one: multiple sensors share this socket and may
+    // capture on the same render frame, so their clouds can arrive together
+    // between the 1 ms polls that drain one message each.
+    zmq_cloud_sub_.set(zmq::sockopt::rcvhwm, 6);
     zmq_cloud_sub_.connect(cloud_endpoint_);
     cloud_fallback_deadline_ =
         std::chrono::steady_clock::now() + kCloudFallbackGrace;
@@ -358,13 +363,65 @@ class VolasimROS2Wrapper : public rclcpp::Node {
       return;
     }
 
+    const std::string topic(static_cast<const char*>(frames[0].data()),
+                            frames[0].size());
+
     volasim_msgs::DepthCamera header;
     if (!header.ParseFromArray(frames[1].data(), frames[1].size())) {
       RCLCPP_WARN(this->get_logger(),
                   "[VolasimROS2Wrapper] Failed to parse depth header");
       return;
     }
-    publish_cloud(header, frames[2]);
+    publish_cloud(topic, header, frames[2]);
+  }
+
+  // Maps a sensor's ZMQ topic to its ROS point-cloud topic:
+  //   drone/<id>/<sensor>/depth  ->  drone_<id>/<sensor>/points
+  // so each sensor lands on its own PointCloud2 topic instead of alternating
+  // with other sensors on one shared topic (which flickers in a viewer).
+  //
+  // The "drone/<id>" prefix is folded to "drone_<id>" to match the tf frame
+  // namespace and, crucially, because a ROS topic name token may not start with
+  // a digit: "drone/0/..." has a bare "0" token and is rejected, "drone_0" is
+  // one valid token.
+  static std::string ros_cloud_topic(const std::string& zmq_topic) {
+    static constexpr std::string_view kDepthSuffix = "/depth";
+    std::string                       base         = zmq_topic;
+    if (base.size() >= kDepthSuffix.size() &&
+        base.compare(base.size() - kDepthSuffix.size(), kDepthSuffix.size(),
+                     kDepthSuffix) == 0) {
+      base.resize(base.size() - kDepthSuffix.size());
+    }
+
+    // Fold the drone separator into the name so "drone/<id>" becomes one token.
+    const std::size_t drone_sep = base.find('/');
+    if (drone_sep != std::string::npos) {
+      base[drone_sep] = '_';
+    }
+
+    return base + "/points";
+  }
+
+  // Returns the cloud publisher for a sensor topic, creating it on first sight.
+  // Names arrive pre-sanitized from the sim, but a rejected topic name throws
+  // and would otherwise terminate the node — taking every other drone's state
+  // and clouds down with it — so a bad name is cached as null and skipped.
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_pub_for(
+      const std::string& zmq_topic) {
+    auto it = cloud_pubs_.find(zmq_topic);
+    if (it == cloud_pubs_.end()) {
+      rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub;
+      try {
+        pub = this->create_publisher<sensor_msgs::msg::PointCloud2>(
+            ros_cloud_topic(zmq_topic), 10);
+      } catch (const rclcpp::exceptions::InvalidTopicNameError& e) {
+        RCLCPP_WARN(this->get_logger(),
+                    "[VolasimROS2Wrapper] skipping cloud on invalid topic '%s': %s",
+                    ros_cloud_topic(zmq_topic).c_str(), e.what());
+      }
+      it = cloud_pubs_.emplace(zmq_topic, std::move(pub)).first;
+    }
+    return it->second;
   }
 
   // ipc gives nothing when the sim is on the far side of a container/VM
@@ -386,7 +443,8 @@ class VolasimROS2Wrapper : public rclcpp::Node {
     cloud_fell_back_ = true;
   }
 
-  void publish_cloud(const volasim_msgs::DepthCamera& header,
+  void publish_cloud(const std::string&               zmq_topic,
+                     const volasim_msgs::DepthCamera& header,
                      const zmq::message_t&            payload) {
     const uint32_t w = header.width();
     const uint32_t h = header.height();
@@ -432,12 +490,18 @@ class VolasimROS2Wrapper : public rclcpp::Node {
       }
     }
     mod.resize(points);
-    cloud_pub_->publish(cloud);
+    if (const auto pub = cloud_pub_for(zmq_topic)) {
+      pub->publish(cloud);
+    }
   }
 
-  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr       state_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr     pos_cmd_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_pub_;
+  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr   state_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr pos_cmd_pub_;
+
+  // One PointCloud2 publisher per sensor, keyed by the sensor's ZMQ topic.
+  std::unordered_map<std::string,
+                     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr>
+      cloud_pubs_;
 
   std::unique_ptr<tf2_ros::TransformBroadcaster>       tf_broadcaster_;
   std::unique_ptr<tf2_ros::StaticTransformBroadcaster> static_tf_broadcaster_;

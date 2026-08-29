@@ -484,7 +484,7 @@ void Simulation::buildStaticTransforms() {
     // Hand the sensor its opaque publish labels; it stamps clouds in the optical
     // frame and publishes on the drone's depth topic.
     sensor.setFrameId(frames.optical);
-    sensor.setTopic(volasim::topics::depth(drone_id));
+    sensor.setTopic(volasim::topics::depth(drone_id, frames.name));
 
     // base_link -> sensor link frame (the physical mount pose).
     const Transform& mount = sensor_entity.getLocalTransform();
