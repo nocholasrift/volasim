@@ -6,10 +6,13 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  # Define a cross-platform location for the vcpkg binary cache
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
+
 jobs:
   test-matrix:
     name: ${{ matrix.os-name }} (${{ matrix.arch }})
-    # Dynamically select the exact runner label based on the matrix item
     runs-on: ${{ matrix.runner }}
     
     strategy:
@@ -42,6 +45,9 @@ jobs:
 
           # --- macOS ---
           - os-name: "macOS"
+            arch: "intel-x64"
+            runner: macos-13
+          - os-name: "macOS"
             arch: "arm64"
             runner: macos-latest
 
@@ -49,16 +55,48 @@ jobs:
       # Step 1: Download code to the active runner machine
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      # Step 2: Print system information to confirm the environment works
+      # Step 2: Print system information
       - name: Verify Architecture and OS
         run: |
           echo "Operating System Family: $RUNNER_OS"
           echo "Actual Kernel Machine Architecture:"
           uname -m
 
-      # Step 3: Insert your build or test commands here
-      - name: Build and Test Code
-        run: |
-          echo "Running your code validation tests..."
+      # Step 3: Setup CMake and Ninja build tools
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
 
+      # Step 4: Set up caching for vcpkg binary dependencies
+      - name: Cache vcpkg dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          # The key updates if the OS, architecture, or vcpkg configurations change
+          key: ${{ runner.os }}-${{ matrix.arch }}-vcpkg-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+          # Fall back to older caches if an exact match isn't found
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.arch }}-vcpkg-
+
+      # Step 5: Ensure the cache directory exists before running CMake
+      - name: Create vcpkg cache directory
+        run: mkdir -p ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+
+      # Step 6: Configure CMake build directory
+      - name: Configure CMake
+        run: |
+          cmake -B build/ -S . \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+
+      # Step 7: Run the compilation build step
+      - name: Build Project
+        run: cmake --build build/ --config Release
+
+      # Step 8: Execute your CTest test suite
+      - name: Run Tests
+        run: |
+          cd build
+          ctest --output-on-failure -C Release
