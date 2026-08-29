@@ -5,6 +5,8 @@
 #include <volasim/comms/msgs/Thrust.pb.h>
 #include <volasim/comms/msgs/Transform.pb.h>
 
+#include <tf2_ros/static_transform_broadcaster.h>
+#include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
@@ -13,8 +15,6 @@
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 #include <std_msgs/msg/float32_multi_array.hpp>
 #include <std_srvs/srv/empty.hpp>
-#include <tf2_ros/static_transform_broadcaster.h>
-#include <tf2_ros/transform_broadcaster.h>
 #include <zmq.hpp>
 
 #include <array>
@@ -151,12 +151,12 @@ class VolasimROS2Wrapper : public rclcpp::Node {
     zmq_cloud_sub_.connect(cloud_endpoint_);
     cloud_fallback_deadline_ =
         std::chrono::steady_clock::now() + kCloudFallbackGrace;
-    RCLCPP_INFO(this->get_logger(), "[VolasimROS2Wrapper] cloud on %s%s",
-                cloud_endpoint_.c_str(),
-                cloud_fallback_endpoint_.empty()
-                    ? ""
-                    : (" (falls back to " + cloud_fallback_endpoint_ + ")")
-                          .c_str());
+    RCLCPP_INFO(
+        this->get_logger(), "[VolasimROS2Wrapper] cloud on %s%s",
+        cloud_endpoint_.c_str(),
+        cloud_fallback_endpoint_.empty()
+            ? ""
+            : (" (falls back to " + cloud_fallback_endpoint_ + ")").c_str());
 
     zmq_publisher_ = zmq::socket_t(zmq_context_, zmq::socket_type::pub);
     zmq_publisher_.bind("tcp://*:5557");
@@ -276,7 +276,7 @@ class VolasimROS2Wrapper : public rclcpp::Node {
   void handle_state(const std::vector<zmq::message_t>& frames) {
     const std::string topic(static_cast<const char*>(frames[0].data()),
                             frames[0].size());
-    const uint32_t drone_id = drone_id_from_topic(topic);
+    const uint32_t    drone_id = drone_id_from_topic(topic);
 
     // Parse the DroneState wrapper and pull out odom rather than parsing the
     // bytes as a bare Odometry, whose fields do not line up.
@@ -290,9 +290,9 @@ class VolasimROS2Wrapper : public rclcpp::Node {
 
     nav_msgs::msg::Odometry msg;
     // Match the tf tree so the odom resolves against odom -> base_link.
-    msg.header.stamp       = this->now();
-    msg.header.frame_id    = volasim::frames::odom(drone_id);
-    msg.child_frame_id     = volasim::frames::baseLink(drone_id);
+    msg.header.stamp         = this->now();
+    msg.header.frame_id      = volasim::frames::odom(drone_id);
+    msg.child_frame_id       = volasim::frames::baseLink(drone_id);
     msg.pose.pose.position.x = odom.position().x();
     msg.pose.pose.position.y = odom.position().y();
     msg.pose.pose.position.z = odom.position().z();
@@ -415,9 +415,10 @@ class VolasimROS2Wrapper : public rclcpp::Node {
         pub = this->create_publisher<sensor_msgs::msg::PointCloud2>(
             ros_cloud_topic(zmq_topic), 10);
       } catch (const rclcpp::exceptions::InvalidTopicNameError& e) {
-        RCLCPP_WARN(this->get_logger(),
-                    "[VolasimROS2Wrapper] skipping cloud on invalid topic '%s': %s",
-                    ros_cloud_topic(zmq_topic).c_str(), e.what());
+        RCLCPP_WARN(
+            this->get_logger(),
+            "[VolasimROS2Wrapper] skipping cloud on invalid topic '%s': %s",
+            ros_cloud_topic(zmq_topic).c_str(), e.what());
       }
       it = cloud_pubs_.emplace(zmq_topic, std::move(pub)).first;
     }
@@ -428,7 +429,8 @@ class VolasimROS2Wrapper : public rclcpp::Node {
   // boundary. After a grace period with no frames, switch the same socket over
   // to tcp — one-shot, since tcp reaches the sim whether it is local or remote.
   void maybe_fallback_cloud() {
-    if (cloud_received_ || cloud_fell_back_ || cloud_fallback_endpoint_.empty()) {
+    if (cloud_received_ || cloud_fell_back_ ||
+        cloud_fallback_endpoint_.empty()) {
       return;
     }
     if (std::chrono::steady_clock::now() < cloud_fallback_deadline_) {
@@ -499,8 +501,8 @@ class VolasimROS2Wrapper : public rclcpp::Node {
   rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr pos_cmd_pub_;
 
   // One PointCloud2 publisher per sensor, keyed by the sensor's ZMQ topic.
-  std::unordered_map<std::string,
-                     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr>
+  std::unordered_map<
+      std::string, rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr>
       cloud_pubs_;
 
   std::unique_ptr<tf2_ros::TransformBroadcaster>       tf_broadcaster_;

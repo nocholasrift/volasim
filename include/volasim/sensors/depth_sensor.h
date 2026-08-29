@@ -340,9 +340,8 @@ class GPUSensor {
       return false;
     }
 
-    const std::size_t bytes =
-        static_cast<std::size_t>(settings_.width) * settings_.height *
-        sizeof(uint16_t);
+    const std::size_t bytes = static_cast<std::size_t>(settings_.width) *
+                              settings_.height * sizeof(uint16_t);
 
     glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo_[front.pbo].get());
     const void* mapped = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);

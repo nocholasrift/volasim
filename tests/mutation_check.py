@@ -13,33 +13,66 @@ import sys
 
 # (description, file, code to break, what to break it into)
 MUTATIONS = [
-    ("shortest-path rotation blend", "include/volasim/simulation/transform.h",
-     "glm::normalize(glm::slerp(a.rotation, b.rotation, alpha))",
-     "glm::normalize(glm::lerp(a.rotation, b.rotation, alpha))"),
-    ("blendFrom actually blends", "src/simulation/world_buffer.cpp",
-     "    slots_[id].transform   = start != nullptr\n"
-     "                                 ? lerp(*start, target.transform, alpha)\n"
-     "                                 : target.transform;",
-     "    slots_[id].transform   = target.transform;"),
-    ("recycled buffer is cleared", "src/simulation/world_buffer.cpp",
-     "  back_.invalidate();", "  // back_.invalidate();"),
-    ("snapshot invalidation", "src/simulation/world_buffer.cpp",
-     "  for (Slot& slot : slots_) {\n    slot.valid = false;\n  }", "  // no-op"),
-    ("previous step is retained on publish", "src/simulation/world_buffer.cpp",
-     "    prev_.swap(curr_);\n    curr_.swap(back_);", "    curr_.swap(back_);"),
-    ("interpolation alpha is clamped", "src/simulation/world_buffer.cpp",
-     "std::clamp(elapsed / step_seconds, 0., 1.)", "(elapsed / step_seconds)"),
-    ("pacer keeps a fixed schedule", "include/volasim/simulation/loop_pacer.h",
-     "    next_ += step_;", "    next_ = now + step_;"),
-    ("pacer drops missed steps", "include/volasim/simulation/loop_pacer.h",
-     "    if (next_ < now) {\n"
-     "      dropped_ += static_cast<unsigned int>((now - next_) / step_) + 1;\n"
-     "      next_     = now + step_;\n"
-     "    }\n\n", ""),
-    ("physics rate bounds", "include/volasim/args.h",
-     "      if (!std::isfinite(args.physics_hz) || args.physics_hz < kMinPhysicsHz ||\n"
-     "          args.physics_hz > kMaxPhysicsHz) {",
-     "      if (args.physics_hz <= 0.) {"),
+    (
+        "shortest-path rotation blend",
+        "include/volasim/simulation/transform.h",
+        "glm::normalize(glm::slerp(a.rotation, b.rotation, alpha))",
+        "glm::normalize(glm::lerp(a.rotation, b.rotation, alpha))",
+    ),
+    (
+        "blendFrom actually blends",
+        "src/simulation/world_buffer.cpp",
+        "    slots_[id].transform   = start != nullptr\n"
+        "                                 ? lerp(*start, target.transform, alpha)\n"
+        "                                 : target.transform;",
+        "    slots_[id].transform   = target.transform;",
+    ),
+    (
+        "recycled buffer is cleared",
+        "src/simulation/world_buffer.cpp",
+        "  back_.invalidate();",
+        "  // back_.invalidate();",
+    ),
+    (
+        "snapshot invalidation",
+        "src/simulation/world_buffer.cpp",
+        "  for (Slot& slot : slots_) {\n    slot.valid = false;\n  }",
+        "  // no-op",
+    ),
+    (
+        "previous step is retained on publish",
+        "src/simulation/world_buffer.cpp",
+        "    prev_.swap(curr_);\n    curr_.swap(back_);",
+        "    curr_.swap(back_);",
+    ),
+    (
+        "interpolation alpha is clamped",
+        "src/simulation/world_buffer.cpp",
+        "std::clamp(elapsed / step_seconds, 0., 1.)",
+        "(elapsed / step_seconds)",
+    ),
+    (
+        "pacer keeps a fixed schedule",
+        "include/volasim/simulation/loop_pacer.h",
+        "    next_ += step_;",
+        "    next_ = now + step_;",
+    ),
+    (
+        "pacer drops missed steps",
+        "include/volasim/simulation/loop_pacer.h",
+        "    if (next_ < now) {\n"
+        "      dropped_ += static_cast<unsigned int>((now - next_) / step_) + 1;\n"
+        "      next_     = now + step_;\n"
+        "    }\n\n",
+        "",
+    ),
+    (
+        "physics rate bounds",
+        "include/volasim/args.h",
+        "      if (!std::isfinite(args.physics_hz) || args.physics_hz < kMinPhysicsHz ||\n"
+        "          args.physics_hz > kMaxPhysicsHz) {",
+        "      if (args.physics_hz <= 0.) {",
+    ),
 ]
 
 
@@ -88,8 +121,9 @@ def build_and_run(flags):
     Compiling every translation unit each time costs a few seconds and removes
     the question entirely.
     """
-    build = subprocess.run(["c++"] + flags + SOURCES + ["-o", BINARY],
-                           capture_output=True, text=True)
+    build = subprocess.run(
+        ["c++"] + flags + SOURCES + ["-o", BINARY], capture_output=True, text=True
+    )
     if build.returncode != 0:
         return None
 

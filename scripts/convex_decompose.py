@@ -75,26 +75,41 @@ def main() -> None:
     )
     ap.add_argument("input", type=Path, help="Input mesh (e.g. .obj)")
     ap.add_argument(
-        "-o", "--output", type=Path, default=None,
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
         help="Output path (default: <input_stem>_cd.obj next to the input).",
     )
     ap.add_argument(
-        "-t", "--threshold", type=float, default=0.05,
+        "-t",
+        "--threshold",
+        type=float,
+        default=0.05,
         help="coacd concavity threshold; lower = tighter fit, more hulls (0.01-1).",
     )
     ap.add_argument(
-        "--max-convex-hull", type=int, default=-1,
+        "--max-convex-hull",
+        type=int,
+        default=-1,
         help="Cap on number of hulls (-1 = no cap).",
     )
     ap.add_argument(
-        "--preprocess", choices=["auto", "on", "off"], default="auto",
+        "--preprocess",
+        choices=["auto", "on", "off"],
+        default="auto",
         help="coacd manifold preprocessing. Use 'off' only for clean manifolds.",
     )
-    ap.add_argument("--resolution", type=int, default=2000,
-                    help="Voxel sampling resolution for coacd.")
+    ap.add_argument(
+        "--resolution",
+        type=int,
+        default=2000,
+        help="Voxel sampling resolution for coacd.",
+    )
     ap.add_argument("--seed", type=int, default=0, help="RNG seed (reproducible).")
-    ap.add_argument("-v", "--verbose", action="store_true",
-                    help="Verbose coacd logging.")
+    ap.add_argument(
+        "-v", "--verbose", action="store_true", help="Verbose coacd logging."
+    )
     args = ap.parse_args()
 
     if not args.input.exists():

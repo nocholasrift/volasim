@@ -36,7 +36,8 @@ TEST_CASE("a per-drone prefix subscription matches that drone's streams") {
   CHECK(topics::depth(3, "cam").rfind(prefix, 0) == 0);
   CHECK(topics::tf(3).rfind(prefix, 0) == 0);
   CHECK(topics::tfStatic(3).rfind(prefix, 0) == 0);
-  CHECK(topics::state(30).rfind(prefix, 0) != 0);  // "drone/30" must not match "drone/3/"
+  CHECK(topics::state(30).rfind(prefix, 0) !=
+        0);  // "drone/30" must not match "drone/3/"
 }
 
 TEST_CASE("tf is a prefix of tf_static — consumers must match the full topic") {
@@ -86,7 +87,9 @@ TEST_CASE("frame registry keeps a sensor off the reserved root frames") {
   CHECK(odom.link == "drone_0/odom_1");
 }
 
-TEST_CASE("frame registry disambiguates a name that hits another sensor's optical frame") {
+TEST_CASE(
+    "frame registry disambiguates a name that hits another sensor's optical "
+    "frame") {
   frames::Registry reg;
 
   const auto a = reg.assignSensor(0, "foo");
@@ -102,8 +105,8 @@ TEST_CASE("frame registry disambiguates a name that hits another sensor's optica
 
 TEST_CASE("frame registry gives duplicate sensor names distinct frames") {
   frames::Registry reg;
-  const auto a = reg.assignSensor(0, "cam");
-  const auto b = reg.assignSensor(0, "cam");
+  const auto       a = reg.assignSensor(0, "cam");
+  const auto       b = reg.assignSensor(0, "cam");
   CHECK(a.link != b.link);
   CHECK(a.optical != b.optical);
   CHECK(b.link == "drone_0/cam_1");
@@ -113,7 +116,7 @@ TEST_CASE("registry folds names illegal as ROS tokens into legal ones") {
   // A hyphen (or any char outside [A-Za-z0-9_]) is rejected by ROS topic
   // naming; the registry must fold it so the derived depth topic is valid.
   frames::Registry reg;
-  const auto s = reg.assignSensor(0, "front-depth");
+  const auto       s = reg.assignSensor(0, "front-depth");
   CHECK(s.name == "front_depth");
   CHECK(s.link == "drone_0/front_depth");
   CHECK(topics::depth(0, s.name) == "drone/0/front_depth/depth");
@@ -123,20 +126,21 @@ TEST_CASE("folded names that would alias are bumped apart, not merged") {
   // "front-depth" and "front_depth" fold to the same token, so routing would be
   // ambiguous if they shared it; the second must be disambiguated.
   frames::Registry reg;
-  const auto a = reg.assignSensor(0, "front-depth");
-  const auto b = reg.assignSensor(0, "front_depth");
+  const auto       a = reg.assignSensor(0, "front-depth");
+  const auto       b = reg.assignSensor(0, "front_depth");
   CHECK(a.name == "front_depth");
   CHECK(b.name == "front_depth_1");
   CHECK(topics::depth(0, a.name) != topics::depth(0, b.name));
 }
 
-TEST_CASE("registry reports the (possibly bumped) name the frames were built from") {
+TEST_CASE(
+    "registry reports the (possibly bumped) name the frames were built from") {
   // The depth topic is built from this name, so it must track the bump that
   // disambiguated the frames — otherwise a bumped sensor's topic and frame
   // would disagree.
   frames::Registry reg;
-  const auto a = reg.assignSensor(0, "cam");
-  const auto b = reg.assignSensor(0, "cam");
+  const auto       a = reg.assignSensor(0, "cam");
+  const auto       b = reg.assignSensor(0, "cam");
   CHECK(a.name == "cam");
   CHECK(b.name == "cam_1");
   CHECK(a.link == frames::sensor(0, a.name));
@@ -145,8 +149,8 @@ TEST_CASE("registry reports the (possibly bumped) name the frames were built fro
 
 TEST_CASE("frame registry disambiguates per drone independently") {
   frames::Registry reg;
-  const auto a = reg.assignSensor(0, "cam");
-  const auto b = reg.assignSensor(1, "cam");
+  const auto       a = reg.assignSensor(0, "cam");
+  const auto       b = reg.assignSensor(1, "cam");
   CHECK(a.link == "drone_0/cam");
   CHECK(b.link == "drone_1/cam");  // different drone: no suffix needed
 }

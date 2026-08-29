@@ -20,7 +20,7 @@ class EventDispatcher {
     return instance;
   }
 
-  EventDispatcher() = default;
+  EventDispatcher()  = default;
   ~EventDispatcher() = default;
 
   EventDispatcher(const EventDispatcher&)            = delete;

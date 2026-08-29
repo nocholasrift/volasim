@@ -5,7 +5,8 @@
 
 LeeControlNode::LeeControlNode(ros::NodeHandle& nh) {
   odom_sub_ = nh.subscribe("odometry", 1, &LeeControlNode::odom_cb, this);
-  full_state_cmd_sub_ = nh.subscribe("cmd_full_state", 1, &LeeControlNode::full_state_cb, this);
+  full_state_cmd_sub_ =
+      nh.subscribe("cmd_full_state", 1, &LeeControlNode::full_state_cb, this);
 
   cmd_pub_ = nh.advertise<std_msgs::Float32MultiArray>("command", 10);
 
@@ -13,18 +14,18 @@ LeeControlNode::LeeControlNode(ros::NodeHandle& nh) {
       nh.createTimer(ros::Duration(.005), &LeeControlNode::control_loop, this);
 
   initialized_ = false;
-  state_set_ = false;
+  state_set_   = false;
 
-  params_["kp"] = 69.44;
-  params_["kv"] = 24.304;
-  params_["kR"] = 13.81;
-  params_["kw"] = 2.54;
-  params_["mass"] = 4.34;
-  params_["length"] = 0.315;
+  params_["kp"]       = 69.44;
+  params_["kv"]       = 24.304;
+  params_["kR"]       = 13.81;
+  params_["kw"]       = 2.54;
+  params_["mass"]     = 4.34;
+  params_["length"]   = 0.315;
   params_["c_torque"] = 8.004e-4;
-  params_["j0"] = 0.0820;
-  params_["j1"] = 0.0845;
-  params_["j2"] = 0.1377;
+  params_["j0"]       = 0.0820;
+  params_["j1"]       = 0.0845;
+  params_["j2"]       = 0.1377;
 
   controller_.loadParams(params_);
 
@@ -39,7 +40,7 @@ LeeControlNode::LeeControlNode(ros::NodeHandle& nh) {
 
   conv_mat_ << 1, 1, 1, 1, 1, 1, -1, -1, -1, 1, 1, -1, 1, -1, 1, -1;
 
-  double l = params_["length"];
+  double l          = params_["length"];
   conv_mat_.row(1) *= l / sqrt(2);
   conv_mat_.row(2) *= l / sqrt(2);
   conv_mat_.row(3) *= params_["c_torque"];
@@ -70,41 +71,47 @@ void LeeControlNode::odom_cb(const nav_msgs::Odometry::ConstPtr& msg) {
   initialized_ = true;
 }
 
-void LeeControlNode::full_state_cb(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg){
+void LeeControlNode::full_state_cb(
+    const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg) {
   // ensure message has proper axis number, otherwise we drop it
   if (msg->positions.size() != Axis::DIMS || msg->velocities.size() != 3 ||
-      msg->accelerations.size() != Axis::DIMS || msg->effort.size() != 3){
-    ROS_WARN_THROTTLE(1.0, "[LeeControlNode] cmd_full_state must contain %lu position," 
-                      "velocity, acceleration, and jerk values.", Axis::DIMS);
+      msg->accelerations.size() != Axis::DIMS || msg->effort.size() != 3) {
+    ROS_WARN_THROTTLE(
+        1.0,
+        "[LeeControlNode] cmd_full_state must contain %lu position,"
+        "velocity, acceleration, and jerk values.",
+        Axis::DIMS);
   }
 
   full_state_cmd_ = *msg;
-  state_set_ = true;
+  state_set_      = true;
 }
 
 void LeeControlNode::control_loop(const ros::TimerEvent&) {
   if (!initialized_ || !state_set_)
     return;
 
-  double t = (ros::Time::now() - start_).toSec();
-  int ind = 0;
+  double t   = (ros::Time::now() - start_).toSec();
+  int    ind = 0;
 
   const auto& pt = full_state_cmd_;
 
   vola::state_t desired_s;
-  desired_s.pos =
-      Eigen::Vector3d(pt.positions[Axis::X], pt.positions[Axis::Y], pt.positions[Axis::Z]);
-  desired_s.vel =
-      Eigen::Vector3d(pt.velocities[Axis::X], pt.velocities[Axis::Y], pt.velocities[Axis::Z]);
+  desired_s.pos = Eigen::Vector3d(pt.positions[Axis::X], pt.positions[Axis::Y],
+                                  pt.positions[Axis::Z]);
+  desired_s.vel = Eigen::Vector3d(
+      pt.velocities[Axis::X], pt.velocities[Axis::Y], pt.velocities[Axis::Z]);
 
-  desired_s.acc = Eigen::Vector3d(pt.accelerations[Axis::X], pt.accelerations[Axis::Y],
-                                  pt.accelerations[Axis::Z]);
+  desired_s.acc =
+      Eigen::Vector3d(pt.accelerations[Axis::X], pt.accelerations[Axis::Y],
+                      pt.accelerations[Axis::Z]);
 
-  desired_s.jerk = Eigen::Vector3d(pt.effort[Axis::X], pt.effort[Axis::Y], pt.effort[Axis::Z]);
+  desired_s.jerk = Eigen::Vector3d(pt.effort[Axis::X], pt.effort[Axis::Y],
+                                   pt.effort[Axis::Z]);
 
   Eigen::Vector4d cmd = controller_.computeControls(state_, desired_s);
 
-  std_msgs::Float32MultiArray msg;
+  std_msgs::Float32MultiArray   msg;
   std_msgs::MultiArrayDimension dim;
   dim.size = Motors::N_MOTORS;
   msg.layout.dim.push_back(dim);

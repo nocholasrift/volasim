@@ -4,10 +4,10 @@
 #include <volasim/args.h>
 #include <volasim/event/event_dispatcher.h>
 #include <volasim/sensors/depth_sensor.h>
+#include <volasim/sensors/sensor_handoff.h>
 #include <volasim/simulation/camera.h>
 #include <volasim/simulation/entity.h>
 #include <volasim/simulation/input_manager.h>
-#include <volasim/sensors/sensor_handoff.h>
 #include <volasim/simulation/loop_pacer.h>
 #include <volasim/simulation/physics_interface.h>
 #include <volasim/simulation/rate_counter.h>

@@ -20,22 +20,22 @@ LeeControlNode::LeeControlNode() : Node("lee_controller") {
                               std::bind(&LeeControlNode::control_loop, this));
 
   initialized_ = false;
-  state_set_ = false;
+  state_set_   = false;
 
   // params_["kp"] = 69.44;
   // params_["kv"] = 24.304;
   // params_["kR"] = 13.81;
   // params_["kw"] = 2.54;
-  params_["kp"] = 3.5;
-  params_["kv"] = 2.1;
-  params_["kR"] = 1.0;
-  params_["kw"] = 0.1;
-  params_["mass"] = 0.68;
-  params_["length"] = 0.17;
+  params_["kp"]       = 3.5;
+  params_["kv"]       = 2.1;
+  params_["kR"]       = 1.0;
+  params_["kw"]       = 0.1;
+  params_["mass"]     = 0.68;
+  params_["length"]   = 0.17;
   params_["c_torque"] = 0.016;
-  params_["j0"] = 0.007;
-  params_["j1"] = 0.007;
-  params_["j2"] = 0.012;
+  params_["j0"]       = 0.007;
+  params_["j1"]       = 0.007;
+  params_["j2"]       = 0.012;
   // params_["mass"] = 4.34;
   // params_["length"] = 0.315;
   // params_["c_torque"] = 8.004e-4;
@@ -47,7 +47,7 @@ LeeControlNode::LeeControlNode() : Node("lee_controller") {
 
   conv_mat_ << 1, 1, 1, 1, 1, 1, -1, -1, -1, 1, 1, -1, 1, -1, 1, -1;
 
-  double l = params_["length"];
+  double l          = params_["length"];
   conv_mat_.row(1) *= l / std::sqrt(2);
   conv_mat_.row(2) *= l / std::sqrt(2);
   conv_mat_.row(3) *= params_["c_torque"];
@@ -86,9 +86,9 @@ void LeeControlNode::position_cb(
 
   desired_state_.reset();
   desired_state_.pos = Eigen::Vector3d(msg->x, msg->y, msg->z);
-  traj_ = generateTraj(state_, desired_state_, 2.0);
-  state_set_ = true;
-  start_ = this->now();
+  traj_              = generateTraj(state_, desired_state_, 2.0);
+  state_set_         = true;
+  start_             = this->now();
 }
 
 void LeeControlNode::control_loop() {
@@ -97,7 +97,7 @@ void LeeControlNode::control_loop() {
   if (traj_.points.empty())
     return;
 
-  double t = (this->now() - start_).seconds();
+  double t   = (this->now() - start_).seconds();
   size_t ind = 0;
   for (size_t i = 0; i < traj_.points.size(); ++i) {
     if (t < traj_.points[i].time_from_start.sec +
@@ -115,8 +115,8 @@ void LeeControlNode::control_loop() {
       Eigen::Vector3d(pt.positions[0], pt.positions[1], pt.positions[2]);
   desired_s.vel =
       Eigen::Vector3d(pt.velocities[0], pt.velocities[1], pt.velocities[2]);
-  desired_s.acc = Eigen::Vector3d(pt.accelerations[0], pt.accelerations[1],
-                                  pt.accelerations[2]);
+  desired_s.acc  = Eigen::Vector3d(pt.accelerations[0], pt.accelerations[1],
+                                   pt.accelerations[2]);
   desired_s.jerk = Eigen::Vector3d(pt.effort[0], pt.effort[1], pt.effort[2]);
 
   Eigen::Vector4d cmd = controller_.computeControls(state_, desired_s);
@@ -143,7 +143,7 @@ trajectory_msgs::msg::JointTrajectory LeeControlNode::generateTraj(
 
   Eigen::MatrixXd t_mat_inv = t_mat.inverse();
 
-  Eigen::VectorXd bounds(6);
+  Eigen::VectorXd                bounds(6);
   std::array<Eigen::VectorXd, 3> coeffs;
   for (int i = 0; i < 3; ++i) {
     bounds << start.pos(i), end.pos(i), start.vel(i), end.vel(i), 0., 0.;
@@ -151,18 +151,18 @@ trajectory_msgs::msg::JointTrajectory LeeControlNode::generateTraj(
   }
 
   auto eval_poly = [](const Eigen::VectorXd& c, double t) {
-    double ret = 0;
+    double ret   = 0;
     double t_pow = 1;
     for (int i = 0; i < c.size(); ++i) {
-      ret += c[c.size() - 1 - i] * t_pow;
+      ret   += c[c.size() - 1 - i] * t_pow;
       t_pow *= t;
     }
     return ret;
   };
 
   trajectory_msgs::msg::JointTrajectory traj;
-  size_t sz = static_cast<size_t>(T / 0.05) + 1;
-  double t = 0.;
+  size_t                                sz = static_cast<size_t>(T / 0.05) + 1;
+  double                                t  = 0.;
   traj.points.reserve(sz);
   for (size_t i = 0; i < sz; ++i) {
     trajectory_msgs::msg::JointTrajectoryPoint pt;

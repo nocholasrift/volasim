@@ -76,8 +76,8 @@ Eigen::Vector4d LeeController::computeControls(const state_t& state,
   // the controller has already lost the drone :)
   if (orientationError(R_dw, state.rot) > orientationError(R_dw2, state.rot)) {
     R_dw = R_dw2;
-    b1d = R_dw.col(0);
-    b2d = R_dw.col(1);
+    b1d  = R_dw.col(0);
+    b2d  = R_dw.col(1);
   }
 
   Eigen::Vector3d h_w =
@@ -98,7 +98,7 @@ Eigen::Vector4d LeeController::computeControls(const state_t& state,
   Eigen::Vector3d torque = -kR_ * eR - kw_ * ew;
 
   Eigen::Vector4d cmd;
-  cmd[0] = fz;
+  cmd[0]      = fz;
   cmd.tail(3) = torque;
 
   return cmd;

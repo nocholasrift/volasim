@@ -31,12 +31,12 @@ class LeeControlNode : public rclcpp::Node {
 
   trajectory_msgs::msg::JointTrajectory generateTraj(const vola::state_t& start,
                                                      const vola::state_t& end,
-                                                     double T);
+                                                     double               T);
 
   rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr cmd_pub_;
   rclcpp::TimerBase::SharedPtr control_loop_timer_;
 
-  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr   odom_sub_;
   rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr desired_pos_sub_;
 
   rclcpp::Time start_;

@@ -6,13 +6,13 @@
 
 #include <geometry_msgs/TransformStamped.h>
 #include <nav_msgs/Odometry.h>
-#include <sensor_msgs/Imu.h>
 #include <ros/ros.h>
+#include <sensor_msgs/Imu.h>
 #include <std_msgs/Float32MultiArray.h>
+#include <std_srvs/Empty.h>
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <trajectory_msgs/JointTrajectoryPoint.h>
-#include <std_srvs/Empty.h>
 #include <zmq.hpp>
 
 #include <array>
@@ -72,15 +72,17 @@ class VolasimROSWrapper {
     cmd_sub_ = nh.subscribe("/command", 1, &VolasimROSWrapper::cmd_cb, this);
 
     state_pub_ = nh.advertise<nav_msgs::Odometry>("odometry", 10);
-    imu_pub_ = nh.advertise<sensor_msgs::Imu>("imu", 10);
+    imu_pub_   = nh.advertise<sensor_msgs::Imu>("imu", 10);
 
-    pos_cmd_pub_ = nh.advertise<trajectory_msgs::JointTrajectoryPoint>("command_pos", 10);
+    pos_cmd_pub_ =
+        nh.advertise<trajectory_msgs::JointTrajectoryPoint>("command_pos", 10);
 
     timer_ =
         nh.createTimer(ros::Duration(.001), &VolasimROSWrapper::timer_cb, this);
 
     // service
-    takeoff_srv_ = nh.advertiseService("takeoff", &VolasimROSWrapper::takeoff_srv, this);
+    takeoff_srv_ =
+        nh.advertiseService("takeoff", &VolasimROSWrapper::takeoff_srv, this);
     land_srv_ = nh.advertiseService("land", &VolasimROSWrapper::land_srv, this);
 
     zmq_context_ = zmq::context_t(1);
@@ -114,13 +116,15 @@ class VolasimROSWrapper {
     input_ = {msg->data[0], msg->data[1], msg->data[2], msg->data[3]};
   }
 
-  bool takeoff_srv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response){
+  bool takeoff_srv(std_srvs::Empty::Request&  request,
+                   std_srvs::Empty::Response& response) {
     pending_actions_.push(Action::kTakeoff);
 
     return true;
   }
 
-  bool land_srv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response){
+  bool land_srv(std_srvs::Empty::Request&  request,
+                std_srvs::Empty::Response& response) {
     pending_actions_.push(Action::kLand);
 
     return true;
@@ -209,7 +213,7 @@ class VolasimROSWrapper {
   void handle_state(const std::vector<zmq::message_t>& frames) {
     const std::string topic(static_cast<const char*>(frames[0].data()),
                             frames[0].size());
-    const uint32_t drone_id = drone_id_from_topic(topic);
+    const uint32_t    drone_id = drone_id_from_topic(topic);
 
     volasim_msgs::DroneState drone_state;
     if (!drone_state.ParseFromArray(frames[1].data(), frames[1].size())) {
@@ -220,8 +224,8 @@ class VolasimROSWrapper {
     nav_msgs::Odometry msg;
     msg.header.stamp = ros::Time::now();
     // Match the tf tree so the odom resolves against odom -> base_link.
-    msg.header.frame_id = volasim::frames::odom(drone_id);
-    msg.child_frame_id = volasim::frames::baseLink(drone_id);
+    msg.header.frame_id      = volasim::frames::odom(drone_id);
+    msg.child_frame_id       = volasim::frames::baseLink(drone_id);
     msg.pose.pose.position.x = drone_state.odom().position().x();
     msg.pose.pose.position.y = drone_state.odom().position().y();
     msg.pose.pose.position.z = drone_state.odom().position().z();
@@ -240,12 +244,12 @@ class VolasimROSWrapper {
     msg.twist.twist.angular.z = drone_state.odom().angvel().z();
 
     sensor_msgs::Imu imu_msg;
-    imu_msg.header.stamp = ros::Time::now();
+    imu_msg.header.stamp    = ros::Time::now();
     imu_msg.header.frame_id = volasim::frames::baseLink(drone_id);
-    imu_msg.orientation.x = drone_state.imu().orientation().x();
-    imu_msg.orientation.y = drone_state.imu().orientation().y();
-    imu_msg.orientation.z = drone_state.imu().orientation().z();
-    imu_msg.orientation.w = drone_state.imu().orientation().w();
+    imu_msg.orientation.x   = drone_state.imu().orientation().x();
+    imu_msg.orientation.y   = drone_state.imu().orientation().y();
+    imu_msg.orientation.z   = drone_state.imu().orientation().z();
+    imu_msg.orientation.w   = drone_state.imu().orientation().w();
 
     imu_msg.angular_velocity.x = drone_state.imu().angvel().x();
     imu_msg.angular_velocity.y = drone_state.imu().angvel().y();
@@ -259,14 +263,15 @@ class VolasimROSWrapper {
     imu_pub_.publish(imu_msg);
 
     publish_cmd();
-    
+
     // parse any pending actions
     if (pending_actions_.size() > 0) {
       switch (pending_actions_.front()) {
         case Action::kTakeoff:
           if (state_ == Action::kIdle) {
             trajectory_msgs::JointTrajectoryPoint pt;
-            pt.positions = {drone_state.odom().position().x(), drone_state.odom().position().y(), 1.0};
+            pt.positions       = {drone_state.odom().position().x(),
+                                  drone_state.odom().position().y(), 1.0};
             pt.time_from_start = ros::Duration(5.0);
             pos_cmd_pub_.publish(pt);
             state_ = Action::kTakeoff;
@@ -276,7 +281,8 @@ class VolasimROSWrapper {
         case Action::kLand:
           if (state_ == Action::kFlying) {
             trajectory_msgs::JointTrajectoryPoint pt;
-            pt.positions = {drone_state.odom().position().x(), drone_state.odom().position().y(), 0.01};
+            pt.positions       = {drone_state.odom().position().x(),
+                                  drone_state.odom().position().y(), 0.01};
             pt.time_from_start = ros::Duration(5.0);
             pos_cmd_pub_.publish(pt);
             state_ = Action::kLand;
@@ -294,13 +300,12 @@ class VolasimROSWrapper {
 
     if (state_ == Action::kLand && drone_state.odom().position().z() < 0.02)
       state_ = Action::kIdle;
-
   }
 
  private:
-  ros::Publisher pos_cmd_pub_;
-  ros::Publisher state_pub_;
-  ros::Publisher imu_pub_;
+  ros::Publisher  pos_cmd_pub_;
+  ros::Publisher  state_pub_;
+  ros::Publisher  imu_pub_;
   ros::Subscriber cmd_sub_;
 
   ros::ServiceServer takeoff_srv_;
@@ -314,16 +319,16 @@ class VolasimROSWrapper {
   std::array<float, 4> input_{0, 0, 0, 0};
 
   std::queue<Action> pending_actions_;
-  Action state_ = Action::kIdle;
+  Action             state_ = Action::kIdle;
 
   zmq::context_t zmq_context_;
-  zmq::socket_t zmq_subscriber_;
-  zmq::socket_t zmq_publisher_;
+  zmq::socket_t  zmq_subscriber_;
+  zmq::socket_t  zmq_publisher_;
 };
 
 int main(int argc, char* argv[]) {
   ros::init(argc, argv, "volasim_ros");
-  ros::NodeHandle nh;
+  ros::NodeHandle   nh;
   VolasimROSWrapper vola(nh);
   vola.spin();
   return 0;

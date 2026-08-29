@@ -51,8 +51,8 @@ vola::trajectory_t MinJerkGenerator::get_trajectory(
       state.jerk[axis] = 60 * a5 * t2 + 24 * a4 * t + 6 * a3;
     }
 
-    state.time = t;
-    t += step_size;
+    state.time  = t;
+    t          += step_size;
   }
 
   return traj;

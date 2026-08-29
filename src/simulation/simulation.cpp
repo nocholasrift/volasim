@@ -479,7 +479,8 @@ void Simulation::buildStaticTransforms() {
     const auto     it       = drone_of_vehicle.find(vehicle);
     const uint32_t drone_id = it != drone_of_vehicle.end() ? it->second : 0;
 
-    const auto frames = registry.assignSensor(drone_id, sensor_entity.getName());
+    const auto frames =
+        registry.assignSensor(drone_id, sensor_entity.getName());
 
     // Hand the sensor its opaque publish labels; it stamps clouds in the optical
     // frame and publishes on the drone's depth topic.
