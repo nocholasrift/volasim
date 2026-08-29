@@ -7,7 +7,6 @@ on:
     branches: [ main ]
 
 env:
-  # Define a cross-platform location for the vcpkg binary cache
   VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
 
 jobs:
@@ -65,38 +64,47 @@ jobs:
           echo "Actual Kernel Machine Architecture:"
           uname -m
 
-      # Step 3: Setup CMake and Ninja build tools
+      # Step 3: Install minimal build essentials for Linux environments
+      - name: Install System Dependencies (Linux Only)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libasound2-dev libudev-dev
+
+      # Step 4: Setup CMake and Ninja build tools
       - name: Setup CMake and Ninja
         uses: lukka/get-cmake@latest
 
-      # Step 4: Set up caching for vcpkg binary dependencies
+      # Step 5: Set up caching for vcpkg binary dependencies
       - name: Cache vcpkg dependencies
         uses: actions/cache@v4
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
-          # The key updates if the OS, architecture, or vcpkg configurations change
           key: ${{ runner.os }}-${{ matrix.arch }}-vcpkg-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
-          # Fall back to older caches if an exact match isn't found
           restore-keys: |
             ${{ runner.os }}-${{ matrix.arch }}-vcpkg-
 
-      # Step 5: Ensure the cache directory exists before running CMake
+      # Step 6: Ensure the cache directory exists before running CMake
       - name: Create vcpkg cache directory
         run: mkdir -p ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
 
-      # Step 6: Configure CMake build directory
+      # Step 7: Configure CMake build directory
+      # Added -DSDL_VIDEO=OFF and -DSDL_UNIX_CONSOLE_BUILD=ON to skip X11/Wayland checks
       - name: Configure CMake
         run: |
           cmake -B build/ -S . \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DSDL_VIDEO=OFF \
+            -DSDL_UNIX_CONSOLE_BUILD=ON
 
-      # Step 7: Run the compilation build step
+      # Step 8: Run the compilation build step
       - name: Build Project
         run: cmake --build build/ --config Release
 
-      # Step 8: Execute your CTest test suite
+      # Step 9: Execute your CTest test suite
       - name: Run Tests
         run: |
           cd build
           ctest --output-on-failure -C Release
+
