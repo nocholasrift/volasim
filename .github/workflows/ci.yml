@@ -1,0 +1,147 @@
+name: Multi-OS Cross-Architecture CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+  CCACHE_BASEDIR: ${{ github.workspace }}
+  CCACHE_MAXSIZE: "500M"
+
+jobs:
+  test-matrix:
+    name: ${{ matrix.os-name }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # --- Ubuntu 22.04 (LTS) ---
+          - os-name: "Ubuntu 22.04"
+            arch: "intel-x64"
+            runner: ubuntu-22.04
+          - os-name: "Ubuntu 22.04"
+            arch: "arm64"
+            runner: ubuntu-22.04-arm
+
+          # --- Ubuntu 24.04 (LTS) ---
+          - os-name: "Ubuntu 24.04"
+            arch: "intel-x64"
+            runner: ubuntu-24.04
+          - os-name: "Ubuntu 24.04"
+            arch: "arm64"
+            runner: ubuntu-24.04-arm
+
+          # --- Ubuntu 26.04 (Public Preview) ---
+          - os-name: "Ubuntu 26.04"
+            arch: "intel-x64"
+            runner: ubuntu-26.04
+          - os-name: "Ubuntu 26.04"
+            arch: "arm64"
+            runner: ubuntu-26.04-arm
+
+          # --- macOS ---
+          - os-name: "macOS"
+            arch: "arm64"
+            runner: macos-latest
+
+    steps:
+      # Step 1: Download code to the active runner machine
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Step 2: Print system information
+      - name: Verify Architecture and OS
+        run: |
+          echo "Operating System Family: $RUNNER_OS"
+          echo "Actual Kernel Machine Architecture:"
+          uname -m
+
+      # Step 3: Install build essentials and the system graphics stack for Linux.
+      # protobuf/abseil/glm/eigen come from vcpkg (see vcpkg.json); OpenGL and
+      # GLUT are the GPU/driver stack, so their dev packages come from apt and
+      # let the GUI target link on the headless runners.
+      - name: Install System Dependencies (Linux Only)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            ccache \
+            libasound2-dev \
+            libudev-dev \
+            freeglut3-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev
+
+      - name: Install ccache (macOS Only)
+        if: runner.os == 'macOS'
+        run: brew install ccache
+
+      # Step 4: Setup CMake and Ninja build tools
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      # Step 5: Set up caching for vcpkg binary dependencies
+      - name: Cache vcpkg dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: ${{ runner.os }}-${{ matrix.arch }}-vcpkg-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.arch }}-vcpkg-
+
+      # Step 5b: Cache ccache objects for the in-tree build (SDL, Jolt, assimp,
+      # libzmq, our sources). run_id makes each key unique so a fresh cache saves
+      # every run; the prefix restore-key pulls the most recent one back.
+      - name: Cache ccache objects
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ runner.os }}-${{ matrix.arch }}-ccache-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.arch }}-ccache-
+
+      # Step 6: Ensure the cache directory exists before running CMake
+      - name: Create vcpkg cache directory
+        run: mkdir -p ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+
+      # Step 7: Configure CMake build directory
+      # SDL_VIDEO=OFF / SDL_UNIX_CONSOLE_BUILD=ON skip the X11/Wayland probing on
+      # headless Linux. They are Linux-only: on macOS, disabling video also drops
+      # SDL's Cocoa tray implementation while dynapi still references it, so SDL
+      # fails to link. macOS builds full SDL (Cocoa) — it compiles without a display.
+      - name: Configure CMake
+        run: |
+          SDL_FLAGS=""
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            SDL_FLAGS="-DSDL_VIDEO=OFF -DSDL_UNIX_CONSOLE_BUILD=ON"
+          fi
+          cmake -B build/ -S . \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            $SDL_FLAGS
+
+      # Step 8: Run the compilation build step
+      - name: Build Project
+        run: |
+          ccache --zero-stats
+          cmake --build build/
+          ccache --show-stats
+
+      # Step 9: Execute your CTest test suite
+      - name: Run Tests
+        run: |
+          cd build
+          ctest --output-on-failure -C Release
+
