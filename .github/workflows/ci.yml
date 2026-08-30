@@ -44,9 +44,6 @@ jobs:
 
           # --- macOS ---
           - os-name: "macOS"
-            arch: "intel-x64"
-            runner: macos-13
-          - os-name: "macOS"
             arch: "arm64"
             runner: macos-latest
 
@@ -98,14 +95,20 @@ jobs:
         run: mkdir -p ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
 
       # Step 7: Configure CMake build directory
-      # Added -DSDL_VIDEO=OFF and -DSDL_UNIX_CONSOLE_BUILD=ON to skip X11/Wayland checks
+      # SDL_VIDEO=OFF / SDL_UNIX_CONSOLE_BUILD=ON skip the X11/Wayland probing on
+      # headless Linux. They are Linux-only: on macOS, disabling video also drops
+      # SDL's Cocoa tray implementation while dynapi still references it, so SDL
+      # fails to link. macOS builds full SDL (Cocoa) — it compiles without a display.
       - name: Configure CMake
         run: |
+          SDL_FLAGS=""
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            SDL_FLAGS="-DSDL_VIDEO=OFF -DSDL_UNIX_CONSOLE_BUILD=ON"
+          fi
           cmake -B build/ -S . \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" \
-            -DSDL_VIDEO=OFF \
-            -DSDL_UNIX_CONSOLE_BUILD=ON
+            $SDL_FLAGS
 
       # Step 8: Run the compilation build step
       - name: Build Project
