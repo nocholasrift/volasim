@@ -1,0 +1,11 @@
+{
+  "name": "volasim",
+  "version": "0.1.0",
+  "description": "Quadrotor flight simulator",
+  "dependencies": [
+    "protobuf",
+    "abseil",
+    "glm",
+    "eigen3"
+  ]
+}

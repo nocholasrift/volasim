@@ -64,12 +64,21 @@ jobs:
           echo "Actual Kernel Machine Architecture:"
           uname -m
 
-      # Step 3: Install minimal build essentials for Linux environments
+      # Step 3: Install build essentials and the system graphics stack for Linux.
+      # protobuf/abseil/glm/eigen come from vcpkg (see vcpkg.json); OpenGL and
+      # GLUT are the GPU/driver stack, so their dev packages come from apt and
+      # let the GUI target link on the headless runners.
       - name: Install System Dependencies (Linux Only)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libasound2-dev libudev-dev
+          sudo apt-get install -y \
+            build-essential \
+            libasound2-dev \
+            libudev-dev \
+            freeglut3-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev
 
       # Step 4: Setup CMake and Ninja build tools
       - name: Setup CMake and Ninja
