@@ -141,6 +141,22 @@ elseif(ROS_VERSION EQUAL 2)
   )
   target_compile_options(lee_control_node PRIVATE -std=c++17)
 
+  add_executable(position_command_node
+    src/position_commander_ros2.cpp
+    src/minjerk_generator.cpp
+  )
+  ament_target_dependencies(position_command_node
+    rclcpp
+    std_msgs
+    nav_msgs
+    geometry_msgs
+    trajectory_msgs
+  )
+  install(TARGETS position_command_node
+    DESTINATION ${PROJECT_SOURCE_DIR}/build
+  )
+  target_compile_options(position_command_node PRIVATE -std=c++17)
+
 else()
   message(WARNING "No ROS installation found, only building simulator exectuables")
   message(WARNING "If ROS is installed on this machine, check that ROS_VERSION is defined")
