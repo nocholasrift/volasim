@@ -35,7 +35,33 @@ struct state_t {
 
 struct trajectory_t {
   std::vector<state_t> states;
+
+  const state_t& at_time(double t) const {
+    if (states.empty()) {
+      static const state_t zero;
+      return zero;
+    }
+    for (size_t i = 1; i < states.size(); ++i) {
+      if (states[i].time > t) {
+        return states[i - 1];
+      }
+    }
+    return states.back();
+  }
 };
+
+inline void compute_jerk(trajectory_t& traj) {
+  if (traj.states.size() < 2) {
+    return;
+  }
+  for (size_t i = 0; i < traj.states.size() - 1; ++i) {
+    double dt = traj.states[i + 1].time - traj.states[i].time;
+    if (dt > 0) {
+      traj.states[i].jerk = (traj.states[i + 1].acc - traj.states[i].acc) / dt;
+    }
+  }
+  traj.states.back().jerk = traj.states[traj.states.size() - 2].jerk;
+}
 
 }  // namespace vola
 
