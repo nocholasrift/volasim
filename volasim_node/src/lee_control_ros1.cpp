@@ -59,17 +59,14 @@ void LeeControlNode::odom_cb(const nav_msgs::Odometry::ConstPtr& msg) {
 
 void LeeControlNode::trajectory_cb(
     const trajectory_msgs::MultiDOFJointTrajectory::ConstPtr& msg) {
-  if (msg->points.empty()) {
+  bool ok = vola::from_multidof_trajectory(
+      *msg, active_traj_,
+      [](const auto& pt) { return pt.time_from_start.toSec(); });
+
+  if (!ok) {
+    ROS_WARN("Rejected trajectory: empty or non-monotonic timestamps");
     return;
   }
-
-  active_traj_.states.resize(msg->points.size());
-  for (size_t i = 0; i < msg->points.size(); ++i) {
-    vola::from_multidof_point(msg->points[i], active_traj_.states[i]);
-    active_traj_.states[i].time = msg->points[i].time_from_start.toSec();
-  }
-
-  vola::compute_jerk(active_traj_);
 
   start_    = ros::Time::now();
   traj_set_ = true;

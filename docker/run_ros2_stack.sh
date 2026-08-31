@@ -7,6 +7,9 @@ source "/opt/ros/${ROS_DISTRO}/setup.bash"
 /ws/build/vola_ros_bridge &
 BRIDGE_PID=$!
 
+/ws/build/position_command_node &
+POS_CMD_PID=$!
+
 /ws/build/lee_control_node &
 CTRL_PID=$!
 
@@ -26,7 +29,7 @@ shutdown() {
     kill -INT "${RECORD_PID}" 2>/dev/null || true
     wait "${RECORD_PID}" 2>/dev/null || true
   fi
-  kill "$BRIDGE_PID" "$CTRL_PID" 2>/dev/null || true
+  kill "$BRIDGE_PID" "$POS_CMD_PID" "$CTRL_PID" 2>/dev/null || true
   wait
 }
 trap shutdown SIGINT SIGTERM

@@ -70,18 +70,16 @@ void LeeControlNode::odom_cb(const nav_msgs::msg::Odometry::SharedPtr msg) {
 
 void LeeControlNode::trajectory_cb(
     const trajectory_msgs::msg::MultiDOFJointTrajectory::SharedPtr msg) {
-  if (msg->points.empty()) {
+  bool ok =
+      vola::from_multidof_trajectory(*msg, active_traj_, [](const auto& pt) {
+        return rclcpp::Duration(pt.time_from_start).seconds();
+      });
+
+  if (!ok) {
+    RCLCPP_WARN(this->get_logger(),
+                "Rejected trajectory: empty or non-monotonic timestamps");
     return;
   }
-
-  active_traj_.states.resize(msg->points.size());
-  for (size_t i = 0; i < msg->points.size(); ++i) {
-    vola::from_multidof_point(msg->points[i], active_traj_.states[i]);
-    active_traj_.states[i].time =
-        rclcpp::Duration(msg->points[i].time_from_start).seconds();
-  }
-
-  vola::compute_jerk(active_traj_);
 
   start_    = this->now();
   traj_set_ = true;

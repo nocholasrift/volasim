@@ -79,14 +79,10 @@ trajectory_msgs::MultiDOFJointTrajectory PositionCommander::toMultiDOF(
   trajectory_msgs::MultiDOFJointTrajectory msg;
   msg.header.stamp    = ros::Time::now();
   msg.header.frame_id = "odom";
-  msg.joint_names     = {"base_link"};
 
-  msg.points.reserve(traj.states.size());
-  for (const auto& s : traj.states) {
-    auto& pt = msg.points.emplace_back();
-    vola::to_multidof_point(s, pt);
-    pt.time_from_start = ros::Duration(s.time);
-  }
+  vola::to_multidof_trajectory(traj, msg, [](auto& pt, double t) {
+    pt.time_from_start = ros::Duration(t);
+  });
 
   return msg;
 }

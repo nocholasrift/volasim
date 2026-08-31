@@ -152,6 +152,9 @@ elseif(ROS_VERSION EQUAL 2)
     geometry_msgs
     trajectory_msgs
   )
+  target_link_libraries(position_command_node
+    Eigen3::Eigen
+  )
   install(TARGETS position_command_node
     DESTINATION ${PROJECT_SOURCE_DIR}/build
   )
