@@ -1,5 +1,7 @@
 #include <minjerk_generator.h>
 
+#include <cmath>
+
 MinJerkGenerator::MinJerkGenerator() {
   t_mat_.row(0) << 0., 0., 0., 0., 0., 1.;
   t_mat_.row(2) << 0., 0., 0., 0., 1., 0.;
@@ -18,12 +20,16 @@ vola::trajectory_t MinJerkGenerator::get_trajectory(
   set_t_matrix_coeffs(duration);
   auto coeffs = get_traj_coefficients(curr_pos, target_pos);
 
-  // turn into trajectory and return
-  size_t sz = static_cast<size_t>(duration / step_size) + 1;
+  size_t intervals = static_cast<size_t>(std::ceil(duration / step_size));
+  size_t sz        = intervals + 1;
   traj.states.reserve(sz);
 
   double t = 0.;
   for (size_t step = 0; step < sz; ++step) {
+    if (t > duration) {
+      t = duration;
+    }
+
     auto& state = traj.states.emplace_back();
 
     double t2 = t * t;

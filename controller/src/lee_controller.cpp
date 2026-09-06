@@ -5,23 +5,30 @@
 
 namespace vola {
 
-LeeController::LeeController() {}
+LeeController::LeeController() = default;
 
-LeeController::~LeeController() {}
+LeeController::~LeeController() = default;
 
 void LeeController::loadParams(
-    std::unordered_map<std::string_view, double>& params) {
-  kp_ = params["kp"];
-  kv_ = params["kv"];
-  kR_ = params["kR"];
-  kw_ = params["kw"];
+    const std::unordered_map<std::string_view, double>& params) {
+  double m  = params.at("mass");
+  double j0 = params.at("j0");
+  double j1 = params.at("j1");
+  double j2 = params.at("j2");
 
-  mass_ = params["mass"];
+  if (m <= 0 || j0 <= 0 || j1 <= 0 || j2 <= 0) {
+    throw std::runtime_error("mass and inertia values must be positive");
+  }
 
-  // can change this later, but must drones fulfill this form
-  J_(0, 0) = params["j0"];
-  J_(1, 1) = params["j1"];
-  J_(2, 2) = params["j2"];
+  kp_   = params.at("kp");
+  kv_   = params.at("kv");
+  kR_   = params.at("kR");
+  kw_   = params.at("kw");
+  mass_ = m;
+
+  J_(0, 0) = j0;
+  J_(1, 1) = j1;
+  J_(2, 2) = j2;
 }
 
 Eigen::Vector4d LeeController::computeControls(const state_t& state,

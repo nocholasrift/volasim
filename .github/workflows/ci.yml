@@ -94,9 +94,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
-          key: ${{ runner.os }}-${{ matrix.arch }}-vcpkg-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+          key: ${{ matrix.os-name }}-${{ matrix.arch }}-vcpkg-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.arch }}-vcpkg-
+            ${{ matrix.os-name }}-${{ matrix.arch }}-vcpkg-
 
       # Step 5b: Cache ccache objects for the in-tree build (SDL, Jolt, assimp,
       # libzmq, our sources). run_id makes each key unique so a fresh cache saves
@@ -105,9 +105,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ runner.os }}-${{ matrix.arch }}-ccache-${{ github.run_id }}
+          key: ${{ matrix.os-name }}-${{ matrix.arch }}-ccache-${{ github.run_id }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.arch }}-ccache-
+            ${{ matrix.os-name }}-${{ matrix.arch }}-ccache-
 
       # Step 6: Ensure the cache directory exists before running CMake
       - name: Create vcpkg cache directory

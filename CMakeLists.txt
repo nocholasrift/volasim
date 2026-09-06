@@ -36,6 +36,8 @@ find_package(glm REQUIRED)
 find_package(GLUT REQUIRED)
 find_package(Eigen3 REQUIRED)
 
+add_subdirectory(controller)
+add_subdirectory(standalone)
 add_subdirectory(volasim_node)
 
 
@@ -88,3 +90,9 @@ add_custom_target(copy_assets
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/definitions ${CMAKE_CURRENT_BINARY_DIR}/definitions
 )
 add_dependencies(volasim copy_assets)
+
+add_custom_target(copy_scripts
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/scripts/run_standalone.sh ${CMAKE_BINARY_DIR}/run_standalone.sh
+  COMMAND chmod +x ${CMAKE_BINARY_DIR}/run_standalone.sh
+)
+add_dependencies(lee_control_zmq copy_scripts)
