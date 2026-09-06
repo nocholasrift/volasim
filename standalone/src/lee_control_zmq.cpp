@@ -18,6 +18,7 @@ LeeControlZmq::LeeControlZmq(double control_dt)
     : ctx_(1),
       state_sub_(ctx_, zmq::socket_type::sub),
       cmd_pub_(ctx_, zmq::socket_type::pub),
+      cmd_pos_pull_(ctx_, zmq::socket_type::pull),
       control_dt_(control_dt) {
   params_["kp"]       = 3.5;
   params_["kv"]       = 2.1;
@@ -43,6 +44,10 @@ void LeeControlZmq::run() {
   state_sub_.set(zmq::sockopt::rcvtimeo, 100);
 
   cmd_pub_.bind("tcp://*:5557");
+
+  cmd_pos_pull_.bind("ipc:///tmp/volasim_cmd_pos");
+  cmd_pos_pull_.bind("tcp://*:5558");
+  cmd_pos_pull_.set(zmq::sockopt::rcvtimeo, 0);
 
   running_     = true;
   recv_thread_ = std::thread([this] { receiveLoop(); });
@@ -79,7 +84,8 @@ void LeeControlZmq::receiveLoop() {
     }
 
     volasim_msgs::DroneState drone_state;
-    if (!drone_state.ParseFromArray(data_frame.data(), data_frame.size())) {
+    if (!drone_state.ParseFromArray(data_frame.data(),
+                                    static_cast<int>(data_frame.size()))) {
       continue;
     }
 
@@ -102,25 +108,45 @@ void LeeControlZmq::receiveLoop() {
   }
 }
 
+void LeeControlZmq::pullDesiredState() {
+  zmq::message_t cmd_msg;
+  if (cmd_pos_pull_.recv(cmd_msg).has_value()) {
+    volasim_msgs::DroneState cmd_state;
+    if (cmd_state.ParseFromArray(cmd_msg.data(),
+                                 static_cast<int>(cmd_msg.size()))) {
+      const auto&     pos = cmd_state.odom().position();
+      Eigen::Vector3d target(pos.x(), pos.y(), pos.z());
+
+      vola::state_t local;
+      {
+        std::lock_guard<std::mutex> lock(state_mtx_);
+        local = state_;
+      }
+
+      active_traj_ = traj_gen_.get_trajectory(local.pos, target, 2.0);
+      traj_start_  = std::chrono::steady_clock::now();
+      traj_set_    = true;
+      std::cout << "[lee_control_zmq] trajectory set: " << target.transpose()
+                << std::endl;
+    }
+  }
+}
+
 void LeeControlZmq::controlLoop() {
   auto next = std::chrono::steady_clock::now();
   auto step = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
       std::chrono::duration<double>(control_dt_));
 
   while (running_.load()) {
-    if (initialized_.load() && !traj_set_.load()) {
-      vola::state_t local;
-      {
-        std::lock_guard<std::mutex> lock(state_mtx_);
-        local = state_;
-      }
-      Eigen::Vector3d target(local.pos.x(), local.pos.y(), 1.0);
-      active_traj_ = traj_gen_.get_trajectory(local.pos, target, 2.0);
-      traj_start_  = std::chrono::steady_clock::now();
-      traj_set_    = true;
-      std::cout << "[lee_control_zmq] trajectory set: hover at "
-                << target.transpose() << std::endl;
+    double dt = std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                              last_tick_)
+                    .count();
+    if (dt > 2 * control_dt_) {
+      std::cout << "[lee_control_zmq] dt was: " << dt << std::endl;
     }
+
+    last_tick_ = std::chrono::steady_clock::now();
+    pullDesiredState();
 
     if (!initialized_.load() || !traj_set_.load()) {
       next += step;
@@ -157,7 +183,7 @@ void LeeControlZmq::controlLoop() {
     thrust.set_f4(static_cast<float>(cmd[3]));
 
     std::string bytes;
-    thrust.SerializeToString(&bytes);
+    (void)thrust.SerializeToString(&bytes);
     cmd_pub_.send(zmq::buffer(bytes), zmq::send_flags::none);
 
     next += step;
