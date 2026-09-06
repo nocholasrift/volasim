@@ -146,7 +146,10 @@ void LeeControlZmq::controlLoop() {
     }
 
     last_tick_ = std::chrono::steady_clock::now();
-    pullDesiredState();
+
+    if (initialized_.load()) {
+      pullDesiredState();
+    }
 
     if (!initialized_.load() || !traj_set_.load()) {
       next += step;

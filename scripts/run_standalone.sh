@@ -10,7 +10,7 @@ if [ ! -d "$BIN_DIR" ]; then
   BIN_DIR="$SCRIPT_DIR"
 fi
 
-if [ ! -x "$BIN_DIR/volasim" ] || [ ! -x "$BIN_DIR/lee_control_zmq" ]; then
+if [ ! -x "$BIN_DIR/volasim" ] || [ ! -x "$BIN_DIR/lee_control_zmq" ] || [ ! -x "$BIN_DIR/send_position" ]; then
   echo "[run_standalone] missing binaries — run: cmake -B build && cmake --build build"
   exit 1
 fi
