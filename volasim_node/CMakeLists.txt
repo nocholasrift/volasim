@@ -14,20 +14,8 @@ endif()
 include_directories(
   include/
   ${CMAKE_SOURCE_DIR}/include
-  # ${EIGEN3_INCLUDE_DIRS}
   ${cppzmq_INCLUDE_DIRS}
 )
-
-add_library(lee_controller
-  src/matrix_utils.cpp
-  src/lee_controller.cpp
-)
-target_link_libraries(lee_controller
-  PRIVATE 
-  # ${EIGEN3_LIBRARIES}
-  Eigen3::Eigen
-)
-target_compile_options(lee_controller PRIVATE -std=c++17)
 
 
 if(ROS_VERSION EQUAL 1)
@@ -63,17 +51,17 @@ if(ROS_VERSION EQUAL 1)
   target_link_libraries(lee_control_node
     PRIVATE
     ${catkin_LIBRARIES}
-    lee_controller
+    vola_controller
   )
   target_compile_options(lee_control_node PRIVATE -std=c++17)
 
   add_executable(position_command_node
     src/position_commander_ros1.cpp
-    src/minjerk_generator.cpp
   )
   target_link_libraries(position_command_node
-    PRIVATE 
+    PRIVATE
     ${catkin_LIBRARIES}
+    vola_controller
   )
   target_compile_options(position_command_node PRIVATE -std=c++17)
   
@@ -134,7 +122,7 @@ elseif(ROS_VERSION EQUAL 2)
     trajectory_msgs
   )
   target_link_libraries(lee_control_node
-    lee_controller
+    vola_controller
   )
   install(TARGETS lee_control_node
     DESTINATION ${PROJECT_SOURCE_DIR}/build

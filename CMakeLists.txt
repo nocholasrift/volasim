@@ -36,6 +36,7 @@ find_package(glm REQUIRED)
 find_package(GLUT REQUIRED)
 find_package(Eigen3 REQUIRED)
 
+add_subdirectory(controller)
 add_subdirectory(volasim_node)
 
 
