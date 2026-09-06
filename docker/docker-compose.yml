@@ -20,7 +20,7 @@ services:
       # it — uncomment both lines below. This does NOT work under Docker Desktop
       # (macOS/Windows): a unix socket cannot cross the host<->VM boundary, so
       # there the bridge stays on the tcp fallback.
-      # - /tmp/volasim_cloud:/tmp/volasim_cloud
+      - /tmp/volasim_cloud:/tmp/volasim_cloud
     # environment override for the ipc case above:
     #   - VOLASIM_CLOUD_ENDPOINT=ipc:///tmp/volasim_cloud
     extra_hosts:
