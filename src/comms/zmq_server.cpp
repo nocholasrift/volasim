@@ -1,4 +1,5 @@
 #include <volasim/comms/zmq_server.h>
+
 #include <zmq.hpp>
 
 ZMQServer::ZMQServer() {
