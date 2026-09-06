@@ -9,7 +9,7 @@ target_link_libraries(lee_control_zmq
   PRIVATE
   vola_controller
   cppzmq-static
-  myproto
+  volasim_msgs
 )
 target_compile_features(lee_control_zmq PRIVATE cxx_std_17)
 
@@ -20,6 +20,6 @@ target_include_directories(send_position PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(send_position
   PRIVATE
   cppzmq-static
-  myproto
+  volasim_msgs
 )
 target_compile_features(send_position PRIVATE cxx_std_17)

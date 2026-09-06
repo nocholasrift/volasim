@@ -1,5 +1,5 @@
-#include <volasim/comms/msgs/Thrust.pb.h>
 #include <volasim/vehicles/drone.h>
+#include <volasim_msgs/Thrust.pb.h>
 
 #include <glm/ext/quaternion_common.hpp>
 #include <glm/gtc/quaternion.hpp>

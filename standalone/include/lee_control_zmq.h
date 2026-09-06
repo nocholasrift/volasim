@@ -32,11 +32,13 @@ class LeeControlZmq {
   void receiveLoop();
   void controlLoop();
   void pullDesiredState();
+  void pollTrajectory();
 
   zmq::context_t ctx_;
   zmq::socket_t  state_sub_;
   zmq::socket_t  cmd_pub_;
   zmq::socket_t  cmd_pos_pull_;
+  zmq::socket_t  traj_sub_;
 
   vola::state_t state_;
   std::mutex    state_mtx_;
@@ -48,6 +50,7 @@ class LeeControlZmq {
   vola::LeeController controller_;
   MinJerkGenerator    traj_gen_;
   vola::trajectory_t  active_traj_;
+  std::mutex          traj_mtx_;
 
   std::chrono::steady_clock::time_point traj_start_;
   std::chrono::steady_clock::time_point last_tick_;
@@ -56,6 +59,7 @@ class LeeControlZmq {
   std::unordered_map<std::string_view, double> params_;
 
   std::thread recv_thread_;
+  std::thread traj_thread_;
 };
 
 #endif

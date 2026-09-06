@@ -7,6 +7,9 @@ source "/opt/ros/${ROS_DISTRO}/setup.bash"
 /ws/build/vola_ros_bridge &
 BRIDGE_PID=$!
 
+/ws/build/position_command_node &
+POS_CMD_PID=$!
+
 /ws/build/lee_control_node &
 CTRL_PID=$!
 
@@ -14,8 +17,11 @@ RECORD_PID=""
 if [ "${RECORD:-0}" = "1" ]; then
   mkdir -p /ws/bags
   BAG_DIR="/ws/bags/run_$(date +%Y%m%d_%H%M%S)"
-  echo "[run_ros2_stack] recording MCAP bag to ${BAG_DIR}"
-  ros2 bag record -s mcap -o "${BAG_DIR}" -a &
+  DEFAULT_TOPICS="/odometry /command /cmd_trajectory /command_pos"
+  TOPICS="${RECORD_TOPICS:-$DEFAULT_TOPICS}"
+  echo "[run_ros2_stack] recording MCAP bag to ${BAG_DIR} (topics: ${TOPICS})"
+  # shellcheck disable=SC2086
+  ros2 bag record -s mcap -o "${BAG_DIR}" ${TOPICS} &
   RECORD_PID=$!
 fi
 
@@ -26,7 +32,7 @@ shutdown() {
     kill -INT "${RECORD_PID}" 2>/dev/null || true
     wait "${RECORD_PID}" 2>/dev/null || true
   fi
-  kill "$BRIDGE_PID" "$CTRL_PID" 2>/dev/null || true
+  kill "$BRIDGE_PID" "$POS_CMD_PID" "$CTRL_PID" 2>/dev/null || true
   wait
 }
 trap shutdown SIGINT SIGTERM

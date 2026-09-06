@@ -21,14 +21,14 @@ CTRL_PID=$!
 # Start position commander
 echo "[INFO] Launching position commander..."
 ./build/Release/position_command_node &
-CTRL_PID=$!
+POS_CMD_PID=$!
 
 # sleep 5
 timeout 30s rostopic echo -n1 /odometry >/dev/null
 rosservice call /takeoff "{}"
 
 # === CLEANUP HANDLER ===
-trap "echo; echo '[INFO] Shutting down...'; kill $VOLASIM_PID $BRIDGE_PID $CTRL_PID; wait" SIGINT SIGTERM
+trap "echo; echo '[INFO] Shutting down...'; kill $VOLASIM_PID $BRIDGE_PID $POS_CMD_PID $CTRL_PID; wait" SIGINT SIGTERM
 
 # === KEEP SCRIPT ALIVE UNTIL CTRL+C ===
 wait

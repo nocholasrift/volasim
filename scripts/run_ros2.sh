@@ -18,6 +18,11 @@ echo "[INFO] Starting ros bridge..."
 ./build/Release/vola_ros_bridge &
 BRIDGE_PID=$!
 
+# Start position commander (converts Point commands to MultiDOF trajectories)
+echo "[INFO] Launching position commander..."
+./build/Release/position_command_node &
+POS_CMD_PID=$!
+
 # Start controller node
 echo "[INFO] Launching Lee controller..."
 ./build/Release/lee_control_node &
@@ -27,7 +32,7 @@ sleep 2
 ros2 service call /takeoff std_srvs/srv/Empty {}
 
 # === CLEANUP HANDLER ===
-trap "echo; echo '[INFO] Shutting down...'; kill $VOLASIM_PID $BRIDGE_PID $CTRL_PID; wait" SIGINT SIGTERM
+trap "echo; echo '[INFO] Shutting down...'; kill $VOLASIM_PID $BRIDGE_PID $POS_CMD_PID $CTRL_PID; wait" SIGINT SIGTERM
 
 # === KEEP SCRIPT ALIVE UNTIL CTRL+C ===
 wait

@@ -1,7 +1,6 @@
 #ifndef DEPTHSENSOR_H
 #define DEPTHSENSOR_H
 
-#include <volasim/comms/msgs/DepthCamera.pb.h>
 #include <volasim/sensors/sensor_handoff.h>
 #include <volasim/simulation/dynamic_object.h>
 #include <volasim/simulation/entity.h>
@@ -9,6 +8,7 @@
 #include <volasim/simulation/rate_gate.h>
 #include <volasim/simulation/shader.h>
 #include <volasim/simulation/world_buffer.h>
+#include <volasim_msgs/DepthCamera.pb.h>
 
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/glm.hpp>

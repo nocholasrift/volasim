@@ -16,3 +16,6 @@
 [submodule "third_party/libzmq"]
 	path = third_party/libzmq
 	url = https://github.com/zeromq/libzmq
+[submodule "third_party/volasim-msgs"]
+	path = third_party/volasim-msgs
+	url = git@github.com:nocholasrift/volasim-msgs.git

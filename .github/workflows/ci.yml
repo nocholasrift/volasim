@@ -48,7 +48,7 @@ jobs:
           # --- macOS ---
           - os-name: "macOS"
             arch: "arm64"
-            runner: macos-latest
+            runner: macos-15
 
     steps:
       # Step 1: Download code to the active runner machine

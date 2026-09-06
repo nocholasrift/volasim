@@ -1,7 +1,8 @@
 #include "lee_control_zmq.h"
 
-#include <volasim/comms/msgs/DroneState.pb.h>
-#include <volasim/comms/msgs/Thrust.pb.h>
+#include <volasim_msgs/DroneState.pb.h>
+#include <volasim_msgs/Thrust.pb.h>
+#include <volasim_msgs/Trajectory.pb.h>
 
 #include <iostream>
 
@@ -19,6 +20,7 @@ LeeControlZmq::LeeControlZmq(double control_dt)
       state_sub_(ctx_, zmq::socket_type::sub),
       cmd_pub_(ctx_, zmq::socket_type::pub),
       cmd_pos_pull_(ctx_, zmq::socket_type::pull),
+      traj_sub_(ctx_, zmq::socket_type::sub),
       control_dt_(control_dt) {
   params_["kp"]       = 3.5;
   params_["kv"]       = 2.1;
@@ -49,8 +51,14 @@ void LeeControlZmq::run() {
   cmd_pos_pull_.bind("tcp://*:5558");
   cmd_pos_pull_.set(zmq::sockopt::rcvtimeo, 0);
 
+  traj_sub_.bind("ipc:///tmp/volasim_traj");
+  traj_sub_.bind("tcp://*:5560");
+  traj_sub_.set(zmq::sockopt::subscribe, "");
+  traj_sub_.set(zmq::sockopt::rcvtimeo, 100);
+
   running_     = true;
   recv_thread_ = std::thread([this] { receiveLoop(); });
+  traj_thread_ = std::thread([this] { pollTrajectory(); });
   controlLoop();
 }
 
@@ -58,6 +66,9 @@ void LeeControlZmq::stop() {
   running_ = false;
   if (recv_thread_.joinable()) {
     recv_thread_.join();
+  }
+  if (traj_thread_.joinable()) {
+    traj_thread_.join();
   }
 }
 
@@ -108,6 +119,62 @@ void LeeControlZmq::receiveLoop() {
   }
 }
 
+void LeeControlZmq::pollTrajectory() {
+  while (running_.load()) {
+    zmq::message_t msg;
+    auto           result = traj_sub_.recv(msg);
+    if (!result.has_value()) {
+      continue;
+    }
+
+    volasim_msgs::Trajectory traj_proto;
+    if (!traj_proto.ParseFromArray(msg.data(), static_cast<int>(msg.size()))) {
+      continue;
+    }
+
+    if (traj_proto.points_size() == 0) {
+      continue;
+    }
+
+    vola::trajectory_t traj;
+    traj.states.reserve(traj_proto.points_size());
+    for (const auto& pt : traj_proto.points()) {
+      vola::state_t s;
+      s.pos  = {pt.pos().x(), pt.pos().y(), pt.pos().z()};
+      s.vel  = {pt.vel().x(), pt.vel().y(), pt.vel().z()};
+      s.acc  = {pt.acc().x(), pt.acc().y(), pt.acc().z()};
+      s.jerk = {pt.jerk().x(), pt.jerk().y(), pt.jerk().z()};
+      s.yaw  = pt.yaw();
+      s.time = pt.time();
+
+      if (pt.has_orientation()) {
+        Eigen::Quaterniond q(pt.orientation().w(), pt.orientation().x(),
+                             pt.orientation().y(), pt.orientation().z());
+        s.rot = q.toRotationMatrix();
+      }
+      if (pt.has_angular_vel()) {
+        s.w = {pt.angular_vel().x(), pt.angular_vel().y(),
+               pt.angular_vel().z()};
+      }
+      if (pt.has_angular_acc()) {
+        s.w_dot = {pt.angular_acc().x(), pt.angular_acc().y(),
+                   pt.angular_acc().z()};
+      }
+
+      traj.states.push_back(s);
+    }
+
+    {
+      std::lock_guard<std::mutex> lock(traj_mtx_);
+      active_traj_ = std::move(traj);
+      traj_start_  = std::chrono::steady_clock::now();
+    }
+    traj_set_ = true;
+    std::cout << "[lee_control_zmq] trajectory received ("
+              << traj_proto.points_size() << " points)\n";
+  }
+}
+
 void LeeControlZmq::pullDesiredState() {
   zmq::message_t cmd_msg;
   if (cmd_pos_pull_.recv(cmd_msg).has_value()) {
@@ -123,11 +190,15 @@ void LeeControlZmq::pullDesiredState() {
         local = state_;
       }
 
-      active_traj_ = traj_gen_.get_trajectory(local.pos, target, 2.0);
-      traj_start_  = std::chrono::steady_clock::now();
-      traj_set_    = true;
+      auto minjerk = traj_gen_.get_trajectory(local.pos, target, 2.0);
+      {
+        std::lock_guard<std::mutex> lock(traj_mtx_);
+        active_traj_ = minjerk;
+        traj_start_  = std::chrono::steady_clock::now();
+      }
+      traj_set_ = true;
       std::cout << "[lee_control_zmq] trajectory set: " << target.transpose()
-                << std::endl;
+                << '\n';
     }
   }
 }
@@ -157,19 +228,14 @@ void LeeControlZmq::controlLoop() {
       continue;
     }
 
-    double t = std::chrono::duration<double>(std::chrono::steady_clock::now() -
-                                             traj_start_)
-                   .count();
-
-    size_t ind = 0;
-    for (size_t i = 0; i < active_traj_.states.size(); ++i) {
-      if (t < active_traj_.states[i].time) {
-        break;
-      }
-      ind = i;
+    vola::state_t desired;
+    {
+      std::lock_guard<std::mutex> lock(traj_mtx_);
+      double                      t = std::chrono::duration<double>(
+                     std::chrono::steady_clock::now() - traj_start_)
+                     .count();
+      desired = active_traj_.at_time(t);
     }
-
-    const vola::state_t& desired = active_traj_.states[ind];
 
     vola::state_t local;
     {
