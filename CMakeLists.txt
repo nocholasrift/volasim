@@ -28,7 +28,7 @@ set(CPPZMQ_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(third_party/cppzmq EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/assimp EXCLUDE_FROM_ALL)
 
-add_subdirectory(include/volasim/comms/msgs)
+add_subdirectory(third_party/volasim-msgs)
 
 find_package(absl REQUIRED CONFIG)
 find_package(OpenGL REQUIRED)
@@ -73,7 +73,7 @@ target_link_libraries(volasim
   Eigen3::Eigen
   ${GLM_LIBRARIES}
   cppzmq-static
-  myproto
+  volasim_msgs
   assimp
 )
 set_target_properties(volasim PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)

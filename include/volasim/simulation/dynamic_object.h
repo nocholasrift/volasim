@@ -9,8 +9,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-#include <volasim/comms/msgs/DroneState.pb.h>
 #include <volasim/solvers/runge_kutta.h>
+#include <volasim_msgs/DroneState.pb.h>
 
 class DynamicObject {
  public:

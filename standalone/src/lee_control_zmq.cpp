@@ -1,7 +1,7 @@
 #include "lee_control_zmq.h"
 
-#include <volasim/comms/msgs/DroneState.pb.h>
-#include <volasim/comms/msgs/Thrust.pb.h>
+#include <volasim_msgs/DroneState.pb.h>
+#include <volasim_msgs/Thrust.pb.h>
 
 #include <iostream>
 
