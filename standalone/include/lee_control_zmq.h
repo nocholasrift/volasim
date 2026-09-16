@@ -28,6 +28,8 @@ class LeeControlZmq {
   void run();
   void stop();
 
+  void requestStop() { running_ = false; }
+
  private:
   void receiveLoop();
   void controlLoop();

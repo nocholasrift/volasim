@@ -16,6 +16,8 @@
 #include <glm/gtc/quaternion.hpp>
 #include <pugixml.hpp>
 
+#include <shaders.h>
+
 #include <array>
 #include <chrono>
 #include <cmath>
@@ -27,83 +29,6 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-
-// Renders the scene from the sensor's viewpoint into a depth-only FBO.
-static const std::string depth_vertex_shader =
-    "#version 330 core\n"
-    "layout (location = 0) in vec3 aPos;\n"
-    "uniform mat4 mvp;\n"
-    "void main() {\n"
-    "  gl_Position = mvp * vec4(aPos, 1.0);\n"
-    "}\n";
-
-static const std::string depth_fragment_shader =
-    "#version 330 core\n"
-    "void main() {}\n";
-
-static const std::string point_vertex_shader =
-    "#version 330 core\n"
-    "uniform sampler2D depth_tex;\n"
-    "uniform mat4 sensor_inv_vp;\n"
-    "uniform mat4 main_mvp;\n"
-    "uniform vec2 sensor_size;\n"
-    "void main() {\n"
-    "  int j = gl_VertexID % int(sensor_size.x);\n"
-    "  int row = gl_VertexID / int(sensor_size.x);\n"  // row 0 = bottom (OpenGL convention)
-    "  float px = float(j) + 0.5;\n"  // sample/reconstruct at pixel center
-    "  float py = float(row) + 0.5;\n"
-    "  vec2 uv = vec2(px / sensor_size.x, py / sensor_size.y);\n"
-    "  float d = texture(depth_tex, uv).r;\n"
-    "  if (d >= 1.0) {\n"
-    "    gl_Position = vec4(0.0, 0.0, 2.0, 1.0);\n"  // behind far plane — clipped
-    "    gl_PointSize = 0.0;\n"
-    "    return;\n"
-    "  }\n"
-    "  float x_ndc = 2.0 * px / sensor_size.x - 1.0;\n"
-    "  float y_ndc = 2.0 * py / sensor_size.y - 1.0;\n"
-    "  float z_ndc = 2.0 * d - 1.0;\n"
-    "  vec4 world_pos = sensor_inv_vp * vec4(x_ndc, y_ndc, z_ndc, 1.0);\n"
-    "  world_pos /= world_pos.w;\n"
-    "  gl_Position = main_mvp * world_pos;\n"
-    "  gl_PointSize = 1.0;\n"
-    "}\n";
-
-static const std::string point_fragment_shader =
-    "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    "void main() {\n"
-    "  FragColor = vec4(0.0, 0.0, 1.0, 1.0);\n"
-    "}\n";
-
-// Depth buffer -> uint16 mm, so the readback ships compact metric depth like a
-// real RGBD sensor instead of raw float window depth.
-static const std::string depth_convert_vertex_shader =
-    "#version 330 core\n"
-    "out vec2 v_uv;\n"
-    "void main() {\n"
-    "  vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));\n"
-    "  v_uv = p;\n"
-    "  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);\n"
-    "}\n";
-
-static const std::string depth_convert_fragment_shader =
-    "#version 330 core\n"
-    "in vec2 v_uv;\n"
-    "uniform sampler2D depth_tex;\n"
-    "uniform vec2 z_range;\n"  // x = near, y = far
-    "out uint depth_mm;\n"
-    "void main() {\n"
-    "  float d = texture(depth_tex, v_uv).r;\n"
-    "  if (d >= 1.0) {\n"
-    "    depth_mm = 0u;\n"  // background / no return -> 0 (invalid)
-    "    return;\n"
-    "  }\n"
-    "  float z_ndc = 2.0 * d - 1.0;\n"
-    "  float zn = z_range.x;\n"
-    "  float zf = z_range.y;\n"
-    "  float depth_m = (2.0 * zn * zf) / (zf + zn - z_ndc * (zf - zn));\n"
-    "  depth_mm = uint(clamp(depth_m * 1000.0, 0.0, 65535.0));\n"
-    "}\n";
 
 class GPUSensor {
  public:
@@ -193,9 +118,9 @@ class GPUSensor {
     glGenVertexArrays(1, vao_.addr());
 
     point_shader_ =
-        std::make_unique<Shader>(point_vertex_shader, point_fragment_shader);
+        std::make_unique<Shader>(shaders::point_vert, shaders::point_frag);
     depth_shader_ =
-        std::make_unique<Shader>(depth_vertex_shader, depth_fragment_shader);
+        std::make_unique<Shader>(shaders::depth_vert, shaders::depth_frag);
 
     initReadback();
   }
@@ -382,8 +307,8 @@ class GPUSensor {
     const int w = static_cast<int>(settings_.width);
     const int h = static_cast<int>(settings_.height);
 
-    convert_shader_ = std::make_unique<Shader>(depth_convert_vertex_shader,
-                                               depth_convert_fragment_shader);
+    convert_shader_ = std::make_unique<Shader>(shaders::depth_convert_vert,
+                                               shaders::depth_convert_frag);
 
     glGenTextures(1, mm_tex_.addr());
     glBindTexture(GL_TEXTURE_2D, mm_tex_.get());

@@ -1,5 +1,6 @@
 #include <glad/glad.h>
 
+#include <shaders.h>
 #include <volasim/comms/frame_registry.h>
 #include <volasim/comms/frames.h>
 #include <volasim/comms/topics.h>
@@ -151,7 +152,7 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
   report_rates_         = args.report_rates;
   interpolate_          = args.interpolate;
 
-  shape_shader_ = Shader(mesh_vertex_shader, mesh_fragment_shader);
+  shape_shader_ = Shader(shaders::mesh_vert, shaders::mesh_frag);
 
   // parser populates the scene graph under world_ and returns any depth sensors.
   // world_ lives for the whole program; if it is ever reset/reloaded, dispatch

@@ -41,8 +41,25 @@ add_subdirectory(standalone)
 add_subdirectory(volasim_node)
 
 
+file(GLOB SHADER_FILES
+  "${CMAKE_SOURCE_DIR}/definitions/shaders/*.vert"
+  "${CMAKE_SOURCE_DIR}/definitions/shaders/*.frag"
+)
+set(GENERATED_SHADER_HEADER "${CMAKE_BINARY_DIR}/generated/shaders.h")
+add_custom_command(
+  OUTPUT "${GENERATED_SHADER_HEADER}"
+  COMMAND ${CMAKE_COMMAND}
+    -DSHADER_DIR=${CMAKE_SOURCE_DIR}/definitions/shaders
+    -DOUTPUT=${GENERATED_SHADER_HEADER}
+    -P ${CMAKE_SOURCE_DIR}/cmake/embed_shaders.cmake
+  DEPENDS ${SHADER_FILES} ${CMAKE_SOURCE_DIR}/cmake/embed_shaders.cmake
+  COMMENT "Embedding shaders into shaders.h"
+)
+add_custom_target(embed_shaders DEPENDS "${GENERATED_SHADER_HEADER}")
+
 include_directories(
   include/
+  ${CMAKE_BINARY_DIR}/generated
   ${cppzmq_INCLUDE_DIRS}
   ${assimp_INCLUDE_DIRS}
 )
@@ -76,6 +93,7 @@ target_link_libraries(volasim
   volasim_msgs
   assimp
 )
+add_dependencies(volasim embed_shaders)
 set_target_properties(volasim PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
 target_compile_definitions(volasim PRIVATE GLM_ENABLE_EXPERIMENTAL GL_SILENCE_DEPRECATION GLUT_SILENCE_DEPRECATION)
 

@@ -4,6 +4,7 @@
 #include <volasim_msgs/Thrust.pb.h>
 #include <volasim_msgs/Trajectory.pb.h>
 
+#include <csignal>
 #include <iostream>
 
 namespace {
@@ -51,8 +52,8 @@ void LeeControlZmq::run() {
   cmd_pos_pull_.bind("tcp://*:5558");
   cmd_pos_pull_.set(zmq::sockopt::rcvtimeo, 0);
 
-  traj_sub_.bind("ipc:///tmp/volasim_traj");
-  traj_sub_.bind("tcp://*:5560");
+  traj_sub_.connect("ipc:///tmp/volasim_traj");
+  traj_sub_.connect("tcp://localhost:5560");
   traj_sub_.set(zmq::sockopt::subscribe, "");
   traj_sub_.set(zmq::sockopt::rcvtimeo, 100);
 
@@ -260,8 +261,20 @@ void LeeControlZmq::controlLoop() {
   }
 }
 
+namespace {
+LeeControlZmq* g_controller = nullptr;
+void           signal_handler(int) {
+  if (g_controller) {
+    g_controller->requestStop();
+  }
+}
+}  // namespace
+
 int main() {
   LeeControlZmq controller;
+  g_controller = &controller;
+  std::signal(SIGINT, signal_handler);
+  std::signal(SIGTERM, signal_handler);
   controller.run();
   return 0;
 }
