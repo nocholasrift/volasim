@@ -78,6 +78,9 @@ class Entity {
   [[nodiscard]] EntityID           getID() const { return id_; }
   [[nodiscard]] const std::string& getName() const { return name_; }
   [[nodiscard]] const Entity*      getParent() const { return parent_; }
+  [[nodiscard]] const std::list<std::unique_ptr<Entity>>& children() const {
+    return children_;
+  }
 
  private:
   // Dispatch OBJ_RM for this node and its whole subtree (children first), so

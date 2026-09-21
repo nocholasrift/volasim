@@ -46,6 +46,10 @@ inline std::string tfStatic(std::uint32_t drone_id) {
   return drone(drone_id) + "/tf_static";
 }
 
+inline std::string trajectory(std::uint32_t drone_id) {
+  return drone(drone_id) + "/trajectory";
+}
+
 }  // namespace volasim::topics
 
 #endif

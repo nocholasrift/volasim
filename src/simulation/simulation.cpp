@@ -176,6 +176,9 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
   // physics can mutate anything, so compose the static tf tree once.
   buildStaticTransforms();
 
+  overlay_renderer_.init();
+  overlay_renderer_.buildFrameMap(*world_);
+
   const std::vector<SimBody>& sim_bodies = physics_interface_.dynamicBodies();
 
   // default camera target to the first dynamic object; else focus the origin
@@ -297,6 +300,9 @@ SDL_AppResult Simulation::update(void* appstate) {
     sensor.draw(view_mat, proj_mat, shape_shader_);
   }
 
+  glUseProgram(shape_shader_.getID());
+  overlay_renderer_.draw(view_mat, proj_mat, shape_shader_, *poses);
+
   SDL_GL_SwapWindow(window_);
 
   return SDL_APP_CONTINUE; /* carry on with the program! */
@@ -359,6 +365,10 @@ void Simulation::setInputs(const std::string& buffer) {
   // step rather than reaching into the dynamics from the comms thread.
   pending_input_     = buffer;
   has_pending_input_ = true;
+}
+
+void Simulation::submitOverlay(const std::string& topic, TrajectoryData data) {
+  overlay_renderer_.submit(topic, std::move(data));
 }
 
 void Simulation::applyPendingInput() {

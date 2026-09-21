@@ -26,6 +26,7 @@ class ZMQServer {
                      zmq::message_t&& payload);
 
   bool receiveInfo(std::string& input_buffer);
+  bool receiveTrajectory(std::string& payload_out);
 
  private:
   ZMQServer();
@@ -41,6 +42,8 @@ class ZMQServer {
   // messages, and these are multipart.)
   zmq::socket_t cloud_publisher_;
   zmq::socket_t subscriber_;
+
+  zmq::socket_t traj_subscriber_;
 };
 
 #endif

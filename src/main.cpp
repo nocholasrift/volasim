@@ -9,10 +9,12 @@
 #include <thread>
 #define SDL_MAIN_USE_CALLBACKS 1 /* use the callbacks instead of main() */
 #include <volasim/args.h>
+#include <volasim/comms/overlay_convert.h>
 #include <volasim/comms/topics.h>
 #include <volasim/comms/zmq_server.h>
 #include <volasim/sensors/sensor_handoff.h>
 #include <volasim/simulation/simulation.h>
+#include <volasim_msgs/Trajectory.pb.h>
 
 #ifdef USE_APPLE_OPENGL_HEADERS
 #include <GLUT/glut.h>
@@ -86,6 +88,28 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
       std::string buffer;
       if (server.receiveInfo(buffer)) {
         sim.setInputs(buffer);
+      }
+
+      std::string traj_payload;
+      while (server.receiveTrajectory(traj_payload)) {
+        volasim_msgs::Trajectory traj_proto;
+        if (traj_proto.ParseFromString(traj_payload)) {
+          uint32_t drone_id  = traj_proto.header().drone_id();
+          auto     traj_data = volasim::overlay::fromProto(traj_proto);
+          std::cout << "[overlay] received trajectory: "
+                    << traj_data.points.size() << " points, frame='"
+                    << traj_data.frame_id << "', drone=" << drone_id << "\n";
+          if (!traj_data.points.empty()) {
+            const auto& p = traj_data.points.front();
+            std::cout << "[overlay] first point: " << p.x << " " << p.y << " "
+                      << p.z << "\n";
+          }
+          sim.submitOverlay(volasim::topics::trajectory(drone_id),
+                            std::move(traj_data));
+        } else {
+          std::cerr << "[overlay] failed to parse trajectory proto ("
+                    << traj_payload.size() << " bytes)\n";
+        }
       }
     }
   });
