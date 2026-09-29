@@ -69,6 +69,7 @@ class XMLParser {
     std::shared_ptr<Renderable> renderable;
     std::string                 dynamics_type;
     pugi::xml_node              xml_node;
+    float                       yaw_offset_deg = 0.f;
   };
 
   std::string        fname_;

@@ -51,7 +51,8 @@ Eigen::Vector4d LeeController::computeControls(const state_t& state,
   Eigen::Vector3d z_b = desired_state.acc + Eigen::Vector3d(0, 0, 9.81);
   z_b.normalize();
 
-  double fz = pid_term.dot(z_b);
+  Eigen::Vector3d body_z = state.rot.col(2);
+  double          fz     = pid_term.dot(body_z);
 
   if (fz < 1e-8) {
     return Eigen::Vector4d::Zero();
@@ -88,11 +89,13 @@ Eigen::Vector4d LeeController::computeControls(const state_t& state,
   }
 
   Eigen::Vector3d h_w =
-      (mass_ / fz) * (desired_state.jerk - (z_b.dot(desired_state.jerk)) * z_b);
+      (mass_ / pid_term_norm) *
+      (desired_state.jerk - (z_b.dot(desired_state.jerk)) * z_b);
 
   double w_p = -h_w.dot(b2d);
   double w_q = h_w.dot(b1d);
-  double w_r = 0.;  // come back and implement yaw control at some point
+  // Yaw rate is about world z; project it onto the tilted desired body z.
+  double w_r = desired_state.yaw_rate * b3d.dot(e3_);
 
   Eigen::Vector3d desired_w = w_p * b1d + w_q * b2d + w_r * b3d;
 
@@ -100,7 +103,7 @@ Eigen::Vector4d LeeController::computeControls(const state_t& state,
   Eigen::Vector3d eR =
       .5 * utils::vee(R_dw.transpose() * state.rot - R_bw_inv * R_dw);
 
-  Eigen::Vector3d ew = state.w - desired_w;
+  Eigen::Vector3d ew = state.rot.transpose() * (state.w - desired_w);
 
   Eigen::Vector3d torque = -kR_ * eR - kw_ * ew;
 

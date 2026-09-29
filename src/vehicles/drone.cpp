@@ -91,10 +91,13 @@ void Drone::setInput(const std::string& buffer) {
 
 void Drone::getForceAndTorque(Eigen::Vector3d& force, Eigen::Vector3d& torque) {
 
-  Eigen::Quaterniond quat(x_[3], x_[4], x_[5], x_[6]);
+  Eigen::Quaterniond mesh_quat(x_[3], x_[4], x_[5], x_[6]);
+  Eigen::Quaterniond offset_inv(yaw_offset_inv_.w, yaw_offset_inv_.x,
+                                yaw_offset_inv_.y, yaw_offset_inv_.z);
+  Eigen::Quaterniond heading_quat = mesh_quat * offset_inv;
 
-  force  = quat * Eigen::Vector3d(0, 0, u_[0]);
-  torque = quat * u_.tail(3);
+  force  = mesh_quat * Eigen::Vector3d(0, 0, u_[0]);
+  torque = heading_quat * u_.tail(3);
 }
 
 Drone* Drone::fromXML(const pugi::xml_node& root) {
@@ -124,61 +127,63 @@ Drone* Drone::fromXML(const pugi::xml_node& root) {
 }
 
 glm::vec3 Drone::getVelocity() {
-  return glm::vec3(x_(7), x_(8), x_(9));
+  return {x_(7), x_(8), x_(9)};
 }
 
 glm::vec3 Drone::getBodyRates() {
-  return glm::vec3(x_(10), x_(11), x_(12));
+  return {x_(10), x_(11), x_(12)};
 }
 
 glm::vec3 Drone::getTranslation() {
-  return glm::vec3(x_[0], x_[1], x_[2]);
+  return {x_[0], x_[1], x_[2]};
 }
 
 glm::quat Drone::getRotation() {
-  return glm::quat(x_[3], x_[4], x_[5], x_[6]);
+  glm::quat mesh_rot(x_[3], x_[4], x_[5], x_[6]);
+  return mesh_rot * yaw_offset_inv_;
 }
 
 volasim_msgs::DroneState Drone::getSimState() {
-  static int               count = 0;
   volasim_msgs::DroneState state;
 
-  state.mutable_odom()->mutable_position()->set_x(x_(0));
-  state.mutable_odom()->mutable_position()->set_y(x_(1));
-  state.mutable_odom()->mutable_position()->set_z(x_(2));
+  glm::vec3 pos = getTranslation();
+  state.mutable_odom()->mutable_position()->set_x(pos.x);
+  state.mutable_odom()->mutable_position()->set_y(pos.y);
+  state.mutable_odom()->mutable_position()->set_z(pos.z);
 
-  state.mutable_odom()->mutable_orientation()->set_x(x_(4));
-  state.mutable_odom()->mutable_orientation()->set_y(x_(5));
-  state.mutable_odom()->mutable_orientation()->set_z(x_(6));
-  state.mutable_odom()->mutable_orientation()->set_w(x_(3));
+  glm::quat rot = getRotation();
+  state.mutable_odom()->mutable_orientation()->set_x(rot.x);
+  state.mutable_odom()->mutable_orientation()->set_y(rot.y);
+  state.mutable_odom()->mutable_orientation()->set_z(rot.z);
+  state.mutable_odom()->mutable_orientation()->set_w(rot.w);
 
-  state.mutable_odom()->mutable_linvel()->set_x(x_(7));
-  state.mutable_odom()->mutable_linvel()->set_y(x_(8));
-  state.mutable_odom()->mutable_linvel()->set_z(x_(9));
+  glm::vec3 vel = getVelocity();
+  state.mutable_odom()->mutable_linvel()->set_x(vel.x);
+  state.mutable_odom()->mutable_linvel()->set_y(vel.y);
+  state.mutable_odom()->mutable_linvel()->set_z(vel.z);
 
-  state.mutable_odom()->mutable_angvel()->set_x(x_(10));
-  state.mutable_odom()->mutable_angvel()->set_y(x_(11));
-  state.mutable_odom()->mutable_angvel()->set_z(x_(12));
+  glm::vec3 w = getBodyRates();
+  state.mutable_odom()->mutable_angvel()->set_x(w.x);
+  state.mutable_odom()->mutable_angvel()->set_y(w.y);
+  state.mutable_odom()->mutable_angvel()->set_z(w.z);
 
-  state.mutable_imu()->mutable_orientation()->set_x(x_(4));
-  state.mutable_imu()->mutable_orientation()->set_y(x_(5));
-  state.mutable_imu()->mutable_orientation()->set_z(x_(6));
-  state.mutable_imu()->mutable_orientation()->set_w(x_(3));
+  state.mutable_imu()->mutable_orientation()->set_x(rot.x);
+  state.mutable_imu()->mutable_orientation()->set_y(rot.y);
+  state.mutable_imu()->mutable_orientation()->set_z(rot.z);
+  state.mutable_imu()->mutable_orientation()->set_w(rot.w);
 
-  state.mutable_imu()->mutable_angvel()->set_x(x_(10));
-  state.mutable_imu()->mutable_angvel()->set_y(x_(11));
-  state.mutable_imu()->mutable_angvel()->set_z(x_(12));
+  state.mutable_imu()->mutable_angvel()->set_x(w.x);
+  state.mutable_imu()->mutable_angvel()->set_y(w.y);
+  state.mutable_imu()->mutable_angvel()->set_z(w.z);
 
-  Eigen::Vector3d force, torque;
+  Eigen::Vector3d force;
+  Eigen::Vector3d torque;
   getForceAndTorque(force, torque);
 
   Eigen::Vector3d acceleration = force / mass_;
   state.mutable_imu()->mutable_linacc()->set_x(acceleration(0));
   state.mutable_imu()->mutable_linacc()->set_y(acceleration(1));
   state.mutable_imu()->mutable_linacc()->set_z(acceleration(2));
-
-  /*(*state.mutable_odom()) = odom_msg;*/
-  /*(*state.mutable_imu()) = imu_msg;*/
 
   return state;
 }

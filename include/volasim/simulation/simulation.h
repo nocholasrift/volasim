@@ -9,6 +9,7 @@
 #include <volasim/simulation/entity.h>
 #include <volasim/simulation/input_manager.h>
 #include <volasim/simulation/loop_pacer.h>
+#include <volasim/simulation/overlay_renderer.h>
 #include <volasim/simulation/physics_interface.h>
 #include <volasim/simulation/rate_counter.h>
 #include <volasim/simulation/shader.h>
@@ -51,6 +52,8 @@ class Simulation {
 
   void setSimState();
   void setInputs(const std::string& buffer);
+
+  void submitOverlay(const std::string& topic, TrajectoryData data);
 
   // Serializes the current dynamic tf (odom -> base_link) for every drone.
   // Physics thread only, alongside setSimState.
@@ -152,6 +155,8 @@ class Simulation {
   std::list<GPUSensor> gpu_sensors_;
 
   Shader shape_shader_;
+
+  OverlayRenderer overlay_renderer_;
 
   SimState sim_state_;
 

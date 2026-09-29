@@ -1,6 +1,5 @@
 #include <glad/glad.h>
 
-#include <math.h>
 #include <volasim/simulation/mesh_renderable.h>
 #include <volasim/simulation/shape_renderable.h>
 #include <volasim/simulation/xml_parser.h>
@@ -98,6 +97,11 @@ void XMLParser::handleVehicleDefinition(const pugi::xml_node& item) {
 
   vehicle_definition.dynamics_type = dynamics_type;
   vehicle_definition.xml_node      = xml_node;
+
+  pugi::xml_node yaw_node = item.child("yaw_offset");
+  if (yaw_node) {
+    vehicle_definition.yaw_offset_deg = std::stof(yaw_node.child_value());
+  }
 
   vehicle_name_to_definition_[vehicle_name] = vehicle_definition;
 }
@@ -222,12 +226,17 @@ Entity& XMLParser::handleVehicle(const pugi::xml_node& vehicle_node,
   DynamicObject* vehicle = vehicle_registry_.at(
       vehicle_definition.dynamics_type)(vehicle_definition.xml_node);
   vehicle->setTranslation(pos);
+  vehicle->setYawOffset(vehicle_definition.yaw_offset_deg);
+
+  glm::quat init_rot = vehicle->getYawOffset();
+  vehicle->setRotation(init_rot);
 
   std::unique_ptr<Entity> object =
       entity_factory_.create(vehicle_node.attribute("name").as_string());
 
   object->setRenderable(vehicle_definition.renderable);
   object->setTranslation(pos);
+  object->setRotation(init_rot);
 
   // Dynamics must be set before addChild: OBJ_ADD reads isDynamic() to decide
   // between a MOVING (dynamic) and a static body.

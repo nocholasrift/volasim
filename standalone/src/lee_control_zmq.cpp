@@ -25,8 +25,8 @@ LeeControlZmq::LeeControlZmq(double control_dt)
       control_dt_(control_dt) {
   params_["kp"]       = 3.5;
   params_["kv"]       = 2.1;
-  params_["kR"]       = 1.0;
-  params_["kw"]       = 0.1;
+  params_["kR"]       = 3.0;
+  params_["kw"]       = 0.35;
   params_["mass"]     = 0.68;
   params_["length"]   = 0.17;
   params_["c_torque"] = 0.016;
@@ -141,12 +141,13 @@ void LeeControlZmq::pollTrajectory() {
     traj.states.reserve(traj_proto.points_size());
     for (const auto& pt : traj_proto.points()) {
       vola::state_t s;
-      s.pos  = {pt.pos().x(), pt.pos().y(), pt.pos().z()};
-      s.vel  = {pt.vel().x(), pt.vel().y(), pt.vel().z()};
-      s.acc  = {pt.acc().x(), pt.acc().y(), pt.acc().z()};
-      s.jerk = {pt.jerk().x(), pt.jerk().y(), pt.jerk().z()};
-      s.yaw  = pt.yaw();
-      s.time = pt.time();
+      s.pos      = {pt.pos().x(), pt.pos().y(), pt.pos().z()};
+      s.vel      = {pt.vel().x(), pt.vel().y(), pt.vel().z()};
+      s.acc      = {pt.acc().x(), pt.acc().y(), pt.acc().z()};
+      s.jerk     = {pt.jerk().x(), pt.jerk().y(), pt.jerk().z()};
+      s.yaw      = pt.yaw();
+      s.yaw_rate = pt.yaw_dot();
+      s.time     = pt.time();
 
       if (pt.has_orientation()) {
         Eigen::Quaterniond q(pt.orientation().w(), pt.orientation().x(),
@@ -210,14 +211,14 @@ void LeeControlZmq::controlLoop() {
       std::chrono::duration<double>(control_dt_));
 
   while (running_.load()) {
-    double dt = std::chrono::duration<double>(std::chrono::steady_clock::now() -
-                                              last_tick_)
-                    .count();
-    if (dt > 2 * control_dt_) {
-      std::cout << "[lee_control_zmq] dt was: " << dt << std::endl;
-    }
+    auto   now = std::chrono::steady_clock::now();
+    double lag = std::chrono::duration<double>(now - next).count();
+    // if (lag > 0.05 * control_dt_) {
+    //   std::cout << "[lee_control_zmq] schedule lag: " << lag * 1000.
+    //             << "ms behind deadline\n";
+    // }
 
-    last_tick_ = std::chrono::steady_clock::now();
+    last_tick_ = now;
 
     if (initialized_.load()) {
       pullDesiredState();
@@ -244,7 +245,11 @@ void LeeControlZmq::controlLoop() {
       local = state_;
     }
 
+    // std::cout << "local: " << local.pos.transpose() << "\n";
+    // std::cout << "desired: " << desired.pos.transpose() << "\n";
     Eigen::Vector4d cmd = controller_.computeControls(local, desired);
+
+    // std::cout << "thrust command:" << cmd.transpose() << std::endl;
 
     volasim_msgs::Thrust thrust;
     thrust.set_f1(static_cast<float>(cmd[0]));

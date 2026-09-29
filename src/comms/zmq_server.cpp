@@ -2,11 +2,14 @@
 
 #include <zmq.hpp>
 
+#include <iostream>
+
 ZMQServer::ZMQServer() {
   context_         = zmq::context_t(1);
   state_publisher_ = zmq::socket_t(context_, zmq::socket_type::pub);
   cloud_publisher_ = zmq::socket_t(context_, zmq::socket_type::pub);
   subscriber_      = zmq::socket_t(context_, zmq::socket_type::sub);
+  traj_subscriber_ = zmq::socket_t(context_, zmq::socket_type::sub);
 
   try {
     // The ROS bridge is the consumer and always runs on the same host, so it
@@ -27,6 +30,11 @@ ZMQServer::ZMQServer() {
 
     subscriber_.connect("tcp://localhost:5557");
     subscriber_.set(zmq::sockopt::subscribe, "");
+
+    traj_subscriber_.connect("ipc:///tmp/volasim_traj");
+    traj_subscriber_.connect("tcp://localhost:5560");
+    traj_subscriber_.set(zmq::sockopt::subscribe, "");
+    std::cout << "[ZMQ] traj subscriber connected\n";
   } catch (const zmq::error_t& e) {
     throw std::runtime_error("Failed to initialize ZMQ server: " +
                              std::string(e.what()));
@@ -56,4 +64,15 @@ bool ZMQServer::receiveInfo(std::string& input_buffer) {
   }
 
   return false;
+}
+
+bool ZMQServer::receiveTrajectory(std::string& payload_out) {
+  zmq::message_t msg;
+  auto           result = traj_subscriber_.recv(msg, zmq::recv_flags::dontwait);
+  if (!result) {
+    return false;
+  }
+
+  payload_out.assign(static_cast<char*>(msg.data()), msg.size());
+  return true;
 }
