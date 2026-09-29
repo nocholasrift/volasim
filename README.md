@@ -24,14 +24,13 @@
 
 ## 🔍 Overview
 
-volasim renders a physics-driven world in OpenGL and streams the vehicle's state, TF tree, and depth point clouds over ZMQ. Controllers and planners run as separate processes. You can use the bundled standalone Lee controller, or the ROS bridge if you want to fly the drone from your existing ROS stack. The simulator itself never links against ROS.
+volasim renders a physics-driven world in OpenGL and streams the vehicle's state, TF tree, and depth point clouds over ZMQ. Controllers and planners run as separate processes. You can use the bundled standalone Lee controller, or the ROS bridge if you want to fly the drone from your existing ROS stack. 
 
 ## 🎯 Key Features
 
 - 🚁 **Physics**
   - Rigid-body dynamics on [Jolt Physics](https://github.com/jrouwe/JoltPhysics), with collision geometry from convex decomposition
   - A physics loop that runs independently of rendering (`--physics-hz`, 1 kHz by default)
-  - Triple-buffered pose hand-off, so the renderer never draws a half-finished physics step
   - Optional interpolation between physics steps (`--interpolate`) for smooth motion at low physics rates
 - 📷 **Sensors**
   - GPU-rendered depth cameras published as point clouds, with configurable resolution, FOV, range, and rate
@@ -47,7 +46,7 @@ volasim renders a physics-driven world in OpenGL and streams the vehicle's state
   - A Dockerized ROS 2 stack, so the ROS side can run without ROS installed on the host
 - 🗺️ **Worlds & Visualization**
   - XML world definitions with reusable classes, includes, and parameterized templates
-  - OBJ meshes via assimp, plus shadows, orbit camera, and live trajectory overlays
+  - OBJ meshes via [assimp](https://github.com/assimp/assimp), plus shadows, orbit camera, and live trajectory overlays
 
 ## 🚀 Getting Started
 
@@ -59,7 +58,7 @@ volasim renders a physics-driven world in OpenGL and streams the vehicle's state
   - **Ubuntu:** `sudo apt install freeglut3-dev libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libudev-dev`
   - **macOS:** these ship with the system
 
-SDL3, Jolt, assimp, pugixml, and libzmq are vendored as submodules.
+SDL3, Jolt, [assimp](https://github.com/assimp/assimp), pugixml, and libzmq are vendored as submodules.
 
 ### Build
 
