@@ -94,7 +94,8 @@ Eigen::Vector4d LeeController::computeControls(const state_t& state,
 
   double w_p = -h_w.dot(b2d);
   double w_q = h_w.dot(b1d);
-  double w_r = desired_state.yaw_rate;
+  // Yaw rate is about world z; project it onto the tilted desired body z.
+  double w_r = desired_state.yaw_rate * b3d.dot(e3_);
 
   Eigen::Vector3d desired_w = w_p * b1d + w_q * b2d + w_r * b3d;
 

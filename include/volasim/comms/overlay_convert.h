@@ -7,6 +7,8 @@
 
 #include <glm/glm.hpp>
 
+#include <cmath>
+
 namespace volasim::overlay {
 
 inline TrajectoryData fromProto(const volasim_msgs::Trajectory& proto) {
@@ -14,6 +16,11 @@ inline TrajectoryData fromProto(const volasim_msgs::Trajectory& proto) {
   data.points.reserve(proto.points_size());
 
   for (const auto& pt : proto.points()) {
+    // A single NaN would poison the segment transforms on both sides of it.
+    if (!std::isfinite(pt.pos().x()) || !std::isfinite(pt.pos().y()) ||
+        !std::isfinite(pt.pos().z())) {
+      continue;
+    }
     data.points.emplace_back(static_cast<float>(pt.pos().x()),
                              static_cast<float>(pt.pos().y()),
                              static_cast<float>(pt.pos().z()));

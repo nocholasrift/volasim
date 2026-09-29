@@ -96,14 +96,6 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
         if (traj_proto.ParseFromString(traj_payload)) {
           uint32_t drone_id  = traj_proto.header().drone_id();
           auto     traj_data = volasim::overlay::fromProto(traj_proto);
-          std::cout << "[overlay] received trajectory: "
-                    << traj_data.points.size() << " points, frame='"
-                    << traj_data.frame_id << "', drone=" << drone_id << "\n";
-          if (!traj_data.points.empty()) {
-            const auto& p = traj_data.points.front();
-            std::cout << "[overlay] first point: " << p.x << " " << p.y << " "
-                      << p.z << "\n";
-          }
           sim.submitOverlay(volasim::topics::trajectory(drone_id),
                             std::move(traj_data));
         } else {

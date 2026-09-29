@@ -5,7 +5,6 @@
 #include <volasim/simulation/overlay_renderer.h>
 #include <volasim/simulation/world_buffer.h>
 
-#include <iostream>
 #include <queue>
 #include <utility>
 
@@ -67,8 +66,6 @@ void OverlayRenderer::absorbStaging() {
   std::lock_guard<std::mutex> lock(staging_mtx_);
 
   for (auto& [topic, data] : staging_) {
-    std::cout << "[overlay] absorb: topic='" << topic
-              << "' points=" << data.points.size() << "\n";
     auto it = drawables_.find(topic);
     if (it == drawables_.end()) {
       auto tube = std::make_unique<TubeShape>(cylinder_vao_.get(),
