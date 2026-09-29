@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="120" viewBox="0 0 520 120" role="img" aria-label="volasim">
+  <style>
+    .ink    { fill: #e8ecf3; }
+    .stroke { stroke: #e8ecf3; }
+    .accent { fill: #5b9bff; }
+    .ring   { stroke: #5b9bff; }
+    .sub    { fill: #9aa4b5; }
+  </style>
+
+  <!-- quadrotor, top view -->
+  <g transform="translate(60 60)">
+    <g class="stroke" stroke-width="6" stroke-linecap="round">
+      <line x1="-30" y1="-30" x2="30" y2="30"/>
+      <line x1="30" y1="-30" x2="-30" y2="30"/>
+    </g>
+    <g class="ring" fill="none" stroke-width="4">
+      <circle cx="-30" cy="-30" r="18"/>
+      <circle cx="30"  cy="-30" r="18"/>
+      <circle cx="-30" cy="30"  r="18"/>
+      <circle cx="30"  cy="30"  r="18"/>
+    </g>
+    <rect class="accent" x="-11" y="-11" width="22" height="22" rx="5"/>
+  </g>
+
+  <text x="138" y="72" class="ink"
+        font-family="ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+        font-size="58" font-weight="700" letter-spacing="-1">vola<tspan class="accent">sim</tspan></text>
+  <text x="141" y="100" class="sub"
+        font-family="ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+        font-size="16" letter-spacing="2.5">QUADROTOR FLIGHT SIMULATOR</text>
+</svg>
