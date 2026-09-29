@@ -468,8 +468,12 @@ void Simulation::buildStaticTransforms() {
   // Which drone each vehicle body belongs to, so a sensor's owning drone can be
   // found from the entity it is mounted on.
   std::unordered_map<const Entity*, uint32_t> drone_of_vehicle;
+  // Mounts are authored in the vehicle entity's (mesh) frame, but base_link is
+  // the yaw-offset heading frame, so each mount is re-expressed through it.
+  std::unordered_map<const Entity*, glm::quat> yaw_offset_of_vehicle;
   for (const SimBody& sb : physics_interface_.dynamicBodies()) {
-    drone_of_vehicle[sb.entity] = sb.vehicle_id;
+    drone_of_vehicle[sb.entity]      = sb.vehicle_id;
+    yaw_offset_of_vehicle[sb.entity] = sb.entity->getDynamics().getYawOffset();
   }
 
   // Group each drone's sensor edges into one TFMessage so a subscriber receives
@@ -499,10 +503,14 @@ void Simulation::buildStaticTransforms() {
     sensor.setTopic(volasim::topics::depth(drone_id, frames.name));
 
     // base_link -> sensor link frame (the physical mount pose).
-    const Transform& mount = sensor_entity.getLocalTransform();
+    const Transform& mount      = sensor_entity.getLocalTransform();
+    const auto       offset_it  = yaw_offset_of_vehicle.find(vehicle);
+    const glm::quat  yaw_offset = offset_it != yaw_offset_of_vehicle.end()
+                                      ? offset_it->second
+                                      : glm::quat(1.F, 0.F, 0.F, 0.F);
     fillTransform(per_drone[drone_id].add_transforms(), stamp_ns, drone_id,
                   volasim::frames::baseLink(drone_id), frames.link,
-                  mount.position, mount.rotation);
+                  yaw_offset * mount.position, yaw_offset * mount.rotation);
 
     // sensor link -> optical frame. Depth clouds are published in the optical
     // frame, so without this edge a z-forward cloud would be drawn along the

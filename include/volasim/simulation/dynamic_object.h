@@ -66,6 +66,14 @@ class DynamicObject {
   virtual Eigen::Matrix3d getInertia() { return J_mat_; }
   virtual Eigen::Matrix3d getInertiaInv() { return J_mat_inv_; }
 
+  void setYawOffset(float deg) {
+    float rad       = glm::radians(deg);
+    yaw_offset_     = glm::angleAxis(rad, glm::vec3(0.f, 0.f, 1.f));
+    yaw_offset_inv_ = glm::inverse(yaw_offset_);
+  }
+
+  glm::quat getYawOffset() const { return yaw_offset_; }
+
   virtual void getForceAndTorque(Eigen::Vector3d& force,
                                  Eigen::Vector3d& torque) = 0;
 
@@ -75,6 +83,9 @@ class DynamicObject {
   double          mass_;
   Eigen::Matrix3d J_mat_;
   Eigen::Matrix3d J_mat_inv_;
+
+  glm::quat yaw_offset_{1.f, 0.f, 0.f, 0.f};
+  glm::quat yaw_offset_inv_{1.f, 0.f, 0.f, 0.f};
 };
 
 #endif
