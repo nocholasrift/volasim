@@ -3,9 +3,11 @@
 
 #include <volasim/args.h>
 #include <volasim/event/event_dispatcher.h>
+#include <volasim/gui/gui.h>
 #include <volasim/sensors/depth_sensor.h>
 #include <volasim/sensors/sensor_handoff.h>
 #include <volasim/simulation/camera.h>
+#include <volasim/simulation/camera_feed.h>
 #include <volasim/simulation/entity.h>
 #include <volasim/simulation/input_manager.h>
 #include <volasim/simulation/loop_pacer.h>
@@ -97,6 +99,10 @@ class Simulation {
   // load, while nothing else touches the scene graph.
   void buildStaticTransforms();
 
+  // Refreshes the GUI's view of the scene: what can be toggled and which
+  // camera feeds exist. Render thread only.
+  void collectGuiItems();
+
   static constexpr uint8_t kMouseRightClick  = 1;
   static constexpr uint8_t kMouseMiddleClick = 2;
   static constexpr uint8_t kMouseLeftClick   = 3;
@@ -157,6 +163,14 @@ class Simulation {
   Shader shape_shader_;
 
   OverlayRenderer overlay_renderer_;
+
+  // one per sensor, rendered only while its GUI window is open
+  std::vector<CameraFeed> camera_feeds_;
+
+  // render thread only; the item lists are rebuilt in place each frame
+  volasim::gui::Gui                gui_;
+  std::vector<volasim::gui::Layer> gui_layers_;
+  std::vector<volasim::gui::Feed>  gui_feeds_;
 
   SimState sim_state_;
 

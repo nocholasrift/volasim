@@ -19,3 +19,7 @@
 [submodule "third_party/volasim-msgs"]
 	path = third_party/volasim-msgs
 	url = git@github.com:nocholasrift/volasim-msgs.git
+[submodule "third_party/imgui"]
+	path = third_party/imgui
+	url = https://github.com/ocornut/imgui.git
+	branch = docking

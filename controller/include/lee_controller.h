@@ -12,6 +12,25 @@
 
 namespace vola {
 
+// World frame unless marked body.
+struct lee_debug_t {
+  Eigen::Vector3d ep        = Eigen::Vector3d::Zero();  // state - desired
+  Eigen::Vector3d ev        = Eigen::Vector3d::Zero();  // state - desired
+  Eigen::Vector3d pid_term  = Eigen::Vector3d::Zero();
+  double          pid_norm  = 0.;
+  double          fz        = 0.;
+  bool            cutoff    = false;
+  Eigen::Vector3d b3d       = Eigen::Vector3d::Zero();
+  bool            flipped   = false;
+  double          psi       = 0.;
+  Eigen::Vector3d h_w       = Eigen::Vector3d::Zero();
+  Eigen::Vector3d desired_w = Eigen::Vector3d::Zero();
+  Eigen::Vector3d eR        = Eigen::Vector3d::Zero();  // body
+  Eigen::Vector3d ew        = Eigen::Vector3d::Zero();  // body
+  Eigen::Vector3d torque_R  = Eigen::Vector3d::Zero();  // body
+  Eigen::Vector3d torque_w  = Eigen::Vector3d::Zero();  // body
+};
+
 class LeeController {
  public:
   LeeController();
@@ -23,9 +42,12 @@ class LeeController {
   Eigen::Vector4d computeControls(const state_t& state,
                                   const state_t& desired_state);
 
+  const lee_debug_t& debug() const { return debug_; }
+
  private:
   double orientationError(const Eigen::Matrix3d& m1, const Eigen::Matrix3d& m2);
-  state_t state_;
+  state_t     state_;
+  lee_debug_t debug_;
 
   double kp_ = 1.;
   double kv_ = 1.;

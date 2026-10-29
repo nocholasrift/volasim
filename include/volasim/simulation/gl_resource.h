@@ -16,6 +16,9 @@ struct VaoDeleter {
 struct BufferDeleter {
   void operator()(GLuint id) const { glDeleteBuffers(1, &id); }
 };
+struct RenderbufferDeleter {
+  void operator()(GLuint id) const { glDeleteRenderbuffers(1, &id); }
+};
 
 // RAII owner for a single GL object handle. Move-only; a moved-from instance is
 // left holding 0 so its destructor is a no-op. Lets owners stay rule-of-zero.

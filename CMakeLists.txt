@@ -39,6 +39,7 @@ find_package(Eigen3 REQUIRED)
 add_subdirectory(controller)
 add_subdirectory(standalone)
 add_subdirectory(volasim_node)
+add_subdirectory(src/gui)
 
 
 file(GLOB SHADER_FILES
@@ -77,6 +78,7 @@ add_executable(volasim
   src/simulation/shape_renderable.cpp
   src/simulation/overlay_renderer.cpp
   src/simulation/tube_shape.cpp
+  src/simulation/camera_feed.cpp
   src/simulation/physics_interface.cpp
   src/simulation/camera.cpp
   src/vehicles/drone.cpp
@@ -94,6 +96,7 @@ target_link_libraries(volasim
   cppzmq-static
   volasim_msgs
   assimp
+  volasim_gui
 )
 add_dependencies(volasim embed_shaders)
 set_target_properties(volasim PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
