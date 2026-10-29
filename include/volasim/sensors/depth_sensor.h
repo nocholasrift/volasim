@@ -182,7 +182,21 @@ class GPUSensor {
     return glm::lookAt(pos, pos + forward, up);
   }
 
-  glm::mat4 getProjMat() { return proj_mat_; }
+  glm::mat4 getProjMat() const { return proj_mat_; }
+
+  [[nodiscard]] int width() const { return static_cast<int>(settings_.width); }
+  [[nodiscard]] int height() const {
+    return static_cast<int>(settings_.height);
+  }
+
+  // Human-readable label (e.g. "drone_0/realsense"), assigned alongside the
+  // publish labels below.
+  void setName(std::string name) { name_ = std::move(name); }
+  [[nodiscard]] const std::string& name() const { return name_; }
+
+  // Whether draw() puts this sensor's point cloud in the main view. Capture and
+  // publishing are unaffected.
+  bool cloud_visible{true};
 
   // Where and under what frame this sensor's data is published. The sensor holds
   // these as opaque strings; the transform-tree code owns how they are named and
@@ -400,6 +414,7 @@ class GPUSensor {
   // Opaque publish labels, assigned by the transform-tree code after load.
   std::string topic_{"depth"};
   std::string frame_id_{"sensor"};
+  std::string name_{"sensor"};
 
   // paces this sensor's captures at settings_.rate_hz; lazily created
   std::unique_ptr<RateGate> gate_;

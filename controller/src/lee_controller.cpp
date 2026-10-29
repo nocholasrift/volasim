@@ -33,14 +33,19 @@ void LeeController::loadParams(
 
 Eigen::Vector4d LeeController::computeControls(const state_t& state,
                                                const state_t& desired_state) {
+  debug_ = lee_debug_t{};
 
   Eigen::Vector3d ep = state.pos - desired_state.pos;
   Eigen::Vector3d ev = state.vel - desired_state.vel;
+  debug_.ep          = ep;
+  debug_.ev          = ev;
 
   Eigen::Vector3d pid_term =
       (-kp_ * ep - kv_ * ev + mass_ * g * e3_ + mass_ * desired_state.acc);
 
   double pid_term_norm = pid_term.norm();
+  debug_.pid_term      = pid_term;
+  debug_.pid_norm      = pid_term_norm;
 
   if (pid_term_norm < 1e-8) {
     throw std::runtime_error(
@@ -53,12 +58,15 @@ Eigen::Vector4d LeeController::computeControls(const state_t& state,
 
   Eigen::Vector3d body_z = state.rot.col(2);
   double          fz     = pid_term.dot(body_z);
+  Eigen::Vector3d b3d    = pid_term / pid_term.norm();
+  debug_.fz              = fz;
+  debug_.b3d             = b3d;
 
-  if (fz < 1e-8) {
-    return Eigen::Vector4d::Zero();
-  }
+  // if (fz < 1e-8) {
+  //   debug_.cutoff = true;
+  //   return Eigen::Vector4d::Zero();
+  // }
 
-  Eigen::Vector3d b3d = pid_term / pid_term.norm();
   Eigen::Vector3d x_c(cos(desired_state.yaw), sin(desired_state.yaw), 0);
 
   Eigen::Vector3d b2d = b3d.cross(x_c);
@@ -83,10 +91,12 @@ Eigen::Vector4d LeeController::computeControls(const state_t& state,
   // and R are les than 180 degrees apart... if we are close to this
   // the controller has already lost the drone :)
   if (orientationError(R_dw, state.rot) > orientationError(R_dw2, state.rot)) {
-    R_dw = R_dw2;
-    b1d  = R_dw.col(0);
-    b2d  = R_dw.col(1);
+    R_dw           = R_dw2;
+    b1d            = R_dw.col(0);
+    b2d            = R_dw.col(1);
+    debug_.flipped = true;
   }
+  debug_.psi = orientationError(R_dw, state.rot);
 
   Eigen::Vector3d h_w =
       (mass_ / pid_term_norm) *
@@ -106,6 +116,13 @@ Eigen::Vector4d LeeController::computeControls(const state_t& state,
   Eigen::Vector3d ew = state.rot.transpose() * (state.w - desired_w);
 
   Eigen::Vector3d torque = -kR_ * eR - kw_ * ew;
+
+  debug_.h_w       = h_w;
+  debug_.desired_w = desired_w;
+  debug_.eR        = eR;
+  debug_.ew        = ew;
+  debug_.torque_R  = -kR_ * eR;
+  debug_.torque_w  = -kw_ * ew;
 
   Eigen::Vector4d cmd;
   cmd[0]      = fz;
