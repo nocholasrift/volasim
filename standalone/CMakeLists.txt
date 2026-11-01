@@ -1,16 +1,12 @@
-# blackbox: records the tracker's logs, inputs and tracking error to MCAP for
-# Foxglove (run blackbox-record or volasim-record alongside). Declared here
-# rather than in the top-level CMakeLists because the tracker is meant to move
-# out of volasim. Uses a sibling checkout (../blackbox) when present, else the
-# git repo; override with -DFETCHCONTENT_SOURCE_DIR_BLACKBOX=<path>.
+# Declared here, not in the top-level CMakeLists, because the tracker is moving out of volasim.
 include(FetchContent)
 if(EXISTS ${CMAKE_SOURCE_DIR}/../blackbox/CMakeLists.txt)
   FetchContent_Declare(blackbox SOURCE_DIR ${CMAKE_SOURCE_DIR}/../blackbox)
 else()
   FetchContent_Declare(
     blackbox
-    GIT_REPOSITORY git@github.com:nocholasrift/blackbox.git
-    GIT_TAG        main
+    GIT_REPOSITORY https://github.com/nocholasrift/blackbox.git
+    GIT_TAG        fe337059cdcd47381718e663041383e59f0c77a2
   )
 endif()
 FetchContent_MakeAvailable(blackbox)

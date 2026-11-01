@@ -69,13 +69,17 @@ Eigen::Vector4d LeeController::computeControls(const state_t& state,
 
   Eigen::Vector3d x_c(cos(desired_state.yaw), sin(desired_state.yaw), 0);
 
-  Eigen::Vector3d b2d = b3d.cross(x_c);
-  if (b2d.norm() < 1e-8) {
-    throw std::runtime_error("yaw and thrust vectors are parallel.");
+  Eigen::Vector3d b1d, b2d;
+  if (b3d.cross(x_c).norm() > 1e-8) {
+    b2d = b3d.cross(x_c).normalized();
+    b1d = b2d.cross(b3d);
+  } else {
+    // x_c is parallel to b3d, so y_c (perpendicular to x_c) still fixes the frame.
+    const Eigen::Vector3d y_c(-sin(desired_state.yaw), cos(desired_state.yaw),
+                              0);
+    b1d = y_c.cross(b3d).normalized();
+    b2d = b3d.cross(b1d);
   }
-  b2d.normalize();
-
-  Eigen::Vector3d b1d = b2d.cross(b3d);
 
   Eigen::Matrix3d R_dw;
   R_dw.col(0) = b1d;
