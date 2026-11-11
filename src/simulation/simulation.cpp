@@ -179,6 +179,17 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
   overlay_renderer_.init();
   overlay_renderer_.buildFrameMap(*world_);
 
+  constexpr int kFeedWidth = 640;
+  camera_feeds_.reserve(gpu_sensors_.size());
+  for (const GPUSensor& sensor : gpu_sensors_) {
+    camera_feeds_.emplace_back(sensor, kFeedWidth);
+  }
+
+  if (!gui_.init(window_, gl_ctx_)) {
+    std::cerr << "Failed to initialize the GUI\n";
+    return SDL_APP_FAILURE;
+  }
+
   const std::vector<SimBody>& sim_bodies = physics_interface_.dynamicBodies();
 
   // default camera target to the first dynamic object; else focus the origin
@@ -207,6 +218,10 @@ SDL_AppResult Simulation::initSDL(void** appstate, int argc, char* argv[],
 }
 
 SDL_AppResult Simulation::SDLEvent(void* appstate, SDL_Event* event) {
+  if (gui_.handleEvent(*event)) {
+    return SDL_APP_CONTINUE;
+  }
+
   switch (event->type) {
     case SDL_EVENT_QUIT:
       return SDL_APP_SUCCESS;
@@ -295,13 +310,24 @@ SDL_AppResult Simulation::update(void* appstate) {
   shape_shader_.setUniformVec3("lightColor", glm::vec3(.8F, .8F, .8F));
   shape_shader_.setUniformVec3("lightPos", glm::vec3(0, 0, 5));
 
+  for (const CameraFeed& feed : camera_feeds_) {
+    if (feed.open) {
+      feed.render(*world_, *poses, shape_shader_);
+    }
+  }
+
   world_->draw(*poses, glm::mat4(1.F), view_mat, proj_mat, shape_shader_);
   for (GPUSensor& sensor : gpu_sensors_) {
-    sensor.draw(view_mat, proj_mat, shape_shader_);
+    if (sensor.cloud_visible) {
+      sensor.draw(view_mat, proj_mat, shape_shader_);
+    }
   }
 
   glUseProgram(shape_shader_.getID());
   overlay_renderer_.draw(view_mat, proj_mat, shape_shader_, *poses);
+
+  collectGuiItems();
+  gui_.draw(gui_layers_, gui_feeds_);
 
   SDL_GL_SwapWindow(window_);
 
@@ -350,6 +376,10 @@ void Simulation::quitSDL(void* appstate, SDL_AppResult result) {
     physics_thread_.join();
   }
 
+  // GL objects must go while their context is still alive
+  gui_.shutdown();
+  camera_feeds_.clear();
+
   // reached with nothing initialized when startup failed
   if (gl_ctx_ != nullptr) {
     SDL_GL_DestroyContext(gl_ctx_);
@@ -369,6 +399,24 @@ void Simulation::setInputs(const std::string& buffer) {
 
 void Simulation::submitOverlay(const std::string& topic, TrajectoryData data) {
   overlay_renderer_.submit(topic, std::move(data));
+}
+
+void Simulation::collectGuiItems() {
+  gui_layers_.clear();
+  overlay_renderer_.forEachDrawable([this](const std::string& topic,
+                                           OverlayDrawable&   drawable) {
+    gui_layers_.push_back({drawable.group(), topic.c_str(), &drawable.visible});
+  });
+  for (GPUSensor& sensor : gpu_sensors_) {
+    gui_layers_.push_back(
+        {"Point clouds", sensor.name().c_str(), &sensor.cloud_visible});
+  }
+
+  gui_feeds_.clear();
+  for (CameraFeed& feed : camera_feeds_) {
+    gui_feeds_.push_back({feed.name().c_str(), feed.texture(), feed.width(),
+                          feed.height(), &feed.open});
+  }
 }
 
 void Simulation::applyPendingInput() {
@@ -501,6 +549,7 @@ void Simulation::buildStaticTransforms() {
     // frame and publishes on the drone's depth topic.
     sensor.setFrameId(frames.optical);
     sensor.setTopic(volasim::topics::depth(drone_id, frames.name));
+    sensor.setName(volasim::frames::drone(drone_id) + "/" + frames.name);
 
     // base_link -> sensor link frame (the physical mount pose).
     const Transform& mount      = sensor_entity.getLocalTransform();

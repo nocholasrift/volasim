@@ -25,6 +25,8 @@ class TubeShape : public OverlayDrawable {
   void draw(const glm::mat4& view, const glm::mat4& proj,
             const glm::mat4& frame_transform, Shader& shader) override;
 
+  [[nodiscard]] const char* group() const override { return "Trajectories"; }
+
   [[nodiscard]] const std::string& frameId() const { return data_.frame_id; }
 
  private:

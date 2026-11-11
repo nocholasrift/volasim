@@ -8,3 +8,5 @@ bags/
 .claude/
 CLAUDE.md
 compile_commands.json
+# ImGui's saved window layout, written to the working directory
+imgui.ini

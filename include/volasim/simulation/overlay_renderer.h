@@ -32,6 +32,14 @@ class OverlayRenderer {
   void setVisible(const std::string& topic, bool visible);
   void setAllVisible(bool visible);
 
+  // Render thread only. Calls fn(topic, drawable) for every live drawable.
+  template <typename Fn>
+  void forEachDrawable(const Fn& fn) {
+    for (auto& [topic, drawable] : drawables_) {
+      fn(topic, *drawable);
+    }
+  }
+
  private:
   void      absorbStaging();
   glm::mat4 resolveFrame(const std::string&   frame_id,

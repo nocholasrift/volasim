@@ -12,6 +12,9 @@ class OverlayDrawable {
   virtual void draw(const glm::mat4& view, const glm::mat4& proj,
                     const glm::mat4& frame_transform, Shader& shader) = 0;
 
+  // The heading this drawable is listed under in the GUI's layers panel.
+  [[nodiscard]] virtual const char* group() const = 0;
+
   bool visible{true};
 };
 
